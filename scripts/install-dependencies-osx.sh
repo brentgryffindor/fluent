@@ -65,7 +65,7 @@ if [ -z "$(command -v protoc)" ]; then
   wget https://github.com/google/protobuf/releases/download/v${PROTO_V}/protobuf-all-${PROTO_V}.zip > /dev/null
   unzip protobuf-all-${PROTO_V} > /dev/null
   cd protobuf-${PROTO_V}
-  ./autogen.sh && ./configure CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g'
+  ./autogen.sh && ./configure CXX=clang++ CXXFLAGS='-std=c++14 -stdlib=libc++ -O3 -g'
 
   make -j4 && sudo make install && sudo update_dyld_shared_cache
   cd .. && rm -rf protobuf-*

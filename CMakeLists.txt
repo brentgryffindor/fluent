@@ -27,20 +27,20 @@ IF(${BUILD_TEST})
   ENABLE_TESTING()
 ENDIF()
 
-SET(CMAKE_CXX_STANDARD 11)
+SET(CMAKE_CXX_STANDARD 14)
 SET(CMAKE_CXX_STANDARD_REQUIRED on)
 
 SET(VENDOR_DIR vendor)
 
 IF(${CMAKE_CXX_COMPILER} STREQUAL "/usr/bin/clang++") 
   SET(CMAKE_CXX_FLAGS_COMMON
-      "-std=c++11 \
+      "-std=c++14 \
       -stdlib=libc++")
 ENDIF()
 
 IF(${CMAKE_CXX_COMPILER} STREQUAL "/usr/bin/g++") 
   SET(CMAKE_CXX_FLAGS_COMMON
-      "-std=c++11")
+      "-std=c++14")
 ENDIF()
 
 SET(CMAKE_CXX_FLAGS_DEBUG
@@ -53,10 +53,13 @@ SET(CMAKE_CXX_FLAGS_RELEASE
     ${CMAKE_CXX_FLAGS_COMMON} \
     -O3")
 
-ADD_SUBDIRECTORY(${VENDOR_DIR}/spdlog)
-ADD_SUBDIRECTORY(${VENDOR_DIR}/yamlcpp)
-ADD_SUBDIRECTORY(${VENDOR_DIR}/zeromq)
-ADD_SUBDIRECTORY(${VENDOR_DIR}/zeromqcpp)
+INCLUDE(ExternalProject)
+INCLUDE(vendor/cereal.cmake NO_POLICY_SCOPE)
+INCLUDE(vendor/googlelog.cmake NO_POLICY_SCOPE)
+INCLUDE(vendor/spdlog.cmake NO_POLICY_SCOPE)
+INCLUDE(vendor/yamlcpp.cmake NO_POLICY_SCOPE)
+INCLUDE(vendor/zeromq.cmake NO_POLICY_SCOPE)
+INCLUDE(vendor/zeromqcpp.cmake NO_POLICY_SCOPE)
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 INCLUDE_DIRECTORIES(.)
@@ -101,6 +104,7 @@ ADD_SUBDIRECTORY(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 
 LINK_DIRECTORIES(${ZEROMQ_LINK_DIRS} ${YAMLCPP_LINK_DIRS})
 
+ADD_SUBDIRECTORY(relational)
 ADD_SUBDIRECTORY(kvs)
 
 # TODO: Enable selective build of KVS and function runtime

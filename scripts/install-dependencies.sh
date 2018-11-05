@@ -118,9 +118,9 @@ if [ -z "$(command -v protoc)" ]; then
   cd protobuf-${PROTO_V}
   ./autogen.sh > /dev/null
   if [ "$COMPILER" = "clang++" ]; then
-    ./configure CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g' > /dev/null
+    ./configure CXX=clang++ CXXFLAGS='-std=c++14 -stdlib=libc++ -O3 -g' > /dev/null
   else
-    ./configure CXX=g++ CXXFLAGS='-std=c++11 -O3 -g' > /dev/null
+    ./configure CXX=g++ CXXFLAGS='-std=c++14 -O3 -g' > /dev/null
   fi
 
   make -j4 > /dev/null

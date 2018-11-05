@@ -72,7 +72,7 @@ rm -rf build
 mkdir build
 cd build
 
-cmake -std=c++11 "-GUnix Makefiles" -DCMAKE_BUILD_TYPE=$TYPE -DCMAKE_CXX_COMPILER=$COMPILER $TEST ..
+cmake -std=c++14 "-GUnix Makefiles" -DCMAKE_BUILD_TYPE=$TYPE -DCMAKE_CXX_COMPILER=$COMPILER $TEST ..
 make -j${MAKE_THREADS}
 
 if [[ "$TYPE" = "Debug" ]] && [[ ! -z "$RUN_FORMAT" ]]; then
