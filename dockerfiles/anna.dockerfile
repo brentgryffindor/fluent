@@ -54,7 +54,8 @@ WORKDIR /
 RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 
 # build Anna
-RUN git clone https://github.com/fluent-project/fluent
+RUN git clone https://github.com/cw75/fluent
+RUN cd fluent && git fetch origin && git checkout -b cgwu_benchmark origin/cgwu_benchmark
 RUN cd fluent && bash scripts/build-all.sh -j4 -bRelease
 
 CMD bash fluent/k8s/start.sh $SERVER_TYPE
