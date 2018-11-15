@@ -55,8 +55,8 @@ RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 
 # build Anna
 RUN touch a
-RUN git clone https://github.com/vsreekanti/fluent
-RUN cd fluent && git fetch origin && git checkout -b create_bugfix origin/create_bugfix
+RUN git clone https://github.com/cw75/fluent
+RUN cd fluent && git fetch origin && git checkout -b cgwu_recovery origin/cgwu_recovery
 COPY monitoring.cpp /fluent/kvs/src/monitor/monitoring.cpp
 COPY benchmark.cpp /fluent/kvs/src/benchmark/benchmark.cpp
 COPY server.cpp /fluent/kvs/src/kvs/server.cpp

@@ -22,7 +22,7 @@ spec:
   hostNetwork: true
   containers:
   - name: ebs-container
-    image: vsreekanti/anna
+    image: cgwu/kvs
     env: 
     - name: SERVER_TYPE
       value: "2"

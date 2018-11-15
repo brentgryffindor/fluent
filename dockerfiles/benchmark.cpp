@@ -84,8 +84,8 @@ void handle_request(
     Address& ip, unsigned& thread_id, unsigned& rid, unsigned& trial) {
   if (trial > 5) {
     logger->info("Trial #{} for request for key {}.", trial, key);
-    logger->info("Waiting 5 seconds.");
-    std::chrono::seconds dura(5);
+    logger->info("Waiting 1 seconds.");
+    std::chrono::seconds dura(1);
     std::this_thread::sleep_for(dura);
   }
 
@@ -233,7 +233,7 @@ void run(unsigned thread_id, std::string ip,
 
   UserThread ut = UserThread(ip, thread_id);
 
-  int timeout = 500;
+  int timeout = 1000;
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
 
@@ -241,6 +241,8 @@ void run(unsigned thread_id, std::string ip,
   zmq::socket_t response_puller(context, ZMQ_PULL);
   response_puller.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
   response_puller.bind(ut.get_request_pulling_bind_addr());
+
+  timeout = 2000;
 
   // responsible for receiving key address responses
   zmq::socket_t key_address_puller(context, ZMQ_PULL);
