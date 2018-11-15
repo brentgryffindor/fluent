@@ -54,7 +54,14 @@ WORKDIR /
 RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 
 # build Anna
-RUN git clone https://github.com/fluent-project/fluent
+RUN touch a
+RUN git clone https://github.com/vsreekanti/fluent
+RUN cd fluent && git fetch origin && git checkout -b create_bugfix origin/create_bugfix
+COPY monitoring.cpp /fluent/kvs/src/monitor/monitoring.cpp
+COPY benchmark.cpp /fluent/kvs/src/benchmark/benchmark.cpp
+COPY server.cpp /fluent/kvs/src/kvs/server.cpp
+COPY monitoring_utils.hpp /fluent/kvs/include/monitor/monitoring_utils.hpp
 RUN cd fluent && bash scripts/build-all.sh -j4 -bRelease
+COPY start.sh fluent/k8s/start.sh
 
 CMD bash fluent/k8s/start.sh $SERVER_TYPE

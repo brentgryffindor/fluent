@@ -25,7 +25,7 @@ RUN apt-get update
 RUN apt-get install -y python3.6
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python3.6 get-pip.py
-RUN pip3 install awscli zmq six kubernetes boto3
+RUN pip3 install awscli zmq six kubernetes boto3 protobuf
 
 # install kops
 RUN wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')/kops-linux-amd64
@@ -41,8 +41,8 @@ RUN mv ./kubectl /usr/local/bin/kubectl
 # need the user's AWS creds... should have a script to do this at runtime
 # eventually; for now, going to assume that the user is already set up or we
 # can just provide a script to this generally, independent of running it here
-RUN git clone https://github.com/fluent-project/fluent
-COPY start_kops.sh /fluent/k8s/start_kops.sh
+RUN git clone https://github.com/vsreekanti/fluent
+RUN cd fluent && git fetch origin && git checkout -b create_bugfix origin/create_bugfix
 
 # make kube root dir
 RUN mkdir /root/.kube
