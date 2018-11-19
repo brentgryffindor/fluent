@@ -77,6 +77,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   std::unordered_map<Key, KeyInfo> placement;
 
+  // warm up for benchmark
+  warmup_placement_to_defaults(placement, kDefaultGlobalMemoryReplication, kDefaultGlobalEbsReplication, kDefaultLocalReplication);
+
   // request server addresses from the seed node
   zmq::socket_t addr_requester(context, ZMQ_REQ);
   addr_requester.connect(RoutingThread(seed_ip, 0).get_seed_connect_addr());

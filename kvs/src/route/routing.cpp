@@ -43,7 +43,7 @@ void run(unsigned thread_id, Address ip,
   std::unordered_map<Key, KeyInfo> placement;
 
   // warm up for benchmark
-  // warmup_placement_to_defaults(placement);
+  warmup_placement_to_defaults(placement, kTierDataMap[1].default_replication_, kTierDataMap[2].default_replication_, kDefaultLocalReplication);
 
   if (thread_id == 0) {
     // notify monitoring nodes
