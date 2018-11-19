@@ -147,7 +147,7 @@ void handle_request(
                      key_address_puller, ip, thread_id, rid, trial);
     } else {
       // succeeded
-      if (tuple.has_invalidate() && tuple.invalidate()) {
+      if (tuple.invalidate()) {
         // update cache
         key_address_cache.erase(key);
       }

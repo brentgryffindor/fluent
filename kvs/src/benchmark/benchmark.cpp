@@ -84,8 +84,8 @@ void handle_request(
     Address& ip, unsigned& thread_id, unsigned& rid, unsigned& trial) {
   if (trial > 5) {
     logger->info("Trial #{} for request for key {}.", trial, key);
-    logger->info("Waiting 5 seconds.");
-    std::chrono::seconds dura(5);
+    logger->info("Waiting 1 seconds.");
+    std::chrono::seconds dura(1);
     std::this_thread::sleep_for(dura);
   }
 
@@ -114,7 +114,10 @@ void handle_request(
     } else {
       logger->error(
           "Request timed out when querying routing. This should never happen!");
-      return;
+      trial += 1;
+      return handle_request(key, value, pushers, routing_addresses, key_address_cache,
+                     seed, logger, ut, response_puller, key_address_puller, ip,
+                     thread_id, rid, trial);
     }
   } else {
     if (key_address_cache[key].size() == 0) {
@@ -167,40 +170,56 @@ void handle_request(
       }
 
       // update cache and retry
-      key_address_cache.erase(key);
+      key_address_cache[key].clear();
+      for (const auto& address : tuple.addresses()) {
+        key_address_cache[key].insert(address);
+      }
       handle_request(key, value, pushers, routing_addresses, key_address_cache,
                      seed, logger, ut, response_puller, key_address_puller, ip,
                      thread_id, rid, trial);
     } else {
       // succeeded
-      if (tuple.has_invalidate() && tuple.invalidate()) {
+      if (tuple.invalidate()) {
         // update cache
-        key_address_cache.erase(key);
+        key_address_cache[key].clear();
+        for (const auto& address : tuple.addresses()) {
+          key_address_cache[key].insert(address);
+        }
       }
     }
   } else {
     logger->info(
         "Request timed out when querying worker: clearing cache due to "
         "possible node membership changes.");
+
     // likely the node has departed. We clear the entries relavant to the
     // worker_address
     std::vector<std::string> tokens;
     split(worker_address, ':', tokens);
     std::string signature = tokens[1];
-    std::unordered_set<Key> remove_set;
+    std::unordered_set<Key> key_remove_set;
 
-    for (const auto& key_pair : key_address_cache) {
+    for (auto& key_pair : key_address_cache) {
+      bool remove_address = false;
+      Address to_remove;
       for (const std::string& address : key_pair.second) {
         std::vector<std::string> v;
         split(address, ':', v);
 
         if (v[1] == signature) {
-          remove_set.insert(key_pair.first);
+          remove_address = true;
+          to_remove = address;
         }
+      }
+      if (remove_address) {
+        key_pair.second.erase(to_remove);
+      }
+      if (key_pair.second.size() == 0) {
+        key_remove_set.insert(key_pair.first);
       }
     }
 
-    for (const std::string& key : remove_set) {
+    for (const std::string& key : key_remove_set) {
       key_address_cache.erase(key);
     }
 
@@ -233,7 +252,7 @@ void run(unsigned thread_id, std::string ip,
 
   UserThread ut = UserThread(ip, thread_id);
 
-  int timeout = 10000;
+  int timeout = 500;
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
 
@@ -430,6 +449,8 @@ void run(unsigned thread_id, std::string ip,
 
             std::string serialized_latency;
             feedback.SerializeToString(&serialized_latency);
+
+            logger->info("Sending throughput: {}", throughput);
 
             for (const MonitoringThread& thread : monitoring_threads) {
               kZmqUtil->send_string(

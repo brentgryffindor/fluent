@@ -169,17 +169,19 @@ class EBSSerializer : public Serializer {
 struct PendingRequest {
   PendingRequest() {}
   PendingRequest(std::string type, const std::string& value, Address addr,
-                 std::string respond_id) :
+                 std::string respond_id, unsigned address_cache_size) :
       type_(type),
       value_(value),
       addr_(addr),
-      respond_id_(respond_id) {}
+      respond_id_(respond_id),
+      address_cache_size_(address_cache_size) {}
 
   // TODO(vikram): change these type names
   std::string type_;
   std::string value_;
   Address addr_;
   std::string respond_id_;
+  unsigned address_cache_size_;
 };
 
 struct PendingGossip {

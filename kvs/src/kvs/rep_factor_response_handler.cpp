@@ -154,6 +154,13 @@ void rep_factor_response_handler(
             local_changeset.insert(key);
           }
 
+          if (request.address_cache_size_ != threads.size()) {
+            tp->set_invalidate(true);
+            for (const ServerThread& thread : threads) {
+              tp->add_addresses(thread.get_request_pulling_connect_addr());
+            }
+          }
+
           std::string serialized_response;
           response.SerializeToString(&serialized_response);
           kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
