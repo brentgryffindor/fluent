@@ -24,8 +24,8 @@ message KeyTuple {
   optional uint32 error = 2;
   optional bytes value = 3;
   optional uint64 timestamp = 4;
-  required uint32 address_cache_size = 5;
-  required bool invalidate = 6;
+  optional uint32 address_cache_size = 5;
+  optional bool invalidate = 6;
   repeated string addresses = 7;
 }
 

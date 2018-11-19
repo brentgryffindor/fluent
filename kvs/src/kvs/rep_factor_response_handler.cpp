@@ -154,7 +154,7 @@ void rep_factor_response_handler(
             local_changeset.insert(key);
           }
 
-          if (request.address_cache_size_ != threads.size()) {
+          if (request.address_cache_size_ != -1 && request.address_cache_size_ != threads.size()) {
             tp->set_invalidate(true);
             for (const ServerThread& thread : threads) {
               tp->add_addresses(thread.get_request_pulling_connect_addr());

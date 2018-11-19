@@ -71,8 +71,13 @@ void user_request_handler(
               wt.get_replication_factor_connect_addr(), key,
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
-          pending_request_map[key].push_back(PendingRequest(
-              request_type, value, response_address, response_id, tuple.address_cache_size()));
+          if (tuple.has_address_cache_size()) {
+            pending_request_map[key].push_back(PendingRequest(
+                          request_type, value, response_address, response_id, tuple.address_cache_size()));
+          } else {
+            pending_request_map[key].push_back(PendingRequest(
+                request_type, value, response_address, response_id, -1));
+          }
         }
       } else {  // if we know the responsible threads, we process the request
         KeyTuple* tp = response.add_tuples();
@@ -97,7 +102,8 @@ void user_request_handler(
                         request_type);
         }
 
-        if (tuple.address_cache_size() != threads.size()) {
+        if (tuple.has_address_cache_size() &&
+            tuple.address_cache_size() != threads.size()) {
           tp->set_invalidate(true);
           for (const ServerThread& thread : threads) {
             tp->add_addresses(thread.get_request_pulling_connect_addr());
@@ -108,8 +114,13 @@ void user_request_handler(
         total_accesses += 1;
       }
     } else {
-      pending_request_map[key].push_back(
-          PendingRequest(request_type, value, response_address, response_id, tuple.address_cache_size()));
+      if (tuple.has_address_cache_size()) {
+        pending_request_map[key].push_back(
+            PendingRequest(request_type, value, response_address, response_id, tuple.address_cache_size()));
+      } else {
+        pending_request_map[key].push_back(
+            PendingRequest(request_type, value, response_address, response_id, -1));
+      }
     }
   }
 
