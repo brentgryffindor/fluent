@@ -67,6 +67,8 @@ public:
     });
   }
 
+  // detect if the compute graph contains cycles
+  // a cycle is formed when a scratch directly/indirectly points to itself
   bool detect_cycle() {
     std::set<std::pair<std::string, std::string>> scratch_dependencies;
     TupleIter(iterables_, [&scratch_dependencies](const auto& it) {
@@ -121,6 +123,7 @@ public:
     return cycle;
   }
 
+  // assign strata to iterables
   void assign_strata() {
     std::set<unsigned> assigned;
     while (std::tuple_size<IterableTupleTypes>::value > assigned.size()) {
@@ -164,7 +167,7 @@ public:
 
   template <typename I, typename C = typename I::element_type::collection_type>
   typename std::enable_if<GetCollectionType<C>::value == CollectionType::SCRATCH, void>::type
-  activate(size_t i, const I& it) {
+  activate(size_t i, const I& it, std::unordered_set<std::size_t>& activated) {
     if (it->collection->get_dependency_count() == 0) {
       it->push(nullptr, -1, REGULAR);
       activated.insert(i);
@@ -173,7 +176,7 @@ public:
 
   template <typename I, typename C = typename I::element_type::collection_type>
   typename std::enable_if<!(GetCollectionType<C>::value == CollectionType::SCRATCH), void>::type
-  activate(size_t i, const I& it) {
+  activate(size_t i, const I& it, std::unordered_set<std::size_t>& activated) {
     it->push(nullptr, -1, REGULAR);
     activated.insert(i);
   }
@@ -221,11 +224,14 @@ public:
     tock_periodics();
   }
 
-  void compute() {
+  // normal evaluation activates each iterable ecaxtly once
+  // this is done when there is no cycle in the compute graph
+  void normal_eval() {
+    std::unordered_set<std::size_t> activated;
     while (std::tuple_size<IterableTupleTypes>::value > activated.size()) {
-      TupleIteri(iterables_, [this](std::size_t i, const auto& it) {
+      TupleIteri(iterables_, [this, &activated](std::size_t i, const auto& it) {
         if (activated.find(i) == activated.end()) {
-          activate(i, it);
+          activate(i, it, activated);
         }
       });
       TupleIter(scratches_, [](const auto& scratch) {
@@ -234,6 +240,7 @@ public:
     }
   }
 
+  // tick all collections
   void tick() {
     TupleIter(tables_, [](auto& table) {
       table->tick();
@@ -252,6 +259,7 @@ public:
     });
   }
 
+  // helper function that figure out if two iterables comtribute to the same query
   bool same_group(std::set<std::set<unsigned>>& groups, unsigned delta_iter_id, unsigned iter_id) {
     bool result = false;
     for (const auto& group : groups) {
@@ -314,33 +322,28 @@ public:
     }
   }
 
+  // the main loop of executer.
+  // wait for a incoming message or periodic tock, activate iterales, and tick collections
   void run() {
+    // we first identify if there is any cycle in the compute graph
     bool cycle = detect_cycle();
+    // if so, we assign strata to iterables
     if (cycle) {
       assign_strata();
     }
-    while (true) {
-      receive();
-      if (!cycle) {
-        compute();
-        tick();
-      } else {
-        seminaive_eval();
+    if (!cycle) {
+      // if no cycle, normal evaluation is done
+      while (true) {
+        receive();
+        normal_eval();
         tick();
       }
+    } else {
+      // if there are cycles, semi-naive evaluation is done
+      receive();
+      seminaive_eval();
+      tick();
     }
-  }
-
-  void print_table_name() {
-    TupleIter(tables_, [](const auto& t) {
-      std::cout << t->get_name() << "\n";
-    });
-  }
-
-  void print_table_size() {
-    TupleIter(tables_, [](const auto& t) {
-      std::cout << std::to_string(t->size()) << "\n";
-    });
   }
 
 private:
@@ -353,7 +356,6 @@ private:
   PeriodicTupleTypes periodics_;
   IterableTupleTypes iterables_;
   std::unique_ptr<NetworkState> network_state_;
-  std::unordered_set<std::size_t> activated;
   std::unordered_map<unsigned, std::set<std::set<unsigned>>> stratum_iterables_map;
   unsigned max_stratum = 0;
 
