@@ -1,8 +1,9 @@
 #ifndef COLLECTIONS_ALL_H_
 #define COLLECTIONS_ALL_H_
 
-#include "collections/channel.hpp"
-//#include "collections/periodic.hpp"
+#include "collections/input_channel.hpp"
+#include "collections/output_channel.hpp"
+#include "collections/periodic.hpp"
 #include "collections/scratch.hpp"
 //#include "collections/stdin.hpp"
 //#include "collections/stdout.hpp"

@@ -33,6 +33,11 @@ class ZmqUtilInterface {
   virtual void send_string(const std::string& s, zmq::socket_t* socket) = 0;
   // `recv` a string over the socket.
   virtual std::string recv_string(zmq::socket_t* socket) = 0;
+  // `send` a multipart message.
+  virtual void send_msgs(std::vector<zmq::message_t> msgs,
+                         zmq::socket_t* socket) = 0;
+  // `recv` a multipart message.
+  virtual std::vector<zmq::message_t> recv_msgs(zmq::socket_t* socket) = 0;
   // `poll` is a wrapper around `zmq::poll` that takes a vector instead of a
   // pointer and a size.
   virtual int poll(long timeout, std::vector<zmq::pollitem_t>* items) = 0;
@@ -42,6 +47,9 @@ class ZmqUtil : public ZmqUtilInterface {
  public:
   virtual void send_string(const std::string& s, zmq::socket_t* socket);
   virtual std::string recv_string(zmq::socket_t* socket);
+  virtual void send_msgs(std::vector<zmq::message_t> msgs,
+                         zmq::socket_t* socket);
+  virtual std::vector<zmq::message_t> recv_msgs(zmq::socket_t* socket);
   virtual int poll(long timeout, std::vector<zmq::pollitem_t>* items);
 };
 

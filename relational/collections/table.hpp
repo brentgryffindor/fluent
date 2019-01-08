@@ -4,7 +4,6 @@
 #include <array>
 #include <unordered_map>
 
-#include "collections/collection.hpp"
 #include "common/hash_util.hpp"
 #include "common/keys.hpp"
 #include "common/macros.hpp"
@@ -16,7 +15,7 @@ template <typename Keys, typename... Ts>
 struct Table;
 
 template <std::size_t... Ks, typename... Ts>
-struct Table<Keys<Ks...>, Ts...> : public Collection {
+struct Table<Keys<Ks...>, Ts...> {
  public:
   using column_types = TypeList<Ts...>;
   using key_column_types = typename TypeListProject<column_types, Ks...>::type;
@@ -40,6 +39,24 @@ struct Table<Keys<Ks...>, Ts...> : public Collection {
     }
   }
 
+  bool remove(std::tuple<Ts...> t) {
+    key_tuple_type key = TupleProject<Ks...>(t);
+    if (data_.find(key) != data_.end() && data_.find(key)->second == t) {
+      data_.erase(key);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void buffer_insertion(std::tuple<Ts...> t) {
+    insertion_buffer.push_back(t);
+  }
+
+  void buffer_deletion(std::tuple<Ts...> t) {
+    deletion_buffer.push_back(t);
+  }
+
   unsigned size() const { return data_.size(); }
 
   const std::string& get_name() const { return name_; }
@@ -48,7 +65,16 @@ struct Table<Keys<Ks...>, Ts...> : public Collection {
     return column_names_;
   }
 
-  void tick() {}
+  void tick() {
+    for (const auto& t: insertion_buffer) {
+      insert(t);
+    }
+    insertion_buffer.clear();
+    for (const auto& t: deletion_buffer) {
+      remove(t);
+    }
+    deletion_buffer.clear();
+  }
 
   const container_type& get() const { return data_; }
 
@@ -56,6 +82,8 @@ struct Table<Keys<Ks...>, Ts...> : public Collection {
   const std::string name_;
   const std::array<std::string, sizeof...(Ts)> column_names_;
   container_type data_;
+  std::vector<std::tuple<Ts...>> insertion_buffer;
+  std::vector<std::tuple<Ts...>> deletion_buffer;
 };
 
 }  // namespace relational

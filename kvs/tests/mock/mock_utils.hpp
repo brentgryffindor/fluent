@@ -24,6 +24,9 @@ class MockZmqUtil : public ZmqUtilInterface {
 
   virtual void send_string(const std::string& s, zmq::socket_t* socket);
   virtual std::string recv_string(zmq::socket_t* socket);
+  virtual void send_msgs(std::vector<zmq::message_t> msgs,
+                         zmq::socket_t* socket);
+  virtual std::vector<zmq::message_t> recv_msgs(zmq::socket_t* socket);
   virtual int poll(long timeout, std::vector<zmq::pollitem_t>* items);
 };
 

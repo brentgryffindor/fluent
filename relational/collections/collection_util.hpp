@@ -32,7 +32,12 @@ struct CollectionTypes<Scratch<Ts...>> {
 };
 
 template <template <typename> class Pickler, typename T, typename... Ts>
-struct CollectionTypes<Channel<Pickler, T, Ts...>> {
+struct CollectionTypes<InputChannel<Pickler, T, Ts...>> {
+  using type = TypeList<T, Ts...>;
+};
+
+template <template <typename> class Pickler, typename T, typename... Ts>
+struct CollectionTypes<OutputChannel<Pickler, T, Ts...>> {
   using type = TypeList<T, Ts...>;
 };
 
@@ -44,14 +49,14 @@ struct CollectionTypes<Stdin> {
 template <>
 struct CollectionTypes<Stdout> {
   using type = TypeList<std::string>;
-};
+};*/
 
 template <typename Clock>
 struct CollectionTypes<Periodic<Clock>> {
   using id = typename Periodic<Clock>::id;
   using time = std::chrono::time_point<Clock>;
   using type = TypeList<id, time>;
-};*/
+};
 
 // Sometimes we want to be able to write code like this:
 //
@@ -82,9 +87,7 @@ struct CollectionTypes<Periodic<Clock>> {
 // of a collection at runtime and helps avoid having to write a lot of template
 // boilerplate. GetCollectionType can be used to get the CollectionType of a
 // collection.
-enum class CollectionType { TABLE, SCRATCH, CHANNEL };
-// enum class CollectionType { TABLE, SCRATCH, CHANNEL, STDIN, STDOUT, PERIODIC
-// };
+enum class CollectionType { TABLE, SCRATCH, INPUTCHANNEL, OUTPUTCHANNEL, PERIODIC };
 
 template <typename Collection>
 struct GetCollectionType;
@@ -98,8 +101,14 @@ struct GetCollectionType<Scratch<Ts...>>
     : public std::integral_constant<CollectionType, CollectionType::SCRATCH> {};
 
 template <template <typename> class Pickler, typename T, typename... Ts>
-struct GetCollectionType<Channel<Pickler, T, Ts...>>
-    : public std::integral_constant<CollectionType, CollectionType::CHANNEL> {};
+struct GetCollectionType<InputChannel<Pickler, T, Ts...>>
+    : public std::integral_constant<CollectionType, CollectionType::INPUTCHANNEL>
+{};
+
+template <template <typename> class Pickler, typename T, typename... Ts>
+struct GetCollectionType<OutputChannel<Pickler, T, Ts...>>
+    : public std::integral_constant<CollectionType, CollectionType::OUTPUTCHANNEL>
+{};
 
 /*template <>
 struct GetCollectionType<Stdin>
@@ -107,12 +116,12 @@ struct GetCollectionType<Stdin>
 
 template <>
 struct GetCollectionType<Stdout>
-    : public std::integral_constant<CollectionType, CollectionType::STDOUT> {};
+    : public std::integral_constant<CollectionType, CollectionType::STDOUT> {};*/
 
 template <typename Clock>
 struct GetCollectionType<Periodic<Clock>>
     : public std::integral_constant<CollectionType, CollectionType::PERIODIC> {
-};*/
+};
 
 std::string CollectionTypeToString(CollectionType type);
 

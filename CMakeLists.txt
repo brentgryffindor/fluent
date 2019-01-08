@@ -105,6 +105,6 @@ ADD_SUBDIRECTORY(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 LINK_DIRECTORIES(${ZEROMQ_LINK_DIRS} ${YAMLCPP_LINK_DIRS})
 
 ADD_SUBDIRECTORY(relational)
-ADD_SUBDIRECTORY(kvs)
+#ADD_SUBDIRECTORY(kvs)
 
 # TODO: Enable selective build of KVS and function runtime
