@@ -17,7 +17,7 @@
 #include "common/tuple_util.hpp"
 #include "common/cereal_pickler.hpp"
 #include "runtime/network_state.hpp"
-#include "runtime/executer.hpp"
+#include "runtime/executor.hpp"
 
 namespace relational {
 

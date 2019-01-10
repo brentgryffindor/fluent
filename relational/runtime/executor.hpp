@@ -67,10 +67,25 @@ public:
     });
   }
 
+  void depth_first_search(const std::string& from, std::set<std::string> visited, std::unordered_map<std::string, std::set<std::string>>& scratch_dependencies, bool& cycle) {
+    visited.insert(from);
+    for (const auto& to : scratch_dependencies[from]) {
+      if (visited.find(to) != visited.end()) {
+        cycle = true;
+        return;
+      } else {
+        depth_first_search(to, visited, scratch_dependencies, cycle);
+        if (cycle) {
+          return;
+        }
+      }
+    }
+  }
+
   // detect if the compute graph contains cycles
   // a cycle is formed when a scratch directly/indirectly points to itself
   bool detect_cycle() {
-    std::set<std::pair<std::string, std::string>> scratch_dependencies;
+    std::unordered_map<std::string, std::set<std::string>> scratch_dependencies;
     TupleIter(iterables_, [&scratch_dependencies](const auto& it) {
       if (GetCollectionType<typename decltype(it->collection)::element_type>::value == CollectionType::SCRATCH) {
         std::string from = it->collection->get_name();
@@ -78,47 +93,15 @@ public:
         it->find_scratch(scratches);
         if (scratches.size() != 0) {
           for (const auto& s: scratches) {
-            scratch_dependencies.insert(std::make_pair(from, s));
+            scratch_dependencies[from].insert(s);
           }
         }
       }
     });
-    // initial round
-    std::set<std::pair<std::string, std::string>> new_dependencies;
-    for (const auto& p1: scratch_dependencies) {
-      for (const auto& p2: scratch_dependencies) {
-        if (p1.second == p2.first) {
-          auto dependency = std::make_pair(p1.first, p2.second);
-          if (scratch_dependencies.find(dependency) == scratch_dependencies.end()) {
-            new_dependencies.insert(dependency);
-          }
-        }
-      }
-    }
-    // semi-naive eval
-    while (new_dependencies.size() != 0) {
-      std::set<std::pair<std::string, std::string>> new_dependencies_copy;
-      std:;swap(new_dependencies_copy, new_dependencies);
-      for (const auto& p : new_dependencies_copy) {
-        scratch_dependencies.insert(p);
-      }
-      for (const auto& p1 : new_dependencies_copy) {
-        for (const auto& p2 : scratch_dependencies) {
-          if (p1.second == p2.first) {
-            auto dependency = std::make_pair(p1.first, p2.second);
-            if (scratch_dependencies.find(dependency) == scratch_dependencies.end()) {
-              new_dependencies.insert(dependency);
-            }
-          }
-        }
-      }
-    }
-    // detect cycle
     bool cycle = false;
-    for (const auto& p : scratch_dependencies) {
-      if (p.first == p.second) {
-        cycle = true;
-      }
+    std::set<std::string> visited;
+    for (const auto& pair : scratch_dependencies) {
+      depth_first_search(pair.first, visited, scratch_dependencies, cycle);
     }
     return cycle;
   }
