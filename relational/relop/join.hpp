@@ -3,9 +3,6 @@
 
 #include <iostream>
 
-#include <unordered_map>
-#include <vector>
-
 #include "common/hash_util.hpp"
 #include "common/keys.hpp"
 #include "common/type_list.hpp"
@@ -112,7 +109,7 @@ struct Join<Left, LeftKeys<LeftKs...>, Right, RightKeys<RightKs...>>
     }
   }*/
 
-  void push(void* upstream_tp_ptr, unsigned stratum, unsigned upstream_op_id) {
+  void push(void* upstream_tp_ptr, int stratum, int upstream_op_id) {
     std::cout << "push called for join and with id " << std::to_string(id) << "\n";
     if (upstream_tp_ptr == nullptr) {
       if (upstream_op_id == left_id) {
@@ -188,7 +185,7 @@ struct Join<Left, LeftKeys<LeftKs...>, Right, RightKeys<RightKs...>>
     }
   }
 
-  void assign_stratum(unsigned current_stratum, std::set<RelOperator*> ops, std::unordered_map<unsigned, std::set<std::set<unsigned>>>& stratum_iterables_map, unsigned& max_stratum) {
+  void assign_stratum(int current_stratum, std::set<RelOperator*> ops, std::unordered_map<int, std::set<std::set<int>>>& stratum_iterables_map, int& max_stratum) {
     ops.insert(this);
     if (stratum_count == 0) {
       stratum = current_stratum;
@@ -212,9 +209,9 @@ struct Join<Left, LeftKeys<LeftKs...>, Right, RightKeys<RightKs...>>
     }
   }
 
-  unsigned id;
-  unsigned left_id;
-  unsigned right_id;
+  int id;
+  int left_id;
+  int right_id;
   //Left left;
   //Right right;
   std::vector<std::shared_ptr<RelOperator>> downstreams;
@@ -230,8 +227,8 @@ struct Join<Left, LeftKeys<LeftKs...>, Right, RightKeys<RightKs...>>
   bool left_done = false;
   bool right_done = false;
   std::vector<tuple_type> next_tuples;
-  unsigned stratum;
-  unsigned stratum_count = 0;
+  int stratum;
+  int stratum_count = 0;
   std::set<RelOperator*> buffered_ops;
 };
 

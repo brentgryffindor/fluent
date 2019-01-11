@@ -13,7 +13,7 @@
 #include "collections/collection_util.hpp"
 #include "collections/all.hpp"
 #include "relop/relop.hpp"
-#include "relop/collection.hpp"
+#include "relop/iterable.hpp"
 #include "common/type_list.hpp"
 #include "common/tuple_util.hpp"
 #include "common/cereal_pickler.hpp"
@@ -112,7 +112,7 @@ public:
     while (std::tuple_size<IterableTupleTypes>::value > assigned.size()) {
       TupleIteri(iterables_, [this, &assigned](std::size_t i, const auto& it) {
         if (assigned.find(i) == assigned.end()) {
-          unsigned collection_stratum = it->get_collection_stratum();
+          int collection_stratum = it->get_collection_stratum();
           if (collection_stratum != -1) {
             std::set<rop::RelOperator*> ops;
             it->assign_stratum(collection_stratum, ops, this->stratum_iterables_map, this->max_stratum);
@@ -243,7 +243,7 @@ public:
   }
 
   // helper function that figure out if two iterables comtribute to the same query
-  bool same_group(std::set<std::set<unsigned>>& groups, unsigned delta_iter_id, unsigned iter_id) {
+  bool same_group(std::set<std::set<int>>& groups, int delta_iter_id, int iter_id) {
     bool result = false;
     for (const auto& group : groups) {
       if (group.find(delta_iter_id) != group.end() && group.find(iter_id) != group.end()) {
@@ -254,8 +254,8 @@ public:
   }
 
   void seminaive_eval() {
-    for (unsigned stratum = 0; stratum <= max_stratum; stratum++) {
-      std::set<unsigned> distinct_iterables;
+    for (int stratum = 0; stratum <= max_stratum; stratum++) {
+      std::set<int> distinct_iterables;
       auto iterable_groups = stratum_iterables_map[stratum];
       for (const auto& group : iterable_groups) {
         for (const auto& id : group) {
@@ -278,7 +278,7 @@ public:
       while (has_delta) {
         has_delta = false;
         // first figure out which iterables have delta to iterate over
-        std::set<unsigned> delta_iterables;
+        std::set<int> delta_iterables;
         TupleIter(iterables_, [&distinct_iterables, &delta_iterables](const auto& it) {
           if (distinct_iterables.find(it->id) != distinct_iterables.end() && it->delta()) {
             delta_iterables.insert(it->id);
@@ -339,8 +339,8 @@ private:
   PeriodicTupleTypes periodics_;
   IterableTupleTypes iterables_;
   std::unique_ptr<NetworkState> network_state_;
-  std::unordered_map<unsigned, std::set<std::set<unsigned>>> stratum_iterables_map;
-  unsigned max_stratum = 0;
+  std::unordered_map<int, std::set<std::set<int>>> stratum_iterables_map;
+  int max_stratum = 0;
 
   struct PeriodicTimeout {
     Time timeout;

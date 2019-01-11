@@ -1,4 +1,5 @@
-#include "relop/collection.hpp"
+#include "relop/iterable.hpp"
+#include "relop/insert.hpp"
 
 #include <type_traits>
 
@@ -7,48 +8,62 @@
 #include "gtest/gtest.h"
 
 #include "collections/table.hpp"
+#include "collections/scratch.hpp"
 #include "common/keys.hpp"
 #include "common/macros.hpp"
 
 namespace relational {
 
-TEST(Collection, SimpleCompileCheck) {
+TEST(Iterable, SimpleCompileCheck) {
   std::array<std::string, 1> column_names = {"x"};
   auto t = std::make_shared<Table<Keys<0>, int>>("t", column_names);
-  // rop::Collection<Table<Keys<0>, int>> collection = rop::make_collection(&t);
-  auto collection = rop::make_collection(t);
+  auto collection = rop::make_iterable(t);
   using removed_ref = std::remove_reference<decltype(*collection)>::type;
   using actual = removed_ref::column_types;
   using expected = TypeList<int>;
   static_assert(StaticAssert<std::is_same<actual, expected>>::value, "");
 }
 
-TEST(Collection, NonEmptyTable) {
+TEST(Iterable, NonEmptyTable) {
   std::array<std::string, 1> column_names = {"x"};
   auto t = std::make_shared<Table<Keys<0>, int>>("t", column_names);
-  std::vector<std::tuple<int>> expected;
+  std::set<std::tuple<int>> expected;
   t->insert(std::make_tuple(1));
   t->insert(std::make_tuple(2));
   t->insert(std::make_tuple(3));
+  auto s = std::make_shared<Scratch<int>>("s", column_names);
   expected = {std::make_tuple(1), std::make_tuple(2), std::make_tuple(3)};
 
-  auto collection = rop::make_collection(t);
-  EXPECT_THAT(collection->execute(),
+  auto it = rop::make_iterable(t);
+  it | rop::insert(s);
+  it->push(nullptr, -1, REGULAR);
+  s->merge();
+  EXPECT_THAT(s->get(),
               testing::UnorderedElementsAreArray(expected));
 }
 
-/*TEST(Collection, NonEmptyScratch) {
-  Scratch<int> s("s", {{"x"}});
-  std::vector<std::tuple<int>> expected;
-  s.insert(std::make_tuple(1));
-  s.insert(std::make_tuple(2));
-  s.insert(std::make_tuple(3));
+TEST(Iterable, ResetIterator) {
+  std::array<std::string, 1> column_names = {"x"};
+  auto t = std::make_shared<Table<Keys<0>, int>>("t", column_names);
+  std::set<std::tuple<int>> expected;
+  t->insert(std::make_tuple(1));
+  t->insert(std::make_tuple(2));
+  t->insert(std::make_tuple(3));
+  auto s = std::make_shared<Scratch<int>>("s", column_names);
   expected = {std::make_tuple(1), std::make_tuple(2), std::make_tuple(3)};
 
-  rop::Collection<Scratch<int>> collection = rop::make_collection(&s);
-  EXPECT_THAT(collection.execute(),
+  auto it = rop::make_iterable(t);
+  it | rop::insert(s);
+  it->push(nullptr, -1, REGULAR);
+  s->merge();
+  EXPECT_THAT(s->get(),
               testing::UnorderedElementsAreArray(expected));
-}*/
+  s->tick();
+  it->push(nullptr, -1, REGULAR);
+  s->merge();
+  EXPECT_THAT(s->get(),
+              testing::UnorderedElementsAreArray(expected));
+}
 
 }  // namespace relational
 

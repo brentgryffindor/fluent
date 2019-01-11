@@ -24,7 +24,7 @@ struct Erase : public RelOperator {
     column_names = {"Erased"};
   }
 
-  void push(void* upstream_tp_ptr, unsigned upstream_op_id) {
+  void push(void* upstream_tp_ptr, int upstream_op_id) {
     std::cout << "I am an erase and my id is " << std::to_string(id) << "\n";
     std::cout << "push called for op: ERASE\n";
     if (upstream_tp_ptr == nullptr) {
@@ -54,7 +54,7 @@ struct Erase : public RelOperator {
     }
   }
 
-  unsigned id;
+  int id;
   std::vector<std::shared_ptr<RelOperator>> downstreams;
   C collection;
   std::tuple<bool> next_tuple;

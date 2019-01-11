@@ -1,9 +1,7 @@
-#ifndef RELOP_COLLECTION_HPP_
-#define RELOP_COLLECTION_HPP_
+#ifndef RELOP_ITERABLE_HPP_
+#define RELOP_ITERABLE_HPP_
 
-#include <vector>
 #include <iostream>
-#include <unordered_map>
 
 #include "collections/collection_util.hpp"
 #include "common/static_assert.hpp"
@@ -19,12 +17,12 @@ namespace relational {
 namespace rop {
 
 template <typename C>
-struct Collection : public RelOperator {
+struct Iterable : public RelOperator {
   using column_types = typename C::element_type::column_types;
   using tuple_type = typename TypeListToTuple<column_types>::type;
   using collection_type = typename C::element_type;
 
-  explicit Collection(const C& collection_) :
+  explicit Iterable(const C& collection_) :
       collection(collection_) {
     id = relop_counter;
     relop_counter += 1;
@@ -44,7 +42,7 @@ struct Collection : public RelOperator {
 
   template <typename Q = C>
   typename std::enable_if<GetCollectionType<typename Q::element_type>::value == CollectionType::SCRATCH, tuple_type*>::type
-  next(unsigned delta_flag) {
+  next(int delta_flag) {
     const std::set<tuple_type>& dataset = (delta_flag == REGULAR) ? collection->get() : collection->get_delta();
     if (new_invocation) {
       it = dataset.begin();
@@ -62,7 +60,7 @@ struct Collection : public RelOperator {
 
   template <typename Q = C>
   typename std::enable_if<GetCollectionType<typename Q::element_type>::value == CollectionType::TABLE, tuple_type*>::type
-  next(unsigned delta_flag) {
+  next(int delta_flag) {
     if (new_invocation) {
       it = (collection->get()).begin();
       new_invocation = false;
@@ -80,7 +78,7 @@ struct Collection : public RelOperator {
   template <typename Q = C>
   typename std::enable_if<!(GetCollectionType<typename Q::element_type>::value == CollectionType::TABLE)
                           && !(GetCollectionType<typename Q::element_type>::value == CollectionType::SCRATCH), tuple_type*>::type
-  next(unsigned delta_flag) {
+  next(int delta_flag) {
     if (new_invocation) {
       it = (collection->get()).begin();
       new_invocation = false;
@@ -95,7 +93,7 @@ struct Collection : public RelOperator {
     }
   }
 
-  void push(void* upstream_tp_ptr, unsigned stratum, unsigned delta_flag) {
+  void push(void* upstream_tp_ptr, int stratum, int delta_flag) {
     std::cout << "push called for iterable with id " << std::to_string(id) << "\n";
     if (stratum == -1 || strata.find(stratum) != strata.end()) {
       std::cout << "stratum " << std::to_string(stratum) << " is in my set\n";
@@ -126,19 +124,19 @@ struct Collection : public RelOperator {
 
   template <typename Q = C>
   typename std::enable_if<GetCollectionType<typename Q::element_type>::value == CollectionType::SCRATCH,
-      unsigned>::type
+      int>::type
   get_collection_stratum() {
     return collection->get_stratum();
   }
 
   template <typename Q = C>
   typename std::enable_if<!(GetCollectionType<typename Q::element_type>::value == CollectionType::SCRATCH),
-      unsigned>::type
+      int>::type
   get_collection_stratum() {
     return 0;
   }
 
-  void assign_stratum(unsigned current_stratum, std::set<RelOperator*> ops, std::unordered_map<unsigned, std::set<std::set<unsigned>>>& stratum_iterables_map, unsigned& max_stratum) {
+  void assign_stratum(int current_stratum, std::set<RelOperator*> ops, std::unordered_map<int, std::set<std::set<int>>>& stratum_iterables_map, int& max_stratum) {
     ops.insert(this);
     if (downstreams.size() == 0) {
       for (auto op : ops) {
@@ -170,7 +168,7 @@ struct Collection : public RelOperator {
     return false;
   }
 
-  unsigned id;
+  int id;
   const C collection;
   typename C::element_type::container_type::const_iterator it;
   tuple_type next_tuple;
@@ -180,11 +178,11 @@ struct Collection : public RelOperator {
 };
 
 template <typename C>
-std::shared_ptr<Collection<C>> make_collection(const C& collection) {
-  return std::make_shared<Collection<C>>(collection);
+std::shared_ptr<Iterable<C>> make_iterable(const C& collection) {
+  return std::make_shared<Iterable<C>>(collection);
 }
 
 }  // namespace rop
 }  // namespace relational
 
-#endif  // RELOP_COLLECTION_HPP_
+#endif  // RELOP_ITERABLE_HPP_

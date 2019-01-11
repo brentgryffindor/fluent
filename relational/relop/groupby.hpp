@@ -1,8 +1,9 @@
 #ifndef RELOP_GROUPBY_HPP_
 #define RELOP_GROUPBY_HPP_
 
-#include <vector>
+#include <iostream>
 
+#include "common/hash_util.hpp"
 #include "common/keys.hpp"
 #include "common/tuple_util.hpp"
 #include "common/type_list.hpp"
@@ -46,14 +47,14 @@ struct GroupBy;
 
 template <typename Rel, std::size_t... Ks, typename... Aggregates>
 struct GroupBy<Rel, Keys<Ks...>, Aggregates...> : public RelOperator {
-  using child_column_types = typename Rel::column_types;
-  using child_tuple_type = typename TypeListToTuple<child_column_types>::type;
+  using upstream_column_types = typename Rel::column_types;
+  using upstream_tuple_type = typename TypeListToTuple<upstream_column_types>::type;
 
-  using key_types = typename TypeListProject<child_column_types, Ks...>::type;
+  using key_types = typename TypeListProject<upstream_column_types, Ks...>::type;
   using aggregate_impl_types = TypeList<  //
       typename Aggregates::template type<
           typename detail::TypeListProjectBySizetList<
-              child_column_types,
+              upstream_column_types,
               typename SizetListFrom<Aggregates>::type>::type>...  //
       >;
   using aggregate_types =
@@ -66,53 +67,70 @@ struct GroupBy<Rel, Keys<Ks...>, Aggregates...> : public RelOperator {
       typename TypeListToTuple<aggregate_impl_types>::type;
   using tuple_type = typename TypeListToTuple<column_types>::type;
 
-  explicit GroupBy(Rel child_, group_by<Keys<Ks...>, Aggregates...> gb_) :
-      child(std::move(child_)) {
+  explicit GroupBy(const std::shared_ptr<Rel>& upstream_, group_by<Keys<Ks...>, Aggregates...> gb_) {
+    id = relop_counter;
+    relop_counter += 1;
+    source_iterables = upstream_->source_iterables;
     std::array<std::string, sizeof...(Ks)> key_column_names = {
-        child.column_names[Ks]...};
+        upstream_->column_names[Ks]...};
     std::copy(key_column_names.begin(), key_column_names.end(),
               column_names.begin());
     std::copy(gb_.agg_column_names.begin(), gb_.agg_column_names.end(),
               column_names.begin() + key_column_names.size());
   }
 
-  std::vector<tuple_type> execute() {
-    std::vector<tuple_type> result(column_names);
-    tuple_type* tp_ptr = next();
-    while (tp_ptr != nullptr) {
-      result.push_back(*tp_ptr);
-      tp_ptr = next();
+  void push(void* upstream_tp_ptr, int stratum, int upstream_op_id) {
+    std::cout << "push called for groupby with id " << std::to_string(id) << "\n";
+    if (upstream_tp_ptr != nullptr) {
+      upstream_tuple_type* casted_upstream_tp_ptr =
+          static_cast<upstream_tuple_type*>(upstream_tp_ptr);
+      auto& group = groups[TupleProject<Ks...>(*casted_upstream_tp_ptr)];
+      TupleIter(group, [this, &casted_upstream_tp_ptr](auto& agg) {
+        this->UpdateAgg(&agg, *casted_upstream_tp_ptr);
+      });
+    } else {
+      std::cout << "exhausted upstream tuples\n";
+      for (const auto& pair : groups) {
+        auto groups_tuple =
+            TupleMap(pair.second, [](const auto& agg) { return agg.Get(); });
+        next_tuple = std::tuple_cat(pair.first, std::move(groups_tuple));
+        for (auto& op : downstreams) {
+          if (stratum == -1 || op->strata.find(stratum) != op->strata.end()) {
+            op->push(&next_tuple, stratum, id);
+          }
+        }
+      }
+      std::cout << "reach end\n";
+      for (auto& op : downstreams) {
+        if (stratum == -1 || op->strata.find(stratum) != op->strata.end()) {
+          op->push(nullptr, stratum, id);
+        }
+      }
+      groups.clear();
     }
-    return result;
   }
 
-  tuple_type* next() {
-    if (!aggregated) {
-      // perform aggregation
-      child_tuple_type* child_tp_ptr = child.next();
-      while (child_tp_ptr != nullptr) {
-        auto& group = groups[TupleProject<Ks...>(*child_tp_ptr)];
-        TupleIter(group, [this, &child_tp_ptr](auto& agg) {
-          this->UpdateAgg(&agg, *child_tp_ptr);
-        });
-        child_tp_ptr = child.next();
-      }
-      aggregated = true;
+  void find_scratch(std::set<std::string>& scratches) {
+    for (auto& op : downstreams) {
+      op->find_scratch(scratches);
     }
-    if (groups.size() != 0) {
-      auto it = groups.begin();
-      const auto& keys_tuple = it->first;
-      auto groups_tuple =
-          TupleMap(it->second, [](const auto& agg) { return agg.Get(); });
-      next_tuple = std::tuple_cat(keys_tuple, std::move(groups_tuple));
-      groups.erase(keys_tuple);
+  }
 
-      return &next_tuple;
+  void assign_stratum(int current_stratum, std::set<RelOperator*> ops, std::unordered_map<int, std::set<std::set<int>>>& stratum_iterables_map, int& max_stratum) {
+    ops.insert(this);
+    int new_strarum = current_stratum + 1;
+    if (new_strarum > max_stratum) {
+      max_stratum = new_strarum;
+    }
+    if (downstreams.size() == 0) {
+      for (auto op : ops) {
+        (op->strata).insert(new_strarum);
+      }
+      stratum_iterables_map[new_strarum].insert(source_iterables);
     } else {
-      // clear hash table and reset flag
-      groups.clear();
-      aggregated = false;
-      return nullptr;
+      for (auto& op : downstreams) {
+        op->assign_stratum(new_strarum, ops, stratum_iterables_map, max_stratum);
+      }
     }
   }
 
@@ -122,10 +140,10 @@ struct GroupBy<Rel, Keys<Ks...>, Aggregates...> : public RelOperator {
     agg->Update(TupleProjectBySizetList<Columns>(t));
   }
 
-  Rel child;
+  int id;
+  std::vector<std::shared_ptr<RelOperator>> downstreams;
   tuple_type next_tuple;
   std::array<std::string, TypeListLen<column_types>::value> column_names;
-  bool aggregated = false;
   std::unordered_map<key_tuple_type, aggregate_impl_tuple_types,
                      Hash<key_tuple_type>>
       groups;
@@ -133,10 +151,11 @@ struct GroupBy<Rel, Keys<Ks...>, Aggregates...> : public RelOperator {
 
 template <typename Rel, std::size_t... Ks, typename... Aggregates,
           typename RelDecayed = typename std::decay<Rel>::type>
-GroupBy<RelDecayed, Keys<Ks...>, Aggregates...> operator|(
-    Rel&& child, group_by<Keys<Ks...>, Aggregates...> gb) {
-  return GroupBy<RelDecayed, Keys<Ks...>, Aggregates...>(
-      std::forward<Rel&&>(child), gb);
+std::shared_ptr<GroupBy<RelDecayed, Keys<Ks...>, Aggregates...>> operator|(
+    const std::shared_ptr<Rel>& upstream_, group_by<Keys<Ks...>, Aggregates...> gb) {
+  auto gorupby_ptr = std::make_shared<GroupBy<RelDecayed, Keys<Ks...>, Aggregates...>>(upstream_, gb);
+  upstream_->downstreams.push_back(gorupby_ptr);
+  return gorupby_ptr;
 }
 
 }  // namespace rop

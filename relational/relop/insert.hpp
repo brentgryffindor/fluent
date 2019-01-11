@@ -1,9 +1,6 @@
 #ifndef RELOP_INSERT_HPP_
 #define RELOP_INSERT_HPP_
 
-#include <vector>
-#include <unordered_map>
-
 #include "collections/all.hpp"
 #include "collections/collection_util.hpp"
 #include "common/hash_util.hpp"
@@ -27,7 +24,7 @@ struct Insert : public RelOperator {
     column_names = {"Inserted"};
   }
 
-  void push(void* upstream_tp_ptr, unsigned stratum, unsigned upstream_op_id) {
+  void push(void* upstream_tp_ptr, int stratum, int upstream_op_id) {
     std::cout << "push called for insert and with id " << std::to_string(id) << "\n";
     if (upstream_tp_ptr == nullptr) {
       std::cout << "reach end\n";
@@ -80,18 +77,18 @@ struct Insert : public RelOperator {
   template <typename Q = C>
   typename std::enable_if<GetCollectionType<typename Q::element_type>::value == CollectionType::SCRATCH,
       void>::type
-  handle_stratum(unsigned& current_stratum) {
+  handle_stratum(int& current_stratum) {
     collection->set_stratum(current_stratum);
   }
 
   template <typename Q = C>
   typename std::enable_if<!(GetCollectionType<typename Q::element_type>::value == CollectionType::SCRATCH),
       void>::type
-  handle_stratum(unsigned& current_stratum) {
+  handle_stratum(int& current_stratum) {
     current_stratum += 1;
   }
 
-  void assign_stratum(unsigned current_stratum, std::set<RelOperator*> ops, std::unordered_map<unsigned, std::set<std::set<unsigned>>>& stratum_iterables_map, unsigned& max_stratum) {
+  void assign_stratum(int current_stratum, std::set<RelOperator*> ops, std::unordered_map<int, std::set<std::set<int>>>& stratum_iterables_map, int& max_stratum) {
     ops.insert(this);
     handle_stratum(current_stratum);
     if (current_stratum > max_stratum) {
@@ -109,7 +106,7 @@ struct Insert : public RelOperator {
     }
   }
 
-  unsigned id;
+  int id;
   std::vector<std::shared_ptr<RelOperator>> downstreams;
   C collection;
   std::tuple<bool> next_tuple;

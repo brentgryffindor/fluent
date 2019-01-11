@@ -2,7 +2,6 @@
 #define RELOP_PROJECT_HPP_
 
 #include <iostream>
-#include <unordered_map>
 
 #include "common/tuple_util.hpp"
 #include "common/type_list.hpp"
@@ -27,27 +26,7 @@ struct Project : public RelOperator {
     column_names = {upstream_->column_names[Is]...};
   }
 
-  /*std::vector<tuple_type> execute() {
-    std::vector<tuple_type> result(column_names);
-    tuple_type* tp_ptr = next();
-    while (tp_ptr != nullptr) {
-      result.push_back(*tp_ptr);
-      tp_ptr = next();
-    }
-    return result;
-  }
-
-  tuple_type* next() {
-    child_tuple_type* child_next = child.next();
-    if (child_next != nullptr) {
-      next_tuple = TupleProject<Is...>(*child_next);
-      return &next_tuple;
-    } else {
-      return nullptr;
-    }
-  }*/
-
-  void push(void* upstream_tp_ptr, unsigned stratum, unsigned upstream_op_id) {
+  void push(void* upstream_tp_ptr, int stratum, int upstream_op_id) {
     std::cout << "push called for project with id " << std::to_string(id) << "\n";
     if (upstream_tp_ptr == nullptr) {
       std::cout << "reach end\n";
@@ -77,7 +56,7 @@ struct Project : public RelOperator {
     }
   }
 
-  void assign_stratum(unsigned current_stratum, std::set<RelOperator*> ops, std::unordered_map<unsigned, std::set<std::set<unsigned>>>& stratum_iterables_map, unsigned& max_stratum) {
+  void assign_stratum(int current_stratum, std::set<RelOperator*> ops, std::unordered_map<int, std::set<std::set<int>>>& stratum_iterables_map, int& max_stratum) {
     ops.insert(this);
     if (downstreams.size() == 0) {
       for (auto op : ops) {
@@ -91,7 +70,7 @@ struct Project : public RelOperator {
     }
   }
 
-  unsigned id;
+  int id;
   std::vector<std::shared_ptr<RelOperator>> downstreams;
   tuple_type next_tuple;
   std::array<std::string, TypeListLen<column_types>::value> column_names;

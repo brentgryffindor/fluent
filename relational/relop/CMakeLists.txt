@@ -6,5 +6,7 @@ MACRO(CREATE_RELOP_TEST NAME)
     ADD_DEPENDENCIES(${NAME} flzmq zeromq zeromqcpp)
 ENDMACRO(CREATE_RELOP_TEST)
 
-CREATE_RELOP_TEST(collection_test)
+CREATE_RELOP_TEST(iterable_test)
 CREATE_RELOP_TEST(project_test)
+CREATE_RELOP_TEST(join_test)
+CREATE_RELOP_TEST(groupby_test)

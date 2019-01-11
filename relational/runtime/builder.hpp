@@ -12,7 +12,7 @@
 #include "collections/collection_util.hpp"
 #include "collections/all.hpp"
 #include "relop/relop.hpp"
-#include "relop/collection.hpp"
+#include "relop/iterable.hpp"
 #include "common/type_list.hpp"
 #include "common/tuple_util.hpp"
 #include "common/cereal_pickler.hpp"
@@ -244,8 +244,8 @@ private:
 };
 
 template<typename C>
-std::shared_ptr<rop::Collection<C>> iterable(const C& collection) {
-  return rop::make_collection(collection);
+std::shared_ptr<rop::Iterable<C>> iterable(const C& collection) {
+  return rop::make_iterable(collection);
 }
 
 template <template <typename> class Pickler = CerealPickler, typename Clock = std::chrono::system_clock>

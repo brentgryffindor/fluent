@@ -1,5 +1,6 @@
 #include "relop/project.hpp"
-#include "relop/collection.hpp"
+#include "relop/iterable.hpp"
+#include "relop/insert.hpp"
 
 #include <type_traits>
 
@@ -8,6 +9,7 @@
 #include "gtest/gtest.h"
 
 #include "collections/table.hpp"
+#include "collections/scratch.hpp"
 #include "common/keys.hpp"
 #include "common/macros.hpp"
 
@@ -16,9 +18,8 @@ namespace relational {
 TEST(Project, SimpleCompileCheck) {
   std::array<std::string, 2> column_names = {"x", "y"};
   auto t = std::make_shared<Table<Keys<0>, int, int>>("t", column_names);
-  // rop::Collection<Table<Keys<0>, int>> collection = rop::make_collection(&t);
-  auto collection = rop::make_collection(t);
-  auto pj = collection | rop::project<0>();
+  auto it = rop::make_iterable(t);
+  auto pj = it | rop::project<0>();
   using removed_ref = std::remove_reference<decltype(*pj)>::type;
   using actual = removed_ref::column_types;
   using expected = TypeList<int>;
@@ -26,21 +27,22 @@ TEST(Project, SimpleCompileCheck) {
 }
 
 TEST(Project, NonEmptyTable) {
-  std::array<std::string, 2> column_names = {"x", "y"};
-  auto t = std::make_shared<Table<Keys<0>, int, int>>("t", column_names);
-  std::vector<std::tuple<int>> expected;
+  std::array<std::string, 2> table_column_names = {"x", "y"};
+  auto t = std::make_shared<Table<Keys<0>, int, int>>("t", table_column_names);
+  std::set<std::tuple<int>> expected;
   t->insert(std::make_tuple(1, 2));
   t->insert(std::make_tuple(2, 3));
   t->insert(std::make_tuple(3, 4));
+  std::array<std::string, 1> scratch_column_names = {"x"};
+  auto s = std::make_shared<Scratch<int>>("s", scratch_column_names);
   expected = {std::make_tuple(1), std::make_tuple(2), std::make_tuple(3)};
 
-  auto collection = rop::make_collection(t);
-  auto pj = collection | rop::project<0>();
-
-  collection->push(nullptr, -1, -1);
-
-  // EXPECT_THAT(collection->execute(),
-  //            testing::UnorderedElementsAreArray(expected));
+  auto it = rop::make_iterable(t);
+  it | rop::project<0>() | rop::insert(s);
+  it->push(nullptr, -1, REGULAR);
+  s->merge();
+  EXPECT_THAT(s->get(),
+              testing::UnorderedElementsAreArray(expected));
 }
 
 }  // namespace relational

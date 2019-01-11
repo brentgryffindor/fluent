@@ -34,11 +34,11 @@ struct Scratch {
     dependency_count -= 1;
   }
 
-  unsigned get_stratum() {
+  int get_stratum() {
     return stratum;
   }
 
-  void set_stratum(unsigned stratum_) {
+  void set_stratum(int stratum_) {
     stratum = stratum_;
   }
 
@@ -88,7 +88,7 @@ struct Scratch {
   container_type delta_;
   container_type insertion_buffer;
   unsigned dependency_count = 0;
-  unsigned stratum = -1;
+  int stratum = -1;
 };
 
 }  // namespace relational
