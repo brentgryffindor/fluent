@@ -25,13 +25,13 @@ EXECUTOR_DEPART_PORT = 7005
 
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
-    result = kvs.causal_get([kvs_name], set(), {}, SINGLE, 0)
+    latt = kvs.get(kvs_name)[kvs_name]
 
-    while not result:
+    while not latt:
         logging.info("retrying get for function %s" % kvs_name)
-        result = kvs.causal_get([kvs_name], set(), {}, SINGLE, 0)
+        latt = kvs.get(kvs_name)[kvs_name]
 
-    return serializer.function_ser.load(result[1][kvs_name][1])
+    return serializer.function_ser.load(latt.reveal()[1])
 
 
 def _push_status(schedulers, pusher_cache, status):

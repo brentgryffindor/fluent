@@ -43,7 +43,7 @@ def exec_function(exec_socket, kvs, status):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            result = _exec_single_func_causal(kvs, f, fargs)
+            result = _exec_func_normal(kvs, f, fargs)
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
@@ -53,8 +53,8 @@ def exec_function(exec_socket, kvs, status):
                     sutils.error.SerializeToString()))
 
     #logging.info('Finish execution, putting result to key %s' % call.resp_id)
-
-    succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
+    result_lattice = LWWPairLattice(generate_timestamp(0), result)
+    succeed = kvs.put(call.resp_id, result_lattice)
 
     if not succeed:
         logging.info('Put key %s unsuccessful' % call.resp_id)

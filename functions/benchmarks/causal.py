@@ -77,15 +77,13 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         refs = ()
         for _ in range(2):
             val = '00000'
-            ccv = CrossCausalValue()
-            ccv.vector_clock['base'] = 1
-            ccv.values.extend([serialize_val(val)])
+            body = LWWPairLattice(0, serialize_val(val))
             k = str(uuid.uuid4())
             logging.info("key name is %s" % k)
-            succeed = kvs.put(k, ccv)
+            succeed = kvs.put(k, body)
             logging.info("succeed is %s" % succeed)
 
-            refs += (FluentReference(k, True, CROSSCAUSAL),)
+            refs += (FluentReference(k, True, LWW),)
 
         strmnp_test1 = cloud_strmnp1(*refs).get()
         logging.info('Successfully tested strmnp_test1.')
@@ -107,9 +105,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
     elif mode == 'warmup':
         ### POPULATE DATA###
         val = '00000'
-        ccv = CrossCausalValue()
-        ccv.vector_clock['base'] = 1
-        ccv.values.extend([serialize_val(val)])
+        body = LWWPairLattice(0, serialize_val(val))
 
         total_num_keys = 1000000
         bin_size = int(total_num_keys / 8)
@@ -120,7 +116,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             k = str(i).zfill(len(str(total_num_keys)))
             if i % 1000 == 0:
                 logging.info('key is %s' % k)
-            kvs.put(k, ccv)
+            kvs.put(k, body)
 
         end = time.time()
         latency['warmup'] = end - start
@@ -200,15 +196,12 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             #output = 'result'
 
             start = time.time()
-            rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key=output, client_id=cid)
+            rid = flconn.call_dag(dag_name, arg_map)
             #logging.info("Output key is %s" % rid)
 
             res = kvs.get(rid)
             while not res:
-                #logging.info("key %s does not exist" % rid)
-                res = kvs.get(rid)
-            while cid not in res.vector_clock:
-                #logging.info("client id %s not in key %s VC" % (cid, rid))
+                logging.info("key %s does not exist yet" % rid)
                 res = kvs.get(rid)
             end = time.time()
 

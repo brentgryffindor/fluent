@@ -31,11 +31,9 @@ def create_func(func_create_socket, kvs):
     name = sutils._get_func_kvs_name(func.name)
     logging.info('Creating function %s.' % (name))
 
-    ccv = CrossCausalValue()
-    ccv.vector_clock['base'] = 1
-    ccv.values.extend([func.body])
+    body = LWWPairLattice(generate_timestamp(0), func.body)
 
-    kvs.put(name, ccv)
+    kvs.put(name, body)
 
     funcs = utils._get_func_list(kvs, '', fullname=True)
     funcs.append(name)
