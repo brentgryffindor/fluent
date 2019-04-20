@@ -25,11 +25,12 @@ EXECUTOR_DEPART_PORT = 7005
 
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
-    latt = kvs.get(kvs_name)[kvs_name]
+    result = kvs.get(kvs_name)
 
-    while not latt:
+    while not result:
         logging.info("retrying get for function %s" % kvs_name)
-        latt = kvs.get(kvs_name)[kvs_name]
+        result = kvs.get(kvs_name)
+    latt = result[kvs_name]
 
     return serializer.function_ser.load(latt.reveal()[1])
 
