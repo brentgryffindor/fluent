@@ -73,6 +73,11 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         if cloud_strmnp1 and cloud_strmnp2 and cloud_strmnp3 and cloud_strmnp4 and cloud_strmnp5:
             logging.info('Successfully registered the string manipulation functions.')
         else:
+            print(cloud_strmnp1)
+            print(cloud_strmnp2)
+            print(cloud_strmnp3)
+            print(cloud_strmnp4)
+            print(cloud_strmnp5)
             sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
