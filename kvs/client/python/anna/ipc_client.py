@@ -80,7 +80,7 @@ class IpcAnnaClient:
             for tp in resp.tuples:
                 if tp.error == 1:
                     #logging.info('Key %s does not exist!' % (key))
-                    kv_pairs[tp.key] = None
+                    return None
 
                 if tp.lattice_type == LWW:
                     val = LWWValue()
