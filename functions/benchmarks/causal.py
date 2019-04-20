@@ -107,7 +107,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         val = '00000'
         body = LWWPairLattice(0, serialize_val(val))
 
-        total_num_keys = 1000000
+        total_num_keys = 100000
         bin_size = int(total_num_keys / 8)
 
         start = time.time()
@@ -155,7 +155,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         latency['unnormalized'] = []
         latency['normalized'] = []
 
-        total_num_keys = 1000000
+        total_num_keys = 100000
 
 
         ### CREATE ZIPF TABLE###
