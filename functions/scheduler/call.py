@@ -115,10 +115,12 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 
-    if schedule.HasField('output_key'):
-        return schedule.output_key
-    else:
-        return schedule.id
+    #if schedule.HasField('output_key'):
+    #    return schedule.output_key
+    #else:
+    #    return schedule.id
+
+    return schedule.id
 
 
 def _pick_node(executors, key_ip_map, refs):

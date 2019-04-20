@@ -30,6 +30,9 @@ const unsigned kKopsRestartCountPort = 7000;
 
 // used by the cache system
 const unsigned kCacheUpdatePort = 7150;
+const unsigned kCacheVersionGCPort = 7200;
+const unsigned kCacheRepeatableReadRequestPort = 7250;
+const unsigned kCacheRepeatableReadResponsePort = 7300;
 
 // used by the causal cache
 const unsigned kCausalCacheUpdatePort = 7150;
@@ -68,6 +71,34 @@ class CacheThread {
 
   Address cache_update_connect_address() const {
     return ip_base_ + std::to_string(tid_ + kCacheUpdatePort);
+  }
+
+  Address version_gc_bind_address() const {
+    return kBindBase + std::to_string(tid_ + kCacheVersionGCPort);
+  }
+
+  Address version_gc_connect_address() const {
+    return ip_base_ + std::to_string(tid_ + kCacheVersionGCPort);
+  }
+
+  Address repeatable_read_request_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCacheRepeatableReadRequestPort);
+  }
+
+  Address repeatable_read_request_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCacheRepeatableReadRequestPort);
+  }
+
+  Address repeatable_read_response_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCacheRepeatableReadResponsePort);
+  }
+
+  Address repeatable_read_response_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCacheRepeatableReadResponsePort);
   }
 };
 

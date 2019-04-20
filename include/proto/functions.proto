@@ -113,6 +113,15 @@ message VersionedKeyList {
   repeated VersionedKey versioned_keys = 1;
 }
 
+message KeyTimestampPair {
+  required string key = 1;
+  required uint64 timestamp = 2;
+}
+
+message KeyTimestampList {
+  repeated KeyTimestampPair pairs = 1;
+}
+
 message DagTrigger {
   required string id = 1;
   required string target_function = 2; // which function is this trigger for
@@ -120,6 +129,7 @@ message DagTrigger {
   optional ArgList arguments = 4;
   map<string, VersionedKeyList> versioned_key_locations = 5;
   repeated VersionedKey dependencies = 6;
+  map<string, KeyTimestampList> key_locations = 7;
 }
 
 message ExecutorStatistics {

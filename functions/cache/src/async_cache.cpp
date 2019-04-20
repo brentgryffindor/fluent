@@ -12,6 +12,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
+#include "functions.pb.h"
 #include "kvs_async_client.hpp"
 #include "yaml-cpp/yaml.h"
 
@@ -20,13 +21,42 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 unsigned kCacheReportThreshold = 5;
 
+using VersionStoreType =
+    map<string,
+        map<Key, LWWPairLattice<string>>>;
+
 struct PendingClientMetadata {
   PendingClientMetadata() = default;
-  PendingClientMetadata(set<Key> read_set, set<Key> to_retrieve_set) :
+
+  PendingClientMetadata(string client_id, set<Key> read_set,
+                        set<Key> to_retrieve_set) :
+      client_id_(std::move(client_id)),
       read_set_(std::move(read_set)),
       to_retrieve_set_(std::move(to_retrieve_set)) {}
+
+  PendingClientMetadata(string client_id, set<Key> read_set,
+                        set<Key> to_retrieve_set,
+                        set<Key> future_read_set, set<Key> remote_read_set,
+                        set<Key> dne_set,
+                        map<Key, string> serialized_local_payload,
+                        map<Key, string> serialized_remote_payload) :
+      client_id_(std::move(client_id)),
+      read_set_(std::move(read_set)),
+      to_retrieve_set_(std::move(to_retrieve_set)),
+      future_read_set_(std::move(future_read_set)),
+      remote_read_set_(std::move(remote_read_set)),
+      dne_set_(std::move(dne_set)),
+      serialized_local_payload_(std::move(serialized_local_payload)),
+      serialized_remote_payload_(std::move(serialized_remote_payload)) {}
+
+  string client_id_;
   set<Key> read_set_;
   set<Key> to_retrieve_set_;
+  set<Key> future_read_set_;
+  set<Key> remote_read_set_;
+  set<Key> dne_set_;
+  map<Key, string> serialized_local_payload_;
+  map<Key, string> serialized_remote_payload_;
 };
 
 string get_serialized_value_from_cache(
@@ -103,6 +133,62 @@ void send_error_response(RequestType type, const Address& response_addr,
   kZmqUtil->send_string(resp_string, &pushers[response_addr]);
 }
 
+Address find_address(
+    const Key& key, const map<Address, map<Key, unsigned long long>>& key_locations_map, unsigned long long ts = 0) {
+  for (const auto& address_map_pair : key_locations_map) {
+    if (address_map_pair.second.find(key) != address_map_pair.second.end() && address_map_pair.second.at(key) != ts) {
+      return address_map_pair.first;
+    }
+  }
+  // we are good to read from the local causal cache
+  return "";
+}
+
+void respond_to_client(map<Address, PendingClientMetadata>& pending_request_metadata, const Address& addr, 
+                      const map<Key, LatticeType>& key_type_map, SocketCache& pushers, const CacheThread& ct, const VersionStoreType& version_store) {
+  KeyResponse response;
+  response.set_type(RequestType::GET);
+
+  for (auto& pair : pending_request_metadata[addr].serialized_local_payload_) {
+    KeyTuple* tp = response.add_tuples();
+    tp->set_key(pair.first);
+    tp->set_error(0);
+    tp->set_lattice_type(key_type_map.at(pair.first));
+    tp->set_payload(std::move(pair.second));
+  }
+
+  for (auto& pair : pending_request_metadata[addr].serialized_remote_payload_) {
+    KeyTuple* tp = response.add_tuples();
+    tp->set_key(pair.first);
+    tp->set_error(0);
+    tp->set_lattice_type(key_type_map.at(pair.first));
+    tp->set_payload(std::move(pair.second));
+  }
+
+  for (const Key& key : pending_request_metadata[addr].dne_set_) {
+    KeyTuple* tp = response.add_tuples();
+    tp->set_key(key);
+    tp->set_error(1);
+  }
+
+  response.set_key_query_addr(ct.repeatable_read_request_connect_address());
+
+  if (version_store.find(pending_request_metadata[addr].client_id_) !=
+      version_store.end()) {
+    for (const auto& pair :
+         version_store.at(pending_request_metadata[addr].client_id_)) {
+      KvsKeyTimestampPair* p = response.add_pairs();
+      p->set_key(pair.first);
+      p->set_timestamp(pair.second.reveal().timestamp);
+    }
+  }
+
+  std::string resp_string;
+  response.SerializeToString(&resp_string);
+  kZmqUtil->send_string(resp_string, &pushers[addr]);
+  pending_request_metadata.erase(addr);
+}
+
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   string log_file = "cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "cache_log_" + std::to_string(thread_id);
@@ -116,10 +202,15 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   map<Key, LWWPairLattice<string>> local_lww_cache;
   map<Key, SetLattice<string>> local_set_cache;
 
-  map<Address, PendingClientMetadata> pending_request_read_set;
+  map<Address, PendingClientMetadata> pending_request_metadata;
   map<Key, set<Address>> key_requestor_map;
 
   map<Key, LatticeType> key_type_map;
+
+  // mapping from client id to a set of response address of GET request
+  map<string, set<Address>> client_id_to_address_map;
+
+  VersionStoreType version_store;
 
   // mapping from request id to respond address of PUT request
   map<string, Address> request_address_map;
@@ -138,10 +229,24 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   zmq::socket_t update_puller(*context, ZMQ_PULL);
   update_puller.bind(ct.cache_update_bind_address());
 
+  zmq::socket_t version_gc_puller(*context, ZMQ_PULL);
+  version_gc_puller.bind(ct.version_gc_bind_address());
+
+  zmq::socket_t repeatable_read_request_puller(*context, ZMQ_PULL);
+  repeatable_read_request_puller.bind(
+      ct.repeatable_read_request_bind_address());
+
+  zmq::socket_t repeatable_read_response_puller(*context, ZMQ_PULL);
+  repeatable_read_response_puller.bind(
+      ct.repeatable_read_response_bind_address());
+
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(get_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(put_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(update_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(version_gc_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(repeatable_read_request_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(repeatable_read_response_puller), 0, ZMQ_POLLIN, 0},
   };
 
   auto report_start = std::chrono::system_clock::now();
@@ -156,9 +261,26 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       KeyRequest request;
       request.ParseFromString(serialized);
 
-      bool covered = true;
+      // set the future read set field
+      for (const Key& key : request.future_read_set()) {
+        //log->info("future read set has key {}", key);
+        pending_request_metadata[request.response_address()]
+            .future_read_set_.insert(key);
+      }
+
+      pending_request_metadata[request.response_address()].client_id_ = request.client_id();
+
+      map<string, map<Key, unsigned long long>> key_locations;
+
+      for (const auto& pair : request.key_locations()) {
+        const Address& addr = pair.first;
+        const KvsKeyTimestampList& list = pair.second;
+        for (const auto& pair : list.pairs()) {
+          key_locations[addr][pair.key()] = pair.timestamp();
+        }
+      }
+
       set<Key> read_set;
-      set<Key> to_retrieve;
 
       for (KeyTuple tuple : request.tuples()) {
         Key key = tuple.key();
@@ -166,19 +288,52 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
         if (key_type_map.find(key) == key_type_map.end()) {
           // this means key dne in cache
-          covered = false;
-          to_retrieve.insert(key);
-          key_requestor_map[key].insert(request.response_address());
-          client->get_async(key);
+          Address remote_addr = find_address(key, key_locations);
+          if (remote_addr != "") {
+            // read from remote
+            pending_request_metadata[request.response_address()].remote_read_set_.insert(key);
+            RepeatableReadRequest rrr;
+            rrr.set_id(request.client_id());
+            rrr.set_response_address(ct.repeatable_read_response_connect_address());
+            rrr.add_keys(key);
+            string serialized_string;
+            rrr.SerializeToString(&serialized_string);
+            kZmqUtil->send_string(serialized_string, &pushers[remote_addr]);
+            client_id_to_address_map[request.client_id()].insert(request.response_address());
+          } else {
+            pending_request_metadata[request.response_address()].to_retrieve_set_.insert(key);
+            key_requestor_map[key].insert(request.response_address());
+            client->get_async(key);
+          }
+        } else {
+          // key in cache
+          Address remote_addr = find_address(key, key_locations, local_lww_cache[key].reveal().timestamp);
+          if (remote_addr != "") {
+            // read from remote
+            pending_request_metadata[request.response_address()].remote_read_set_.insert(key);
+            RepeatableReadRequest rrr;
+            rrr.set_id(request.client_id());
+            rrr.set_response_address(ct.repeatable_read_response_connect_address());
+            rrr.add_keys(key);
+            string serialized_string;
+            rrr.SerializeToString(&serialized_string);
+            kZmqUtil->send_string(serialized_string, &pushers[remote_addr]);
+            client_id_to_address_map[request.client_id()].insert(request.response_address());
+          } else {
+            pending_request_metadata[request.response_address()].serialized_local_payload_[key] = serialize(local_lww_cache.at(key));
+            if (pending_request_metadata[request.response_address()].future_read_set_.find(key) != pending_request_metadata[request.response_address()].future_read_set_.end()) {
+              version_store[request.client_id()][key] = local_lww_cache.at(key);
+            }
+          }
         }
       }
 
-      if (covered) {
-        send_get_response(read_set, request.response_address(), key_type_map,
-                          local_lww_cache, local_set_cache, pushers, log);
-      } else {
-        pending_request_read_set[request.response_address()] =
-            PendingClientMetadata(read_set, to_retrieve);
+      pending_request_metadata[request.response_address()].read_set_ = std::move(read_set);
+
+      if (pending_request_metadata[request.response_address()].remote_read_set_.size() == 0
+          && pending_request_metadata[request.response_address()].to_retrieve_set_.size() == 0) {
+        // we can send response now and GC the pending map
+        respond_to_client(pending_request_metadata, request.response_address(), key_type_map, pushers, ct, version_store);
       }
     }
 
@@ -273,6 +428,87 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       }
     }
 
+    // handle version gc request
+    if (pollitems[3].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&version_gc_puller);
+      version_store.erase(serialized);
+      log->info("received version GC request for client id {}", serialized);
+    }
+
+    // handle RR key request
+    if (pollitems[4].revents & ZMQ_POLLIN) {
+      log->info("received a versioned key request");
+      string serialized = kZmqUtil->recv_string(&repeatable_read_response_puller);
+      RepeatableReadRequest request;
+      request.ParseFromString(serialized);
+
+      RepeatableReadResponse response;
+      response.set_id(request.id());
+      if (version_store.find(request.id()) != version_store.end()) {
+        for (const auto& key : request.keys()) {
+          if (version_store[request.id()].find(key) ==
+              version_store[request.id()].end()) {
+            log->error(
+                "Requested key {} for client ID {} not available in versioned "
+                "store.",
+                key, request.id());
+          } else {
+            //log->info("assembling payload for key {}", key);
+            KeyTuple* tp = response.add_tuples();
+            tp->set_key(key);
+            tp->set_payload(serialize((version_store[request.id()][key])));
+          }
+        }
+      } else {
+        log->error("Client ID {} not available in versioned store.", request.id());
+      }
+      // send response
+      string resp_string;
+      response.SerializeToString(&resp_string);
+      kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
+    }
+
+    // handle RR key response
+    if (pollitems[5].revents & ZMQ_POLLIN) {
+      log->info("received a versioned key response");
+      string serialized = kZmqUtil->recv_string(&repeatable_read_response_puller);
+      RepeatableReadResponse response;
+      response.ParseFromString(serialized);
+
+      if (client_id_to_address_map.find(response.id()) !=
+          client_id_to_address_map.end()) {
+
+        set<Address> address_to_gc;
+
+        for (const Address& addr : client_id_to_address_map[response.id()]) {
+          if (pending_request_metadata.find(addr) != pending_request_metadata.end()) {
+            for (const KeyTuple& tp : response.tuples()) {
+              if (pending_request_metadata[addr].remote_read_set_.find(tp.key()) !=
+                  pending_request_metadata[addr].remote_read_set_.end()) {
+                pending_request_metadata[addr].serialized_remote_payload_[tp.key()] =
+                    tp.payload();
+                pending_request_metadata[addr].remote_read_set_.erase(tp.key());
+              }
+            }
+
+            if (pending_request_metadata[addr].remote_read_set_.size() == 0
+                && pending_request_metadata[addr].to_retrieve_set_.size() == 0) {
+              // we can send response now and GC the pending map
+              respond_to_client(pending_request_metadata, addr, key_type_map, pushers, ct, version_store);
+            }
+          }
+        }
+        // GC
+        for (const Address& addr : address_to_gc) {
+          client_id_to_address_map[response.id()].erase(addr);
+        }
+
+        if (client_id_to_address_map[response.id()].size() == 0) {
+          client_id_to_address_map.erase(response.id());
+        }
+      }
+    }
+
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
       Key key = response.tuples(0).key();
@@ -311,14 +547,21 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           // notify clients
           if (key_requestor_map.find(key) != key_requestor_map.end()) {
             for (const Address& addr : key_requestor_map[key]) {
-              pending_request_read_set[addr].to_retrieve_set_.erase(key);
+              pending_request_metadata[addr].to_retrieve_set_.erase(key);
 
-              if (pending_request_read_set[addr].to_retrieve_set_.size() == 0) {
-                // all keys covered
-                send_get_response(pending_request_read_set[addr].read_set_,
-                                  addr, key_type_map, local_lww_cache,
-                                  local_set_cache, pushers, log);
-                pending_request_read_set.erase(addr);
+              if (response.tuples(0).error() != 1) {
+                pending_request_metadata[addr].serialized_local_payload_[key] = serialize(local_lww_cache.at(key));
+                if (pending_request_metadata[addr].future_read_set_.find(key) != pending_request_metadata[addr].future_read_set_.end()) {
+                  version_store[pending_request_metadata[addr].client_id_][key] = local_lww_cache.at(key);
+                }
+              } else {
+                pending_request_metadata[addr].dne_set_.insert(key);
+              }
+
+              if (pending_request_metadata[addr].remote_read_set_.size() == 0
+                  && pending_request_metadata[addr].to_retrieve_set_.size() == 0) {
+                // we can send response now and GC the pending map
+                respond_to_client(pending_request_metadata, addr, key_type_map, pushers, ct, version_store);
               }
             }
 

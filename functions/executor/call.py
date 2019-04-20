@@ -43,7 +43,7 @@ def exec_function(exec_socket, kvs, status):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            result = _exec_func_normal(kvs, f, fargs)
+            result = _exec_single_func_normal(kvs, f, fargs)
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
@@ -59,7 +59,7 @@ def exec_function(exec_socket, kvs, status):
     if not succeed:
         logging.info('Put key %s unsuccessful' % call.resp_id)
 
-def _exec_single_func_causal(kvs, func, args):
+def _exec_single_func_normal(kvs, func, args):
     #logging.info('Enter single function causal')
     func_args = []
     to_resolve = []
@@ -90,6 +90,45 @@ def _exec_single_func_causal(kvs, func, args):
         #logging.info('key value pair size is %d' % len(kv_pairs))
 
         for key in kv_pairs:
+            # assuming no setlattice
+            if isinstance(kv_pairs[key], SetLattice):
+                print("have setlattice! %s" % key)
+            if deserialize[key]:
+                func_args[key_index_map[key]] = \
+                                deserialize_val(kv_pairs[key].reveal()[1])
+            else:
+                func_args[key_index_map[key]] = kv_pairs[key].reveal()[1]
+
+    # execute the function
+    return  func(*tuple(func_args))
+
+def _exec_single_func_causal(kvs, func, args):
+    #logging.info('Enter single function causal')
+    func_args = []
+    to_resolve = []
+    deserialize = {}
+
+    # resolve any references to KVS objects
+    key_index_map = {}
+    for i, arg in enumerate(args):
+        if isinstance(arg, FluentReference):
+            to_resolve.append(arg)
+            key_index_map[arg.key] = i
+            deserialize[arg.key] = arg.deserialize
+        func_args += (arg,)
+
+    if len(to_resolve) > 0:
+        keys = [ref.key for ref in to_resolve]
+        result = kvs.get(keys, set(), {}, 0)
+
+        while not result:
+            result = kvs.get(keys, set(), {}, 0)
+
+        kv_pairs = result[1]
+
+        #logging.info('key value pair size is %d' % len(kv_pairs))
+
+        for key in kv_pairs:
             if deserialize[key]:
                 #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
@@ -114,16 +153,26 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
+    key_locations = None
+
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
+        # combine key_locations
+        if key_locations is None:
+            key_locations = trigger.key_locations
+        else:
+            for addr in trigger.key_locations:
+                key_locations[addr].pairs.extend(trigger.key_locations[addr].pairs)
 
     #logging.info('Executing function %s for DAG %s (ID %s): started at %.6f.' %
     #        (schedule.dag.name, fname, trigger.id, time.time()))
 
     fargs = _process_args(fargs)
 
-    result = _exec_func_normal(kvs, function, fargs)
+    kv_pairs = {}
+
+    result = _exec_func_normal(kvs, function, fargs, kv_pairs, schedule, key_locations)
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -141,6 +190,9 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             al.args.extend(list(map(lambda v: serialize_val(v, None, False),
                 result)))
 
+            for addr in key_locations:
+                new_trigger.key_locations[addr].pairs.extend(key_locations[addr].pairs)
+
             dest_ip = schedule.locations[conn.sink]
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
@@ -153,37 +205,62 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
         l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
         if schedule.HasField('output_key'):
             kvs.put(schedule.output_key, l)
+            kvs.put(schedule.id, l)
         else:
             kvs.put(schedule.id, l)
 
-def _exec_func_normal(kvs, func, args):
-    refs = list(filter(lambda a: isinstance(a, FluentReference), args))
-    if refs:
-        refs = _resolve_ref_normal(refs, kvs)
+        # issue requests to GC the version store
+        for cache_addr in key_locations:
+            gc_addr = cache_addr[:-4] + str(int(cache_addr[-4:]) - 50)
+            #logging.info("cache GC addr is %s" % gc_addr)
+            sckt = pusher_cache.get(gc_addr)
+            sckt.send_string(schedule.client_id)
 
-    func_args = ()
-    for arg in args:
+def _exec_func_normal(kvs, func, args, kv_pairs, schedule, key_locations):
+    func_args = []
+    to_resolve = []
+    deserialize = {}
+
+    # resolve any references to KVS objects
+    key_index_map = {}
+    for i, arg in enumerate(args):
         if isinstance(arg, FluentReference):
-            func_args += (refs[arg.key],)
-        else:
-            func_args += (arg,)
+            to_resolve.append(arg)
+            key_index_map[arg.key] = i
+            deserialize[arg.key] = arg.deserialize
+        func_args += (arg,)
+
+    if len(to_resolve) > 0:
+        _resolve_ref_normal(to_resolve, kvs, kv_pairs,
+                            schedule, key_locations)
+
+        for key in kv_pairs:
+            # assuming no setlattice
+            if isinstance(kv_pairs[key], SetLattice):
+                print("have setlattice! %s" % key)
+            if deserialize[key]:
+                func_args[key_index_map[key]] = \
+                                deserialize_val(kv_pairs[key].reveal()[1])
+            else:
+                func_args[key_index_map[key]] = kv_pairs[key].reveal()[1]
 
     # execute the function
-    return  func(*func_args)
+    return  func(*tuple(func_args))
 
-def _resolve_ref_normal(refs, kvs):
+def _resolve_ref_normal(refs, kvs, kv_pairs, schedule, key_locations):
+    future_read_set = _compute_children_read_set(schedule)
     keys = [ref.key for ref in refs]
-    kv_pairs = kvs.get(keys)
+    result = kvs.get(keys, future_read_set, key_locations, schedule.client_id)
 
-    # when chaining function executions, we must wait
-    while not kv_pairs:
-        kv_pairs = kvs.get(keys)
+    while not result:
+        result = kvs.get(keys, future_read_set, key_locations, schedule.client_id)
 
-    for ref in refs:
-        if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
-            kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
+    if result[0] is not None:
+        key_locations[result[0][0]].pairs.extend(result[0][1])
 
-    return kv_pairs
+    #logging.info('versioned key location has %d entry for this GET' % (len(versioned_key_locations)))
+
+    kv_pairs.update(result[1])
 
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     fname = schedule.target_function

@@ -45,18 +45,26 @@ class IpcAnnaClient:
         #self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.put_response_socket.bind(self.put_response_address)
 
-    def get(self, keys):
+    def get(self, keys, future_read_set, key_locations, client_id):
         if type(keys) != list:
             keys = [keys]
 
         request = KeyRequest()
         request.type = GET
 
+        request.client_id = str(client_id)
+
+        for addr in key_locations:
+            request.key_locations[addr].pairs.extend(key_locations[addr].pairs)
+
         for key in keys:
             tp = request.tuples.add()
             tp.key = key
 
         request.response_address = self.get_response_address
+
+        request.future_read_set.extend(future_read_set)
+        
         self.get_request_socket.send(request.SerializeToString())
 
         try:
@@ -100,7 +108,11 @@ class IpcAnnaClient:
                 else:
                     raise ValueError('Invalid Lattice type: ' +
                                      str(tp.lattice_type))
-            return kv_pairs
+
+            if len(resp.pairs) != 0:
+                return ((resp.key_query_addr, resp.pairs), kv_pairs)
+            else:
+                return (None, kv_pairs)
 
     def causal_get(self, keys, future_read_set,
                    versioned_key_locations, consistency, client_id, dependencies={}):

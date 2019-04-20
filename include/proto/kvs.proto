@@ -67,11 +67,23 @@ message KeyTuple {
   repeated string addresses = 7;
 }
 
+message KvsKeyTimestampPair {
+  required string key = 1;
+  required uint64 timestamp = 2;
+}
+
+message KvsKeyTimestampList {
+  repeated KvsKeyTimestampPair pairs = 1;
+}
+
 message KeyRequest {
   required RequestType type = 1;
   repeated KeyTuple tuples = 2;
   optional string response_address = 3;
   optional string request_id = 4;
+  map<string, KvsKeyTimestampList> key_locations = 5;
+  optional string client_id = 6;
+  repeated string future_read_set = 7;
 }
 
 message KeyResponse {
@@ -79,6 +91,8 @@ message KeyResponse {
   repeated KeyTuple tuples = 2;
   optional string response_id = 3;
   optional uint32 error = 4;
+  optional string key_query_addr = 5;
+  repeated KvsKeyTimestampPair pairs = 6;
 }
 
 message KeyAddressRequest {
@@ -114,4 +128,15 @@ message UserFeedback {
   optional double throughput = 4;
   optional bool warmup = 5;
   repeated KeyLatency key_latency = 6;
+}
+
+message RepeatableReadRequest {
+  required string id = 1;
+  required string response_address = 2;
+  repeated string keys = 3;
+}
+
+message RepeatableReadResponse {
+  required string id = 1;
+  repeated KeyTuple tuples = 2;
 }
