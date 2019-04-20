@@ -221,9 +221,9 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             latency['normalized'].append((end - start)/length)
 
             #logging.info("size of vector clock is %d" % len(res.vector_clock))
-            if len(res.vector_clock) > max_vc_length:
-                max_vc_length = len(res.vector_clock)
-            res = deserialize_val(res.values[0])
+            #if len(res.vector_clock) > max_vc_length:
+            #    max_vc_length = len(res.vector_clock)
+            res = deserialize_val(res.reveal()[1])
 
             if not res == '00000':
                 logging.info("error, res is %s" % res)
