@@ -105,6 +105,11 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
         if strmnp_test1 != '00000' or strmnp_test2 != '00000' or strmnp_test3 != '00000' or strmnp_test4 != '00000' or strmnp_test5 != '00000':
             logging.error('Unexpected result from strmnp(v1, v2): %s %s %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3), str(strmnp_test4), str(strmnp_test5)))
+            print(strmnp_test1)
+            print(strmnp_test2)
+            print(strmnp_test3)
+            print(strmnp_test4)
+            print(strmnp_test5)
             sys.exit(1)
 
         logging.info('Successfully tested functions!')
