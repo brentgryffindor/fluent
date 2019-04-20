@@ -82,9 +82,6 @@ void send_get_response(const set<Key>& read_set, const Address& response_addr,
       tp->set_error(1);
     } else {
       tp->set_error(0);
-      if (key_type_map.at(key) == LatticeType::NO) {
-        log->error("key {} has lattice type NO.", key);
-      }
       tp->set_lattice_type(key_type_map.at(key));
       tp->set_payload(get_serialized_value_from_cache(
           key, key_type_map.at(key), local_lww_cache, local_set_cache, log));
@@ -222,7 +219,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
           // first update key type map
           key_type_map[key] = tuple.lattice_type();
-          log->error("key {} has lattice type {} according to PUT.", key, key_type_map[key]);
+          //log->error("key {} has lattice type {} according to PUT.", key, key_type_map[key]);
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache, log);
           string req_id =
@@ -234,7 +231,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle updates received from the KVS
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      log->info("received update from kvs");
+      //log->info("received update from kvs");
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
       updates.ParseFromString(serialized);
@@ -304,7 +301,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           if (response.tuples(0).error() != 1) {
             // we actually got a non null key
             key_type_map[key] = response.tuples(0).lattice_type();
-            log->error("key {} has lattice type {} in kvs GET response.", key, key_type_map[key]);
+            //log->error("key {} has lattice type {} in kvs GET response.", key, key_type_map[key]);
 
             update_cache(key, response.tuples(0).lattice_type(),
                          response.tuples(0).payload(), local_lww_cache,
