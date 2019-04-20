@@ -62,11 +62,13 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                     result += b[i]
             return result
 
+        print("before registration")
         cloud_strmnp1 = flconn.register(strmnp1, 'strmnp1')
         cloud_strmnp2 = flconn.register(strmnp2, 'strmnp2')
         cloud_strmnp3 = flconn.register(strmnp3, 'strmnp3')
         cloud_strmnp4 = flconn.register(strmnp3, 'strmnp4')
         cloud_strmnp5 = flconn.register(strmnp3, 'strmnp5')
+        print("after registration")
 
         if cloud_strmnp1 and cloud_strmnp2 and cloud_strmnp3 and cloud_strmnp4 and cloud_strmnp5:
             logging.info('Successfully registered the string manipulation functions.')

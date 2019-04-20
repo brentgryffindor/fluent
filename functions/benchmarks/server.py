@@ -25,6 +25,7 @@ def benchmark(flconn, tid):
 
     while True:
         msg = benchmark_start_socket.recv_string()
+        print("receive bench request")
         logging.info('receive benchmark request')
         splits = msg.split(':')
 
