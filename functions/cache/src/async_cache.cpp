@@ -261,7 +261,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       KeyRequest request;
       request.ParseFromString(serialized);
 
-      log->info("received GET from addr {}", request.response_address());
+      //log->info("received GET from addr {}", request.response_address());
 
       // set the future read set field
       for (const Key& key : request.future_read_set()) {
@@ -286,7 +286,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       for (KeyTuple tuple : request.tuples()) {
         Key key = tuple.key();
-        log->info("Key to get is {}.", key);
+        //log->info("Key to get is {}.", key);
         read_set.insert(key);
 
         if (key_type_map.find(key) == key_type_map.end()) {
@@ -303,12 +303,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             rrr.SerializeToString(&serialized_string);
             kZmqUtil->send_string(serialized_string, &pushers[remote_addr]);
             client_id_to_address_map[request.client_id()].insert(request.response_address());
-            log->info("key {} need to be read from remote addr {}", key, remote_addr);
+            //log->info("key {} need to be read from remote addr {}", key, remote_addr);
           } else {
             pending_request_metadata[request.response_address()].to_retrieve_set_.insert(key);
             key_requestor_map[key].insert(request.response_address());
             client->get_async(key);
-            log->info("key {} need to be read from KVS", key);
+            //log->info("key {} need to be read from KVS", key);
           }
         } else {
           // key in cache
@@ -324,13 +324,13 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             rrr.SerializeToString(&serialized_string);
             kZmqUtil->send_string(serialized_string, &pushers[remote_addr]);
             client_id_to_address_map[request.client_id()].insert(request.response_address());
-            log->info("key {} need to be read from remote addr {}", key, remote_addr);
+            //log->info("key {} need to be read from remote addr {}", key, remote_addr);
           } else {
             pending_request_metadata[request.response_address()].serialized_local_payload_[key] = serialize(local_lww_cache.at(key));
             if (pending_request_metadata[request.response_address()].future_read_set_.find(key) != pending_request_metadata[request.response_address()].future_read_set_.end()) {
               version_store[request.client_id()][key] = local_lww_cache.at(key);
             }
-            log->info("key {} can be read from cache", key);
+            //log->info("key {} can be read from cache", key);
           }
         }
       }
@@ -340,7 +340,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       if (pending_request_metadata[request.response_address()].remote_read_set_.size() == 0
           && pending_request_metadata[request.response_address()].to_retrieve_set_.size() == 0) {
         // we can send response now and GC the pending map
-        log->info("all keys can be read from local cache for client addr {}", request.response_address());
+        //log->info("all keys can be read from local cache for client addr {}", request.response_address());
         respond_to_client(pending_request_metadata, request.response_address(), key_type_map, pushers, ct, version_store);
       }
     }
@@ -440,12 +440,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     if (pollitems[3].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&version_gc_puller);
       version_store.erase(serialized);
-      log->info("received version GC request for client id {}", serialized);
+      //log->info("received version GC request for client id {}", serialized);
     }
 
     // handle RR key request
     if (pollitems[4].revents & ZMQ_POLLIN) {
-      log->info("received a versioned key request");
+      //log->info("received a versioned key request");
       string serialized = kZmqUtil->recv_string(&repeatable_read_request_puller);
       RepeatableReadRequest request;
       request.ParseFromString(serialized);
@@ -478,7 +478,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle RR key response
     if (pollitems[5].revents & ZMQ_POLLIN) {
-      log->info("received a versioned key response");
+      //log->info("received a versioned key response");
       string serialized = kZmqUtil->recv_string(&repeatable_read_response_puller);
       RepeatableReadResponse response;
       response.ParseFromString(serialized);
@@ -491,7 +491,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         for (const Address& addr : client_id_to_address_map[response.id()]) {
           if (pending_request_metadata.find(addr) != pending_request_metadata.end()) {
             for (const KeyTuple& tp : response.tuples()) {
-              log->info("response key contains {}", tp.key());
+              //log->info("response key contains {}", tp.key());
               if (pending_request_metadata[addr].remote_read_set_.find(tp.key()) !=
                   pending_request_metadata[addr].remote_read_set_.end()) {
                 pending_request_metadata[addr].serialized_remote_payload_[tp.key()] =
@@ -502,7 +502,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
             if (pending_request_metadata[addr].remote_read_set_.size() == 0
                 && pending_request_metadata[addr].to_retrieve_set_.size() == 0) {
-              log->info("all keys received");
+              //log->info("all keys received");
               // we can send response now and GC the pending map
               respond_to_client(pending_request_metadata, addr, key_type_map, pushers, ct, version_store);
             }
@@ -516,8 +516,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         if (client_id_to_address_map[response.id()].size() == 0) {
           client_id_to_address_map.erase(response.id());
         }
-      } else {
-        log->info("no address waiting for this client {}", response.id());
       }
     }
 
@@ -527,9 +525,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       if (response.has_error() &&
           response.error() == ResponseErrorType::TIMEOUT) {
-        log->info("timed out!");
+        //log->info("timed out!");
         if (response.type() == RequestType::GET) {
-          log->info("retrying key {}", key);
+          //log->info("retrying key {}", key);
           client->get_async(key);
         } else {
           if (request_address_map.find(response.response_id()) !=
@@ -547,7 +545,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         }
       } else {
         if (response.type() == RequestType::GET) {
-          log->info("Received KVS GET response for key {}", key);
+          //log->info("Received KVS GET response for key {}", key);
           // update cache first
           if (response.tuples(0).error() != 1) {
             // we actually got a non null key
@@ -557,14 +555,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             update_cache(key, response.tuples(0).lattice_type(),
                          response.tuples(0).payload(), local_lww_cache,
                          local_set_cache, log);
-          } else {
-            log->info("key {} dne in kvs!", key);
           }
 
           // notify clients
           if (key_requestor_map.find(key) != key_requestor_map.end()) {
             for (const Address& addr : key_requestor_map[key]) {
-              log->info("response hit address {}", addr);
+              //log->info("response hit address {}", addr);
               pending_request_metadata[addr].to_retrieve_set_.erase(key);
 
               if (response.tuples(0).error() != 1) {
@@ -579,7 +575,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
               if (pending_request_metadata[addr].remote_read_set_.size() == 0
                   && pending_request_metadata[addr].to_retrieve_set_.size() == 0) {
                 // we can send response now and GC the pending map
-                log->info("all keys received");
+                //log->info("all keys received");
                 respond_to_client(pending_request_metadata, addr, key_type_map, pushers, ct, version_store);
               }
             }
@@ -627,16 +623,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
-
-      for (const auto& pair : pending_request_metadata) {
-        log->info("pending addr includes {}", pair.first);
-        for (const Key& key : pair.second.to_retrieve_set_) {
-          log->info("key {} still need to be retrieved from kvs", key);
-        }
-        for (const Key& key : pair.second.remote_read_set_) {
-          log->info("key {} still need to be read from remote", key);
-        }
-      }
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.

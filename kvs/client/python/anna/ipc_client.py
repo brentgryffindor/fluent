@@ -62,7 +62,7 @@ class IpcAnnaClient:
             request.key_locations[addr].pairs.extend([kvsp])
 
         for key in keys:
-            logging.error("Key to get is %s" % key)
+            #logging.error("Key to get is %s" % key)
             tp = request.tuples.add()
             tp.key = key
 
@@ -70,12 +70,12 @@ class IpcAnnaClient:
 
         request.future_read_set.extend(future_read_set)
 
-        logging.error("GET request sent")
+        #logging.error("GET request sent")
         self.get_request_socket.send(request.SerializeToString())
 
         try:
             msg = self.get_response_socket.recv()
-            logging.error("GET request received")
+            #logging.error("GET request received")
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
@@ -220,12 +220,12 @@ class IpcAnnaClient:
 
         request.response_address = self.put_response_address
 
-        logging.error("PUT request sent")
+        #logging.error("PUT request sent")
         self.put_request_socket.send(request.SerializeToString())
 
         try:
             msg = self.put_response_socket.recv()
-            logging.error("PUT request received")
+            #logging.error("PUT request received")
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(key)))

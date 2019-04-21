@@ -103,11 +103,9 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
 
     // only relavant for the seed node
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::cerr << "enter seed addr routine\n";
       kZmqUtil->recv_string(&addr_responder);
       auto serialized = seed_handler(log, global_hash_rings);
       kZmqUtil->send_string(serialized, &addr_responder);
-      std::cerr << "exit seed addr routine\n";
     }
 
     // handle a join or depart event coming from the server side
@@ -119,12 +117,10 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
 
     // received replication factor response
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      std::cerr << "enter repfactor response routine\n";
       string serialized = kZmqUtil->recv_string(&replication_response_puller);
       replication_response_handler(log, serialized, pushers, rt,
                                    global_hash_rings, local_hash_rings,
                                    key_replication_map, pending_requests, seed);
-      std::cerr << "exit repfactor response routine\n";
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
@@ -134,12 +130,10 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
     }
 
     if (pollitems[4].revents & ZMQ_POLLIN) {
-      std::cerr << "enter addr handler routine\n";
       string serialized = kZmqUtil->recv_string(&key_address_puller);
       address_handler(log, serialized, pushers, rt, global_hash_rings,
                       local_hash_rings, key_replication_map, pending_requests,
                       seed);
-      std::cerr << "exit addr handler routine\n";
     }
   }
 }
