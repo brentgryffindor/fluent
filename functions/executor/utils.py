@@ -30,7 +30,7 @@ def _retrieve_function(name, kvs):
     while not result:
         logging.info("retrying get for function %s" % kvs_name)
         result = kvs.get(kvs_name, set(), {}, 0)
-    latt = result[kvs_name]
+    latt = result[1][kvs_name]
 
     return serializer.function_ser.load(latt.reveal()[1])
 
