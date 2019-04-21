@@ -446,7 +446,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // handle RR key request
     if (pollitems[4].revents & ZMQ_POLLIN) {
       log->info("received a versioned key request");
-      string serialized = kZmqUtil->recv_string(&repeatable_read_response_puller);
+      string serialized = kZmqUtil->recv_string(&repeatable_read_request_puller);
       RepeatableReadRequest request;
       request.ParseFromString(serialized);
 
