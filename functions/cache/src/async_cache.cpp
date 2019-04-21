@@ -516,7 +516,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       if (response.has_error() &&
           response.error() == ResponseErrorType::TIMEOUT) {
+        log->info("timed out!")
         if (response.type() == RequestType::GET) {
+          log->info("retrying key {}", key)
           client->get_async(key);
         } else {
           if (request_address_map.find(response.response_id()) !=
@@ -609,6 +611,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
+
+      for (const auto& pair : pending_request_metadata) {
+        log->info("pending addr includes {}", pair.first);
+      }
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.
