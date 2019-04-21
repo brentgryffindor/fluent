@@ -199,8 +199,10 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
       if (std::chrono::duration_cast<std::chrono::milliseconds>(
               std::chrono::system_clock::now() - pair.second.first)
               .count() > timeout_) {
+        log_->error("Query to routing timeout.");
         // query to the routing tier timed out
         for (const auto& req : pair.second.second) {
+          log_->error("key is {}.", req.tuples(0).key());
           result.push_back(generate_bad_response(req));
         }
 
