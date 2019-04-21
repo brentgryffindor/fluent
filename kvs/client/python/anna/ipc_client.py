@@ -58,13 +58,14 @@ class IpcAnnaClient:
             request.key_locations[addr].pairs.extend(key_locations[addr].pairs)
 
         for key in keys:
+            logging.error("Key to get is %s" % key)
             tp = request.tuples.add()
             tp.key = key
 
         request.response_address = self.get_response_address
 
         request.future_read_set.extend(future_read_set)
-        
+
         self.get_request_socket.send(request.SerializeToString())
 
         try:

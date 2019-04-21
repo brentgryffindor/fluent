@@ -284,6 +284,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       for (KeyTuple tuple : request.tuples()) {
         Key key = tuple.key();
+        log->info("Key to get is {}.", key);
         read_set.insert(key);
 
         if (key_type_map.find(key) == key_type_map.end()) {

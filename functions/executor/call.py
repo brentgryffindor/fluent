@@ -76,14 +76,10 @@ def _exec_single_func_normal(kvs, func, args):
 
     if len(to_resolve) > 0:
         keys = [ref.key for ref in to_resolve]
-        result = kvs.causal_get(keys, set(),
-                                {},
-                                CROSS, 0)
+        result = kvs.get(keys, set(), {}, 0)
 
         while not result:
-            result = kvs.causal_get(keys, set(),
-                                {},
-                                CROSS, 0)
+            result = kvs.get(keys, set(), {}, 0)
 
         kv_pairs = result[1]
 
@@ -102,6 +98,7 @@ def _exec_single_func_normal(kvs, func, args):
     # execute the function
     return  func(*tuple(func_args))
 
+
 def _exec_single_func_causal(kvs, func, args):
     #logging.info('Enter single function causal')
     func_args = []
@@ -119,10 +116,14 @@ def _exec_single_func_causal(kvs, func, args):
 
     if len(to_resolve) > 0:
         keys = [ref.key for ref in to_resolve]
-        result = kvs.get(keys, set(), {}, 0)
+        result = kvs.causal_get(keys, set(),
+                                {},
+                                CROSS, 0)
 
         while not result:
-            result = kvs.get(keys, set(), {}, 0)
+            result = kvs.causal_get(keys, set(),
+                                {},
+                                CROSS, 0)
 
         kv_pairs = result[1]
 
