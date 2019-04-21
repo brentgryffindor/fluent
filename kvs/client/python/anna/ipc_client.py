@@ -55,7 +55,11 @@ class IpcAnnaClient:
         request.client_id = str(client_id)
 
         for addr in key_locations:
-            request.key_locations[addr].pairs.extend(key_locations[addr].pairs)
+            for pair in key_locations[addr].pairs:
+                kvsp = KvsKeyTimestampPair()
+                kvsp.key = pair.key
+                kvsp.timestamp = pair.timestamp
+            request.key_locations[addr].pairs.extend([kvsp])
 
         for key in keys:
             logging.error("Key to get is %s" % key)
