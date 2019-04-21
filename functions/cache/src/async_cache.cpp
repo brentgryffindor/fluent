@@ -516,9 +516,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       if (response.has_error() &&
           response.error() == ResponseErrorType::TIMEOUT) {
-        log->info("timed out!")
+        log->info("timed out!");
         if (response.type() == RequestType::GET) {
-          log->info("retrying key {}", key)
+          log->info("retrying key {}", key);
           client->get_async(key);
         } else {
           if (request_address_map.find(response.response_id()) !=
