@@ -257,7 +257,11 @@ def _resolve_ref_normal(refs, kvs, kv_pairs, schedule, key_locations):
         result = kvs.get(keys, future_read_set, key_locations, schedule.client_id)
 
     if result[0] is not None:
-        key_locations[result[0][0]].pairs.extend(result[0][1])
+        for pair in result[0][1]:
+            ktp = KeyTimestampPair()
+            ktp.key = pair.key
+            ktp.timestamp = pair.timestamp
+            key_locations[result[0][0]].pairs.extend([ktp])
 
     #logging.info('versioned key location has %d entry for this GET' % (len(versioned_key_locations)))
 

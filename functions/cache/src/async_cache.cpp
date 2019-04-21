@@ -177,7 +177,7 @@ void respond_to_client(map<Address, PendingClientMetadata>& pending_request_meta
       version_store.end()) {
     for (const auto& pair :
          version_store.at(pending_request_metadata[addr].client_id_)) {
-      KeyTimestampPair* p = response.add_pairs();
+      KvsKeyTimestampPair* p = response.add_pairs();
       p->set_key(pair.first);
       p->set_timestamp(pair.second.reveal().timestamp);
     }
@@ -274,7 +274,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       for (const auto& pair : request.key_locations()) {
         const Address& addr = pair.first;
-        const KeyTimestampList& list = pair.second;
+        const KvsKeyTimestampList& list = pair.second;
         for (const auto& pair : list.pairs()) {
           key_locations[addr][pair.key()] = pair.timestamp();
         }
