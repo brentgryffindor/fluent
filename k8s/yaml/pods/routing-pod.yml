@@ -20,6 +20,7 @@ metadata:
     role: routing
 spec:
   hostNetwork: true
+  restartPolicy: Never
   containers:
   - name: routing-container
     image: fluentproject/annakvs
@@ -31,7 +32,7 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "lww_bench"
+      value: "repeatable_read"
   nodeSelector:
     role: routing
     podid: routing-NUM_DUMMY

@@ -3,4 +3,4 @@ import util
 
 c = util.init_k8s()
 
-add_nodes(c, '../conf/kvs-base.yml', ['benchmark'], [2], ['100.96.1.6'], route_addr='a618b2308620311e980e70aa83f6a580-500771572.us-east-1.elb.amazonaws.com', function_addr='ac3457807620411e980e70aa83f6a580-2097223521.us-east-1.elb.amazonaws.com')
+add_nodes(c, '../conf/kvs-base.yml', ['benchmark'], [2], ['100.96.1.6'], route_addr='ac5807c0e647411e98d680abbbf9888c-386205992.us-east-1.elb.amazonaws.com', function_addr='a281861e7647611e98d680abbbf9888c-1595742194.us-east-1.elb.amazonaws.com')
