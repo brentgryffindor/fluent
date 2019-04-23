@@ -146,7 +146,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             dag_names.append(dag_name)
             func_list = ['strmnp1', 'strmnp2', 'strmnp3', 'strmnp4', 'strmnp5']
 
-            functions, connections, length = generate_dag(func_list)
+            functions, connections, length = generate_dag_by_length(func_list, 1 + (dag_id % 4))
 
             success, error = flconn.register_dag(dag_name, functions, connections)
 
@@ -164,8 +164,10 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
     elif mode == 'run':
 
-        latency['unnormalized'] = []
-        latency['normalized'] = []
+        latency[1] = []
+        latency[2] = []
+        latency[3] = []
+        latency[4] = []
 
         total_num_keys = 1000000
 
@@ -217,8 +219,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                 res = kvs.get(rid)
             end = time.time()
 
-            latency['unnormalized'].append(end - start)
-            latency['normalized'].append((end - start)/length)
+            latency[length].append(end - start)
 
             #logging.info("size of vector clock is %d" % len(res.vector_clock))
             #if len(res.vector_clock) > max_vc_length:
@@ -263,6 +264,32 @@ def sample(n, base, sum_probs):
             break
     return zipf_value
 
+def generate_dag_by_length(function_list, length):
+    available_functions = function_list.copy()
+    functions = []
+    connections = []
+
+
+    end_func = random.choice(available_functions)
+    functions.append(end_func)
+    available_functions.remove(end_func)
+
+    current_length = 1
+
+    sink = end_func
+
+    while not current_length == length:
+        # pick a function
+        source = random.choice(available_functions)
+        functions.append(source)
+        available_functions.remove(source)
+        # populate connection
+        connections.append((source, sink))
+        current_length += 1
+        sink = source
+
+    return (functions, connections, length)
+    
 def generate_dag(function_list):
     available_functions = function_list.copy()
     functions = []

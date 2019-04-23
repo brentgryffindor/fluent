@@ -21,7 +21,7 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 unsigned kCacheReportThreshold = 5;
 
-unsigned inconsistency = 0;
+//unsigned inconsistency = 0;
 
 using VersionStoreType =
     map<string,
@@ -296,7 +296,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           Address remote_addr = find_address(key, key_locations);
           if (remote_addr != "") {
             // read from remote
-            inconsistency += 1;
+            //inconsistency += 1;
             pending_request_metadata[request.response_address()].remote_read_set_.insert(key);
             RepeatableReadRequest rrr;
             rrr.set_id(request.client_id());
@@ -318,7 +318,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           Address remote_addr = find_address(key, key_locations, local_lww_cache[key].reveal().timestamp);
           if (remote_addr != "") {
             // read from remote
-            inconsistency += 1;
+            //inconsistency += 1;
             pending_request_metadata[request.response_address()].remote_read_set_.insert(key);
             RepeatableReadRequest rrr;
             rrr.set_id(request.client_id());
@@ -628,7 +628,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
 
-      log->info("inconsistency count is {}", inconsistency);
+      //log->info("inconsistency count is {}", inconsistency);
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.
