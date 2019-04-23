@@ -30,6 +30,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "multi_key"
   nodeSelector:
     role: general

@@ -35,7 +35,7 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "multi_key"
   - name: benchmark-2
     image: fluentproject/executor
     env: 
@@ -50,7 +50,7 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "multi_key"
   - name: benchmark-3
     image: fluentproject/executor
     env: 
@@ -65,7 +65,7 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "multi_key"
   - name: benchmark-4
     image: fluentproject/executor
     env: 
@@ -80,7 +80,7 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "multi_key"
   nodeSelector:
     role: benchmark
     podid: benchmark-NUM_DUMMY
