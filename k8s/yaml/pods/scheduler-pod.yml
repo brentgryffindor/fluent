@@ -36,7 +36,7 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "multi_key"
+      value: "single_key"
   nodeSelector:
     role: scheduler
     podid: scheduler-NUM_DUMMY
