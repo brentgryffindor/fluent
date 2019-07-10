@@ -45,10 +45,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   map<Key, set<Address>> single_callback_map;
 
   map<Address, PendingClientMetadata> pending_single_metadata;
-  map<Address, PendingClientMetadata> pending_cross_metadata;
-
-  // mapping from client id to a set of response address of GET request
-  map<string, set<Address>> client_id_to_address_map;
+  std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash> pending_cross_metadata;
 
   // mapping from request id to response address of PUT request
   map<string, Address> request_id_to_address_map;
@@ -78,6 +75,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   versioned_key_response_puller.bind(
       cct.causal_cache_versioned_key_response_bind_address());
 
+  zmq::socket_t scheduler_request_puller(*context, ZMQ_PULL);
+  scheduler_request_puller.bind(cct.causal_cache_scheduler_request_bind_address());
+
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(get_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(put_puller), 0, ZMQ_POLLIN, 0},
@@ -85,6 +85,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       {static_cast<void*>(version_gc_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(versioned_key_request_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(versioned_key_response_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(scheduler_request_puller), 0, ZMQ_POLLIN, 0},
   };
 
   auto report_start = std::chrono::system_clock::now();
@@ -159,6 +160,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       versioned_key_response_handler(
           serialized, causal_cut_store, version_store, pending_cross_metadata,
           client_id_to_address_map, cct, pushers, kZmqUtil, log);
+    }
+
+    // handle versioned key response
+    if (pollitems[6].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&scheduler_request_puller);
+      scheduler_request_handler(serialized, key_set, unmerged_store, in_preparation, 
+        causal_cut_store, version_store, pending_cross_metadata, to_fetch_map, cover_map,
+        pushers, client, log, cct, client_id_to_address_map);
     }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);

@@ -36,6 +36,7 @@ const unsigned kCausalCacheUpdatePort = 7150;
 const unsigned kCausalCacheVersionGCPort = 7200;
 const unsigned kCausalCacheVersionedKeyRequestPort = 7250;
 const unsigned kCausalCacheVersionedKeyResponsePort = 7300;
+const unsigned kCausalCacheSchedulerRequestPort = 7350;
 
 const string kBindBase = "tcp://*:";
 
@@ -136,6 +137,16 @@ class CausalCacheThread {
   Address causal_cache_versioned_key_response_connect_address() const {
     return ip_base_ +
            std::to_string(tid_ + kCausalCacheVersionedKeyResponsePort);
+  }
+
+  Address causal_cache_scheduler_request_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCausalCacheSchedulerRequestPort);
+  }
+
+  Address causal_cache_scheduler_request_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheSchedulerRequestPort);
   }
 };
 

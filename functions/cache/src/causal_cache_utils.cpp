@@ -174,18 +174,18 @@ Address find_address(
   return "";
 }
 
-void save_versions(const string& id, const Key& key,
+void save_versions(const AddressClientIdPair& addr_cid_pair, const Key& head_key, const Key& key,
                    VersionStoreType& version_store,
                    const StoreType& causal_cut_store,
-                   const set<Key>& future_read_set, set<Key>& observed_keys) {
+                   const set<Key>& full_read_set, set<Key>& observed_keys) {
   if (observed_keys.find(key) == observed_keys.end()) {
     observed_keys.insert(key);
-    if (future_read_set.find(key) != future_read_set.end()) {
-      version_store[id][key] = causal_cut_store.at(key);
+    if (full_read_set.find(key) != full_read_set.end()) {
+      version_store[addr_cid_pair].second[head_key][key] = causal_cut_store.at(key);
     }
     for (const auto& pair :
          causal_cut_store.at(key)->reveal().dependency.reveal()) {
-      save_versions(id, pair.first, version_store, causal_cut_store,
+      save_versions(addr_cid_pair, head_key, pair.first, version_store, causal_cut_store,
                     future_read_set, observed_keys);
     }
   }
@@ -300,64 +300,6 @@ void respond_to_client(
   kZmqUtil->send_string(resp_string, &pushers[addr]);
   // GC
   pending_cross_metadata.erase(addr);
-}
-
-void merge_into_causal_cut(
-    const Key& key, StoreType& causal_cut_store,
-    InPreparationType& in_preparation, VersionStoreType& version_store,
-    map<Address, PendingClientMetadata>& pending_cross_metadata,
-    SocketCache& pushers, const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map, logger log,
-    const StoreType& unmerged_store) {
-  bool key_dne = false;
-  // merge from in_preparation to causal_cut_store
-  for (const auto& pair : in_preparation[key].second) {
-    if (vector_clock_comparison(
-            VectorClock(), pair.second->reveal().vector_clock) == kCausalLess) {
-      // only merge when the key exists
-      if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
-        // key doesn't exist in causal cut store
-        causal_cut_store[pair.first] = pair.second;
-      } else {
-        // we compare two lattices
-        unsigned comp_result =
-            causal_comparison(causal_cut_store[pair.first], pair.second);
-        if (comp_result == kCausalLess) {
-          causal_cut_store[pair.first] = pair.second;
-        } else if (comp_result == kCausalConcurrent) {
-          causal_cut_store[pair.first] =
-              causal_merge(causal_cut_store[pair.first], pair.second);
-        }
-      }
-    } else {
-      key_dne = true;
-    }
-  }
-  // notify clients
-  for (const auto& addr : in_preparation[key].first) {
-    if (pending_cross_metadata.find(addr) != pending_cross_metadata.end()) {
-      if (key_dne) {
-        pending_cross_metadata[addr].dne_set_.insert(key);
-      }
-      pending_cross_metadata[addr].to_cover_set_.erase(key);
-      if (pending_cross_metadata[addr].to_cover_set_.size() == 0) {
-        // all keys are covered, safe to read
-        // decide local and remote read set
-        if (!fire_remote_read_requests(pending_cross_metadata[addr],
-                                       version_store, causal_cut_store, pushers,
-                                       cct, log)) {
-          // all local
-          respond_to_client(pending_cross_metadata, addr, causal_cut_store,
-                            version_store, pushers, cct, unmerged_store);
-        } else {
-          client_id_to_address_map[pending_cross_metadata[addr].client_id_]
-              .insert(addr);
-        }
-      }
-    }
-  }
-  // erase the chain in in_preparation
-  in_preparation.erase(key);
 }
 
 void process_response(
@@ -506,15 +448,14 @@ void process_response(
 }
 
 void populate_causal_frontier(
-    const Key& key, const VectorClock& vc,
-    map<Key, std::unordered_set<VectorClock, VectorClockHash>>&
-        causal_frontier) {
+    const Key& key, const VectorClock& vc, const Address& cache_addr, const Address& executor_addr,
+    CausalFrontierType& causal_frontier) {
   std::unordered_set<VectorClock, VectorClockHash> to_remove;
 
-  for (const VectorClock& frontier_vc : causal_frontier[key]) {
-    if (vector_clock_comparison(frontier_vc, vc) == kCausalLess) {
-      to_remove.insert(frontier_vc);
-    } else if (vector_clock_comparison(frontier_vc, vc) ==
+  for (const auto& frontier_vc_payload_pair : causal_frontier[key]) {
+    if (vector_clock_comparison(frontier_vc_payload_pair.first, vc) == kCausalLess) {
+      to_remove.insert(frontier_vc_payload_pair.first);
+    } else if (vector_clock_comparison(frontier_vc_payload_pair.first, vc) ==
                kCausalGreaterOrEqual) {
       return;
     }
@@ -524,5 +465,384 @@ void populate_causal_frontier(
     causal_frontier[key].erase(to_remove_vc);
   }
 
-  causal_frontier[key].insert(vc);
+  causal_frontier[key].insert(std::make_pair(vc, std::make_pair(false, VersionedKeyAddressMetadata(cache_addr, executor_addr))));
 }
+
+bool remove_from_local_readset(const Key& key, CausalFrontierType& causal_frontier,
+                               const set<Key>& read_set, set<Key>& remove_candidate, const VersionStoreType& version_store) {
+  // first, check if causal_frontier have at least a version to read
+  // first check if not reading from local is OK
+  // if we don't read from local, we need to ensure two things:
+  // 1: the consistency requirement from prior causal chain need to be satisfied (via remote read)
+  // 2: the consistency of other local reads need to be satisfied, otherwise try to not read them from local as well
+  // ---
+  if (causal_frontier.find(key) == causal_frontier.end()) {
+    // abort
+    return false;
+  }
+  VectorClock vc;
+  for (const auto& vc_payload_pair : causal_frontier[key]) {
+    if (vc_payload_pair.second.first) {
+      vc.merge(vc_payload_pair.first);
+    }
+  }
+  // now we check if all causal frontier is satisfied
+  for (auto& vc_payload_pair : causal_frontier[key]) {
+    if (vector_clock_comparison(vc, vc_payload_pair.first) != kCausalGreaterOrEqual) {
+      vc_payload_pair.second.first = true;
+      vc.merge(vc_payload_pair.first);
+    }
+  }
+  // at this point, condition 1 is satisfied
+  for (const Key& other_key : read_set) {
+    if (remove_candidate.find(other_key) == remove_candidate.end()) {
+      if (version_store.at(addr_cid_pair).second.find(other_key) != version_store.at(addr_cid_pair).second.end()) {
+        // we may not reach this branch if the executor request reaches before the scheduler request
+        if (version_store.at(addr_cid_pair).second.at(other_key).find(key) != version_store.at(addr_cid_pair).second.at(other_key).end()
+            && vector_clock_comparison(vc, version_store.at(addr_cid_pair).second.at(other_key).at(key)->reveal().vector_clock) != kCausalGreaterOrEqual) {
+          // consider removing the "other_key" from read set
+          remove_candidate.insert(other_key);
+          if (!remove_from_local_readset(other_key, causal_frontier, read_set, remove_candidate, version_store)) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
+CausalFrontierType construct_causal_frontier(const CausalRequest& request) {
+  CausalFrontierType causal_frontier;
+  for (const auto& prior_version_tuple :
+       request.prior_version_tuples()) {
+    // first, convert protobuf type to VectorClock
+    VectorClock vc;
+    for (const auto& key_version_pair : prior_version_tuple.versioned_key().vector_clock()) {
+      vc.insert(key_version_pair.first, key_version_pair.second);
+    }
+    populate_causal_frontier(prior_version_tuple.versioned_key().key(), vc, prior_version_tuple.cache_address(),
+                             prior_version_tuple.executor_address(), causal_frontier);
+  }
+  return causal_frontier;
+}
+
+void optimistic_protocol(const set<Key>& read_set, const VersionStoreType& version_store, const map<Key, VectorClock>& prior_read_map,
+                         std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+                         SocketCache& pushers, const CausalCacheThread& cct, CausalFrontierType& causal_frontier, const Address& executor_address,
+                         const string& client_id) {
+  // all keys present, need to check causal consistency
+  // and figure out if we need to read anything from remote
+  // ---
+  // first, check from upstream to downstream to get minimum versions we must read
+  for (const Key& key : read_set) {
+    if (causal_frontier.find(key) != causal_frontier.end()) {
+      // figure out what key/addr need remote read assuming the local key is read
+      VectorClock vc;
+      if (version_store.at(addr_cid_pair).second.find(key) != version_store.at(addr_cid_pair).second.end()) {
+        // we may not reach this branch if the executor request reaches before the scheduler request
+        vc = version_store.at(addr_cid_pair).second.at(key).at(key)->reveal().vector_clock;
+      }
+      for (auto& vc_payload_pair: causal_frontier[key]) {
+        if (vector_clock_comparison(vc, vc_payload_pair.first) != kCausalGreaterOrEqual) {
+          // set remote read flag to true
+          vc_payload_pair.second.first = true;
+          vc.merge(vc_payload_pair.first);
+        }
+      }
+    }
+  }
+  // then for each local read, check version store to see if its chain
+  // is inconsistent with a previous read. If so we try to find a version from
+  // prior chain to read (recursively). If not possible then we need to abort
+
+  set<Key> remove_candidate;
+  for (const Key& key : read_set) {
+    if (remove_candidate.find(key) == remove_candidate.end()) {
+      if (version_store.at(addr_cid_pair).second.find(key) != version_store.at(addr_cid_pair).second.end()) {
+        // we may not reach this branch if the executor request reaches before the scheduler request
+        for (const auto& pair : version_store.at(addr_cid_pair).second(key)) {
+          if (prior_read_map.find(pair.first) != prior_read_map.end() && vector_clock_comparison(prior_read_map.at(pair.first), pair.second->reveal().vector_clock) != kCausalGreaterOrEqual) {
+            // consider removing this key fram local readset
+            remove_candidate.insert(key);
+            if (!remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, version_store)) {
+              // abort
+              CausalResponse response;
+              response.set_error(ErrorType::ABORT);
+              // send response
+              string resp_string;
+              response.SerializeToString(&resp_string);
+              kZmqUtil->send_string(resp_string, &pushers[executor_address]);
+              return;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+  // reaching here means that we don't abort
+  // issue remote read if any
+  map<Address, VersionedKeyRequest> addr_request_map;
+  for (const auto& pair : causal_frontier) {
+    for (const auto& vc_payload_pair : pair.second) {
+      if (vc_payload_pair.second.first) {
+        // remote read
+        const VersionedKeyAddressMetadata& metadata = vc_payload_pair.second.second;
+        if (addr_request_map.find(metadata.cache_address_) == addr_request_map.end()) {
+          addr_request_map[metadata.cache_address_].set_response_address(
+              cct.causal_cache_versioned_key_response_connect_address());
+          addr_request_map[metadata.cache_address_].set_source_executor_address(executor_address);
+        }
+        auto versioned_key_request_tuple_ptr = 
+                addr_request_map[metadata.cache_address_].add_versioned_key_request_tuples();
+        versioned_key_request_tuple_ptr->set_executor_address(metadata.executor_address_);
+        versioned_key_request_tuple_ptr->set_client_id(client_id);
+        versioned_key_request_tuple_ptr->set_key(pair.first);
+        // populate pending metadata
+        pending_cross_metadata[addr_cid_pair].remote_read_tracker_[pair.first].insert(vc_payload_pair.first);
+      }
+    }
+  }
+  for (const auto& pair : addr_request_map) {
+    // send request
+    string req_string;
+    pair.second.SerializeToString(&req_string);
+    kZmqUtil->send_string(req_string, &pushers[pair.first]);
+  }
+  if (addr_request_map.size() != 0) {
+    // remote read sent, merge local read to pending map
+    for (const auto& pair : version_store.at(addr_cid_pair).second) {
+      if (remove_candidate.find(pair.first) == remove_candidate.end()) {
+        pending_cross_metadata[addr_cid_pair].result_[pair.first] = pair.second.at(pair.first);
+      }
+    }
+    pending_cross_metadata[addr_cid_pair].respond_to_executor_ = true;
+  } else {
+    // respond to executor
+    CausalResponse response;
+
+    for (const auto& pair : version_store.at(addr_cid_pair).second) {
+      // first populate the requested tuple
+      CausalTuple* tp = response.add_tuples();
+      tp->set_key(pair.first);
+      tp->set_payload(serialize(*(pair.second.at(pair.first))));
+      // then populate prior_version_tuples
+      for (const auto& key_ptr_pair : pair.second) {
+        PriorVersionTuple* tp = response.add_prior_version_tuples();
+        tp->set_cache_address(cct.causal_cache_versioned_key_request_connect_address());
+        tp->set_executor_address(executor_address);
+        VersionedKey vk;
+        vk.set_key(key_ptr_pair.first);
+        auto ptr = vk.mutable_vector_clock();
+        for (const auto& client_version_pair :
+             key_ptr_pair.second->reveal().vector_clock.reveal()) {
+          (*ptr)[client_version_pair.first] = client_version_pair.second.reveal();
+        }
+        tp->set_versioned_key(std::move(vk));
+      }
+    }
+
+    // send response
+    string resp_string;
+    response.SerializeToString(&resp_string);
+    kZmqUtil->send_string(resp_string, &pushers[addr]);
+  }
+}
+
+bool covered_locally(set<Key>& read_set, set<Key>& to_cover, set<Key>& key_set, StoreType& unmerged_store,
+    InPreparationType& in_preparation, StoreType& causal_cut_store, VersionStoreType& version_store, std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+    map<Key, set<Key>>& to_fetch_map,
+    map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
+        cover_map,
+    SocketCache& pushers, KvsAsyncClientInterface* client, const CausalCacheThread& cct, CausalFrontierType& causal_frontier) {
+  bool covered = true;
+
+  for (const string& key : request.keys()) {
+    read_set.insert(key);
+    key_set.insert(key);
+
+    if (causal_cut_store.find(key) == causal_cut_store.end()
+        && causal_frontier.find(key) == causal_frontier.end()) {
+      // check if the key is in in_preparation
+      if (in_preparation.find(key) != in_preparation.end()) {
+        covered = false;
+        to_cover.insert(key);
+        in_preparation[key].first.insert(addr_cid_pair);
+      } else {
+        to_fetch_map[key] = set<Key>();
+        // check if key is in one of the sub-key of in_preparation or in
+        // unmerged_store
+        auto lattice = find_lattice_from_in_preparation(in_preparation, key);
+        if (lattice != nullptr) {
+          in_preparation[key].second[key] = lattice;
+          recursive_dependency_check(key, lattice, in_preparation,
+                                     causal_cut_store, unmerged_store,
+                                     to_fetch_map, cover_map, client, log);
+          if (to_fetch_map[key].size() == 0) {
+            // all dependency met
+            merge_into_causal_cut(key, causal_cut_store, in_preparation,
+                                  version_store, pending_cross_metadata,
+                                  pushers, cct, client_id_to_address_map, log,
+                                  unmerged_store);
+            to_fetch_map.erase(key);
+          } else {
+            in_preparation[key].first.insert(addr_cid_pair);
+            covered = false;
+            to_cover.insert(key);
+          }
+        } else if (unmerged_store.find(key) != unmerged_store.end()) {
+          in_preparation[key].second[key] = unmerged_store[key];
+          recursive_dependency_check(key, unmerged_store[key], in_preparation,
+                                     causal_cut_store, unmerged_store,
+                                     to_fetch_map, cover_map, client, log);
+          if (to_fetch_map[key].size() == 0) {
+            // all dependency met
+            merge_into_causal_cut(key, causal_cut_store, in_preparation,
+                                  version_store, pending_cross_metadata,
+                                  pushers, cct, client_id_to_address_map, log,
+                                  unmerged_store);
+            to_fetch_map.erase(key);
+          } else {
+            in_preparation[key].first.insert(addr_cid_pair);
+            covered = false;
+            to_cover.insert(key);
+          }
+        } else {
+          in_preparation[key].first.insert(addr_cid_pair);
+          covered = false;
+          to_cover.insert(key);
+          client->get_async(key);
+        }
+      }
+    }
+  }
+  return covered;
+}
+
+// this assumes that the client id and executor address are already set
+// and the request succeeded
+void send_scheduler_response(CausalSchedulerResponse& response, const AddressClientIdPair& addr_cid_pair,
+                             const VersionStoreType& version_store, SocketCache& pushers, const Address& scheduler_address) {
+  response.set_succeed(true);
+  // populate versioned keys
+  for (const auto& head_key_chain_pair: version_store.at(addr_cid_pair).second) {
+    auto map_ptr = response.mutable_version_chain();
+    for (const auto& pair : head_key_chain_pair.second) {
+      auto vk_ptr = (*map_ptr)[head_key_chain_pair.first].add_versioned_keys();
+      vk_ptr->set_key(pair.first);
+      // assemble vector clock
+      auto vc_ptr = vk_ptr->mutable_vector_clock();
+      for (const auto& client_version_pair :
+           pair.second->reveal().vector_clock.reveal()) {
+        (*vc_ptr)[client_version_pair.first] =
+            client_version_pair.second.reveal();
+      }
+    }
+  }
+
+  // send response
+  string resp_string;
+  response.SerializeToString(&resp_string);
+  kZmqUtil->send_string(resp_string, &pushers[scheduler_address]);
+}
+
+void merge_into_causal_cut(
+    const Key& key, StoreType& causal_cut_store,
+    InPreparationType& in_preparation, VersionStoreType& version_store,
+    std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+    SocketCache& pushers, const CausalCacheThread& cct,
+    map<string, set<Address>>& client_id_to_address_map, logger log,
+    const StoreType& unmerged_store) {
+  bool key_dne = false;
+  // merge from in_preparation to causal_cut_store
+  for (const auto& pair : in_preparation[key].second) {
+    if (vector_clock_comparison(
+            VectorClock(), pair.second->reveal().vector_clock) == kCausalLess) {
+      // only merge when the key exists
+      if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
+        // key doesn't exist in causal cut store
+        causal_cut_store[pair.first] = pair.second;
+      } else {
+        // we compare two lattices
+        unsigned comp_result =
+            causal_comparison(causal_cut_store[pair.first], pair.second);
+        if (comp_result == kCausalLess) {
+          causal_cut_store[pair.first] = pair.second;
+        } else if (comp_result == kCausalConcurrent) {
+          causal_cut_store[pair.first] =
+              causal_merge(causal_cut_store[pair.first], pair.second);
+        }
+      }
+    } else {
+      key_dne = true;
+    }
+  }
+  // notify executor and scheduler
+  for (const auto& addr_cid_pair : in_preparation[key].first) {
+    if (pending_cross_metadata.find(addr_cid_pair) != pending_cross_metadata.end()) {
+      if (key_dne) {
+        version_store[addr_cid_pair].first = true;
+        if (pending_cross_metadata[addr_cid_pair].respond_to_executor_) {
+          CausalResponse response;
+          response.set_error(ErrorType::KEY_DNE);
+          // send response
+          string resp_string;
+          response.SerializeToString(&resp_string);
+          kZmqUtil->send_string(resp_string, &pushers[addr_cid_pair.first]);
+        }
+        if (pending_cross_metadata[addr_cid_pair].scheduler_response_address_ != "") {
+          CausalSchedulerResponse response;
+          response.set_client_id(addr_cid_pair.second);
+          response.set_executor_address(addr_cid_pair.first);
+          response.set_succeed(false);
+          // send response
+          string resp_string;
+          response.SerializeToString(&resp_string);
+          kZmqUtil->send_string(resp_string, &pushers[pending_cross_metadata[addr_cid_pair].scheduler_response_address_]);
+        }
+        // GC
+        pending_cross_metadata.erase(addr_cid_pair);
+      } else {
+        pending_cross_metadata[addr_cid_pair].to_cover_set_.erase(key);
+        if (pending_cross_metadata[addr_cid_pair].to_cover_set_.size() == 0) {
+          // all keys covered, first populate version store entry
+          // set DNE to false
+          version_store[addr_cid_pair].first = false;
+          for (const string& key : pending_cross_metadata[addr_cid_pair].read_set_) {
+            set<Key> observed_keys;
+            if (causal_cut_store.find(key) != causal_cut_store.end()) {
+              // for scheduler, this if statement should always pass because causal frontier is set to empty
+              save_versions(addr_cid_pair, key, key, version_store, causal_cut_store,
+                            pending_cross_metadata[addr_cid_pair].full_read_set_, observed_keys);
+            }
+          }
+          if (pending_cross_metadata[addr_cid_pair].respond_to_executor_) {
+            // follow same logic as before...
+            optimistic_protocol(request, version_store, pending_cross_metadata, pushers, cct, pending_cross_metadata[addr_cid_pair].causal_frontier_, addr_cid_pair.first, addr_cid_pair.second);
+          }
+          if (pending_cross_metadata[addr_cid_pair].scheduler_response_address_ != "") {
+            CausalSchedulerResponse response;
+            response.set_client_id(addr_cid_pair.second);
+            response.set_executor_address(addr_cid_pair.first);
+            send_scheduler_response(response, addr_cid_pair, version_store, pushers, pending_cross_metadata[addr_cid_pair].scheduler_response_address_);
+          }
+          if (pending_cross_metadata[addr_cid_pair].remote_read_tracker_.size() == 0) {
+            // GC only when no remote read determined by optimistic protocol
+            pending_cross_metadata.erase(addr_cid_pair);
+          }
+        }
+      }
+    }
+  }
+  // erase the chain in in_preparation
+  in_preparation.erase(key);
+}
+
+
+
+
+
+
+
+

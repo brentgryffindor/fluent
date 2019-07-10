@@ -1,0 +1,92 @@
+//  Copyright 2018 U.C. Berkeley RISE Lab
+//
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+
+#include "causal_cache_utils.hpp"
+
+void scheduler_request_handler(
+    const string& serialized, set<Key>& key_set, StoreType& unmerged_store,
+    InPreparationType& in_preparation, StoreType& causal_cut_store,
+    VersionStoreType& version_store,
+    std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+    map<Key, set<Key>>& to_fetch_map,
+    map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
+        cover_map,
+    SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
+    const CausalCacheThread& cct) {
+
+  CausalSchedulerRequest request;
+  request.ParseFromString(serialized);
+
+  // first, check the version store and see if all data is already there
+  // this happens when the executor request reached first and already finished populating the version store
+  auto addr_cid_pair = std::make_pair(request.executor_address(), request.client_id());
+  if (version_store.find(addr_cid_pair) != version_store.end()) {
+    // the entry already exists in version store
+    CausalSchedulerResponse response;
+    response.set_client_id(request.client_id());
+    response.set_executor_address(request.executor_address());
+    if (version_store[addr_cid_pair].first) {
+      // some keys DNE
+      response.set_succeed(false);
+      // send response
+      string resp_string;
+      response.SerializeToString(&resp_string);
+      kZmqUtil->send_string(resp_string, &pushers[request.scheduler_address()]);
+    } else {
+      send_scheduler_response(response, addr_cid_pair, version_store, pushers, request.scheduler_address());
+    }
+  } else if (pending_cross_metadata.find(addr_cid_pair) != pending_cross_metadata.end()) {
+    // no entry in version store
+    // but has entry in pending cross metadata
+    // this means that executor already issued the GET request but not all required data
+    // have been fetched from the KVS, so we just add scheduler address to the pending map
+    pending_cross_metadata[addr_cid_pair].scheduler_response_address_ = request.scheduler_address();
+  } else {
+    // no entry at all
+    // we first check if all requested keys are covered by the cache
+    set<Key> read_set;
+    set<Key> to_cover;
+    CausalFrontierType causal_frontier;
+
+    if (!covered_locally(read_set, to_cover, key_set, unmerged_store, in_preparation, causal_cut_store, 
+                        version_store, pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct, causal_frontier)) {
+      pending_cross_metadata[addr_cid_pair].read_set_ = read_set;
+      pending_cross_metadata[addr_cid_pair].to_cover_set_ =
+          to_cover;
+      pending_cross_metadata[addr_cid_pair].scheduler_response_address_ = request.scheduler_address();
+    } else {
+      // all keys covered, first populate version store entry
+      // in this case, it's not possible that keys DNE
+      version_store[addr_cid_pair].first = false;
+      // retrieve full read set
+      set<Key> full_read_set;
+      for (string& key : request.full_read_set()) {
+        full_read_set.emplace(std::move(key));
+      }
+      for (const string& key : request.keys()) {
+        set<Key> observed_keys;
+        if (causal_cut_store.find(key) != causal_cut_store.end()) {
+          // for scheduler, this if statement should always pass because causal frontier is set to empty
+          save_versions(addr_cid_pair, key, key, version_store, causal_cut_store,
+                        full_read_set, observed_keys);
+        }
+      }
+      // then respond to scheduler
+      CausalSchedulerResponse response;
+      response.set_client_id(request.client_id());
+      response.set_executor_address(request.executor_address());
+      send_scheduler_response(response, addr_cid_pair, version_store, pushers, request.scheduler_address());
+    }
+  }
+}

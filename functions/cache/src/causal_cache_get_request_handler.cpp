@@ -20,23 +20,21 @@ void get_request_handler(
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    map<Address, PendingClientMetadata>& pending_cross_metadata,
+    std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
-    const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map) {
+    const CausalCacheThread& cct) {
   CausalRequest request;
   request.ParseFromString(serialized);
 
-  bool covered_locally = true;
-  set<Key> read_set;
-  set<Key> to_cover;
-
-  // check if the keys are covered locally
   if (request.consistency() == ConsistencyType::SINGLE) {
-    for (CausalTuple tuple : request.tuples()) {
+    bool covered_locally = true;
+    set<Key> read_set;
+    set<Key> to_cover;
+    // check if the keys are covered locally
+    for (const CausalTuple& tuple : request.tuples()) {
       Key key = tuple.key();
       read_set.insert(key);
       key_set.insert(key);
@@ -66,129 +64,107 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
-    // first, we compute the condensed version of prior causal chains
-    map<Key, std::unordered_set<VectorClock, VectorClockHash>> causal_frontier;
-
-    for (const auto& addr_versioned_key_list_pair :
-         request.versioned_key_locations()) {
-      for (const auto& versioned_key :
-           addr_versioned_key_list_pair.second.versioned_keys()) {
-        // first, convert protobuf type to VectorClock
-        VectorClock vc;
-        for (const auto& key_version_pair : versioned_key.vector_clock()) {
-          vc.insert(key_version_pair.first, key_version_pair.second);
+    // we first check if the version store is already populated by the scheduler
+    // if so, means that all data should already be fetched or DNE
+    auto addr_cid_pair = std::make_pair(request.response_address(), request.id());
+    if (version_store.find(addr_cid_pair) != version_store.end()) {
+      if (version_store[addr_cid_pair].first) {
+        // some keys DNE
+        CausalResponse response;
+        response.set_error(ErrorType::KEY_DNE);
+        // send response
+        string resp_string;
+        response.SerializeToString(&resp_string);
+        kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
+      } else {
+        CausalFrontierType causal_frontier = construct_causal_frontier(request);
+        // construct a read set
+        set<Key> read_set;
+        for (const auto& tuple : request.tuples()) {
+          read_set.insert(tuple.key());
         }
-
-        populate_causal_frontier(versioned_key.key(), vc, causal_frontier);
-      }
-    }
-    // now we have the causal frontier
-    // we can populate prior causal chain
-    for (const auto& addr_versioned_key_list_pair :
-         request.versioned_key_locations()) {
-      for (const auto& versioned_key :
-           addr_versioned_key_list_pair.second.versioned_keys()) {
-        // first, convert protobuf type to VectorClock
-        VectorClock vc;
-        for (const auto& key_version_pair : versioned_key.vector_clock()) {
-          vc.insert(key_version_pair.first, key_version_pair.second);
-        }
-
-        if (causal_frontier[versioned_key.key()].find(vc) !=
-            causal_frontier[versioned_key.key()].end()) {
-          pending_cross_metadata[request.response_address()]
-              .prior_causal_chains_[addr_versioned_key_list_pair.first]
-                                   [versioned_key.key()] = vc;
-        }
-      }
-    }
-    // set the client id field of PendingClientMetadata
-    pending_cross_metadata[request.response_address()].client_id_ =
-        request.id();
-
-    // set the future read set field
-    for (const Key& key : request.future_read_set()) {
-      pending_cross_metadata[request.response_address()]
-          .future_read_set_.insert(key);
-    }
-
-    for (CausalTuple tuple : request.tuples()) {
-      Key key = tuple.key();
-      read_set.insert(key);
-      key_set.insert(key);
-
-      if (causal_cut_store.find(key) == causal_cut_store.end() &&
-          causal_frontier.find(key) == causal_frontier.end()) {
-        // check if the key is in in_preparation
-        if (in_preparation.find(key) != in_preparation.end()) {
-          covered_locally = false;
-          to_cover.insert(key);
-          in_preparation[key].first.insert(request.response_address());
-        } else {
-          to_fetch_map[key] = set<Key>();
-          // check if key is in one of the sub-key of in_preparation or in
-          // unmerged_store
-          auto lattice = find_lattice_from_in_preparation(in_preparation, key);
-          if (lattice != nullptr) {
-            in_preparation[key].second[key] = lattice;
-            recursive_dependency_check(key, lattice, in_preparation,
-                                       causal_cut_store, unmerged_store,
-                                       to_fetch_map, cover_map, client, log);
-            if (to_fetch_map[key].size() == 0) {
-              // all dependency met
-              merge_into_causal_cut(key, causal_cut_store, in_preparation,
-                                    version_store, pending_cross_metadata,
-                                    pushers, cct, client_id_to_address_map, log,
-                                    unmerged_store);
-              to_fetch_map.erase(key);
-            } else {
-              in_preparation[key].first.insert(request.response_address());
-              covered_locally = false;
-              to_cover.insert(key);
-            }
-          } else if (unmerged_store.find(key) != unmerged_store.end()) {
-            in_preparation[key].second[key] = unmerged_store[key];
-            recursive_dependency_check(key, unmerged_store[key], in_preparation,
-                                       causal_cut_store, unmerged_store,
-                                       to_fetch_map, cover_map, client, log);
-            if (to_fetch_map[key].size() == 0) {
-              // all dependency met
-              merge_into_causal_cut(key, causal_cut_store, in_preparation,
-                                    version_store, pending_cross_metadata,
-                                    pushers, cct, client_id_to_address_map, log,
-                                    unmerged_store);
-              to_fetch_map.erase(key);
-            } else {
-              in_preparation[key].first.insert(request.response_address());
-              covered_locally = false;
-              to_cover.insert(key);
-            }
-          } else {
-            in_preparation[key].first.insert(request.response_address());
-            covered_locally = false;
-            to_cover.insert(key);
-            client->get_async(key);
+        // it's not possible to read different versions of the same key in prior execution
+        // because otherwise it'll be aborted, so a simple map is fine
+        map<Key, VectorClock> prior_read_map;
+        // store prior read to a map
+        for (const auto& versioned_key : request.prior_read_map()) {
+          // convert protobuf type to VectorClock
+          for (const auto& key_version_pair : versioned_key.vector_clock()) {
+            prior_read_map[versioned_key.key()].insert(key_version_pair.first, key_version_pair.second);
           }
         }
+        optimistic_protocol(read_set, version_store, prior_read_map, pending_cross_metadata, pushers, cct, causal_frontier, addr_cid_pair.first, addr_cid_pair.second);
       }
-    }
-    if (!covered_locally) {
-      pending_cross_metadata[request.response_address()].read_set_ = read_set;
-      pending_cross_metadata[request.response_address()].to_cover_set_ =
-          to_cover;
+    } else if (pending_cross_metadata.find(addr_cid_pair) != pending_cross_metadata.end()) {
+      // this means that the scheduler request arrives first and is still fetching required data from Anna
+      // so we set the executor flag to true and populate necessary metadata and wait for these data to arrive
+      pending_cross_metadata[addr_cid_pair].respond_to_executor_ = true;
+      // construct causal frontier
+      pending_cross_metadata[addr_cid_pair].causal_frontier_ = construct_causal_frontier(request);
+      // store prior read to a map
+      for (const auto& versioned_key : request.prior_read_map()) {
+        // convert protobuf type to VectorClock
+        for (const auto& key_version_pair : versioned_key.vector_clock()) {
+          pending_cross_metadata[addr_cid_pair].prior_read_map_[versioned_key.key()].insert(key_version_pair.first, key_version_pair.second);
+        }
+      }
+      // store full read set for constructing version store later
+      for (const Key& key : request.full_read_set()) {
+        pending_cross_metadata[addr_cid_pair].full_read_set_.emplace(std::move(key));
+      }
     } else {
-      pending_cross_metadata[request.response_address()].read_set_ = read_set;
-      // decide local and remote read set
-      if (!fire_remote_read_requests(
-              pending_cross_metadata[request.response_address()], version_store,
-              causal_cut_store, pushers, cct, log)) {
-        // all local
-        respond_to_client(pending_cross_metadata, request.response_address(),
-                          causal_cut_store, version_store, pushers, cct,
-                          unmerged_store);
+      // scheduler request hasn't arrived yet
+      set<Key> read_set;
+      set<Key> to_cover;
+      CausalFrontierType causal_frontier = construct_causal_frontier(request);
+      if (!covered_locally(read_set, to_cover, key_set, unmerged_store, in_preparation, causal_cut_store, 
+                          version_store, pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct, causal_frontier)) {
+        pending_cross_metadata[addr_cid_pair].read_set_ = read_set;
+        pending_cross_metadata[addr_cid_pair].to_cover_set_ =
+            to_cover;
+        pending_cross_metadata[addr_cid_pair].respond_to_executor_ = true;
+        // store causal frontier
+        pending_cross_metadata[addr_cid_pair].causal_frontier_ = causal_frontier;
+        // store prior read to a map
+        for (const auto& versioned_key : request.prior_read_map()) {
+          // convert protobuf type to VectorClock
+          for (const auto& key_version_pair : versioned_key.vector_clock()) {
+            pending_cross_metadata[addr_cid_pair].prior_read_map_[versioned_key.key()].insert(key_version_pair.first, key_version_pair.second);
+          }
+        }
+        // store full read set for constructing version store later
+        for (const Key& key : request.full_read_set()) {
+          pending_cross_metadata[addr_cid_pair].full_read_set_.emplace(std::move(key));
+        }
       } else {
-        client_id_to_address_map[request.id()].insert(
-            request.response_address());
+        // all keys covered, first populate version store entry
+        // in this case, it's not possible that keys DNE
+        version_store[addr_cid_pair].first = false;
+        // retrieve full read set
+        set<Key> full_read_set;
+        for (string& key : request.full_read_set()) {
+          full_read_set.emplace(std::move(key));
+        }
+        for (const string& key : read_set) {
+          set<Key> observed_keys;
+          if (causal_cut_store.find(key) != causal_cut_store.end()) {
+            // save version only when the local data exists
+            save_versions(addr_cid_pair, key, key, version_store, causal_cut_store,
+                          full_read_set, observed_keys);
+          }
+        }
+        // follow same logic as before...
+        // it's not possible to read different versions of the same key in prior execution
+        // because otherwise it'll be aborted, so a simple map is fine
+        map<Key, VectorClock> prior_read_map;
+        // store prior read to a map
+        for (const auto& versioned_key : request.prior_read_map()) {
+          // convert protobuf type to VectorClock
+          for (const auto& key_version_pair : versioned_key.vector_clock()) {
+            prior_read_map[versioned_key.key()].insert(key_version_pair.first, key_version_pair.second);
+          }
+        }
+        optimistic_protocol(read_set, version_store, prior_read_map, pending_cross_metadata, pushers, cct, causal_frontier, addr_cid_pair.first, addr_cid_pair.second);
       }
     }
   } else {
