@@ -45,7 +45,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   map<Key, set<Address>> single_callback_map;
 
   map<Address, PendingClientMetadata> pending_single_metadata;
-  std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash> pending_cross_metadata;
+  std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash> pending_cross_metadata;
 
   // mapping from request id to response address of PUT request
   map<string, Address> request_id_to_address_map;

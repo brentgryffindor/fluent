@@ -55,7 +55,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
 
 
 def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
-             running_counts, backoff):
+             running_counts, backoff, scheduler_ip, pending_versioned_key_collection_response, versioned_key_map):
     dag, sources = dags[call.name]
 
     schedule = DagSchedule()
@@ -72,6 +72,15 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     if call.HasField('client_id'):
         schedule.client_id = call.client_id
 
+    if schedule.consistency == CROSS:
+        # define read set and full read set
+        # and set dag name
+        # also initialize the versioned key map
+        read_set = []
+        full_read_set = set()
+        versioned_key_map[schedule.client_id][0] = call.name
+        versioned_key_map[schedule.client_id][1] = {}
+
 
     for fname in dag.functions:
         locations = func_locations[fname]
@@ -86,6 +95,13 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
+
+        # populate read set and full read set
+        if schedule.consistency == CROSS:
+            versioned_key_map[schedule.client_id][1][fname] = schedule.locations[fname]
+            if len(refs) != 0:
+                read_set[fname] = set(ref.key for ref in refs)
+                full_read_set = full_read_set.union(read_set[fname])
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
@@ -111,6 +127,29 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         ip = sutils._get_dag_trigger_address(schedule.locations[source])
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
+
+    # if we are in causal mode, start the conservative protocol by querying the caches for key versions
+    if schedule.consistency == CROSS:
+        for func in schedule.locations:
+            if func in read_set:
+                loc = schedule.locations[func].split(':')
+                ip = utils._get_cache_version_query_address(loc[0], 0)
+                version_query_request = CausalSchedulerRequest()
+                version_query_request.client_id = schedule.client_id
+                version_query_request.function_name = func
+                version_query_request.scheduler_address = utils._get_scheduler_versioned_key_collection_address(scheduler_ip)
+                # find out which arguments are kvs references
+                version_query_request.keys.extend(read_set[func])
+                # populate full read set
+                version_query_request.full_read_set.extend(full_read_set)
+
+                sckt = pusher_cache.get(ip)
+                sckt.send(version_query_request.SerializeToString())
+
+                if schedule.client_id not in pending_versioned_key_collection_response:
+                    pending_versioned_key_collection_response[schedule.client_id] = set(func)
+                else:
+                    pending_versioned_key_collection_response[schedule.client_id].add(func)
 
     if schedule.HasField('output_key'):
         return schedule.output_key

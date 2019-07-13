@@ -25,6 +25,8 @@ NUM_EXEC_THREADS = 3
 EXECUTORS_PORT = 7002
 SCHEDULERS_PORT = 7004
 
+SCHEDULERS_VERSIONED_KEY_COLLECTION_PORT = 5100
+
 
 def _get_func_list(client, prefix, fullname=False):
     funcs = client.get(FUNCOBJ)
@@ -70,6 +72,10 @@ def _get_queue_address(ip, tid):
     return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + int(tid))
 
 
+def _get_cache_version_query_address(ip, tid):
+    return 'tcp://' + ip + ':' + str(CACHE_VERSION_QUERY_PORT + int(tid))
+
+
 def _get_scheduler_list_address(mgmt_ip):
     return 'tcp://' + mgmt_ip + ':' + str(SCHEDULERS_PORT)
 
@@ -80,6 +86,10 @@ def _get_executor_list_address(mgmt_ip):
 
 def _get_scheduler_update_address(ip):
     return 'tcp://' + ip + ':' + str(SCHED_UPDATE_PORT)
+
+
+def _get_scheduler_versioned_key_collection_address(ip):
+    return 'tcp://' + ip + ':' + str(SCHEDULERS_VERSIONED_KEY_COLLECTION_PORT)
 
 
 def _get_ip_set(request_ip, socket_cache, exec_threads=True):

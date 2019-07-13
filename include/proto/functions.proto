@@ -162,18 +162,19 @@ message CausalTuple {
 
 message PriorVersionTuple {
   required string cache_address = 1;
-  required string executor_address = 2;
+  required string function_name = 2;
   required VersionedKey versioned_key = 3;
 }
 
 message CausalRequest {
   required ConsistencyType consistency = 1;
   required string client_id = 2;
-  repeated CausalTuple tuples = 3;
-  repeated string full_read_set = 4;
-  repeated VersionedKey prior_read_map = 5;
-  repeated PriorVersionTuple prior_version_tuples = 6;
-  optional string response_address = 7;
+  required string function_name = 3;
+  repeated string keys = 4;
+  repeated string full_read_set = 5;
+  repeated VersionedKey prior_read_map = 6;
+  repeated PriorVersionTuple prior_version_tuples = 7;
+  optional string response_address = 8;
 }
 
 message CausalResponse {
@@ -184,7 +185,7 @@ message CausalResponse {
 
 message CausalSchedulerRequest {
   required string client_id = 1;
-  required string executor_address = 2;
+  required string function_name = 2;
   required string scheduler_address = 3;
   repeated string keys = 4;
   repeated string full_read_set = 5;
@@ -192,25 +193,25 @@ message CausalSchedulerRequest {
 
 message CausalSchedulerResponse {
   required string client_id = 1;
-  required string executor_address = 2;
+  required string function_name = 2;
   required bool succeed = 3;
   map<string, VersionedKeyList> version_chain = 4;
 }
 
 message VersionedKeyRequestTuple {
-  required string executor_address = 1;
-  required string client_id = 2;
-  required string key = 3;
+  required string function_name = 1;
+  required string key = 2;
 }
 
 message VersionedKeyRequest {
   required string response_address = 1;
-  required string source_executor_address = 2;
-  repeated VersionedKeyRequestTuple versioned_key_request_tuples = 3;
+  required string client_id = 2;
+  required string function_name = 3;
+  repeated VersionedKeyRequestTuple versioned_key_request_tuples = 4;
 }
 
 message VersionedKeyResponse {
-  required string executor_address = 1;
-  required string client_id = 2;
+  required string client_id = 1;
+  required string function_name = 2;
   repeated CausalTuple tuples = 3;
 }

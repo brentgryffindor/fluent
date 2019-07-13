@@ -23,7 +23,7 @@ void get_request_handler(
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -44,7 +44,7 @@ void versioned_key_request_handler(const string& serialized,
 void versioned_key_response_handler(
     const string& serialized, StoreType& causal_cut_store,
     VersionStoreType& version_store,
-    map<Address, PendingClientMetadata>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<string, set<Address>>& client_id_to_address_map,
     const CausalCacheThread& cct, SocketCache& pushers,
     ZmqUtilInterface* kZmqUtil, logger log);
@@ -79,7 +79,7 @@ void scheduler_request_handler(
     const string& serialized, set<Key>& key_set, StoreType& unmerged_store,
     InPreparationType& in_preparation, StoreType& causal_cut_store,
     VersionStoreType& version_store,
-    std::unordered_map<AddressClientIdPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,

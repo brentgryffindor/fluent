@@ -49,6 +49,15 @@ def scheduler(ip, mgmt_ip, route_addr):
     running_counts = {}
     backoff = {}
 
+    # this is a map from client id to a list of function names
+    # used in conservative protocol for causal consistency
+    pending_versioned_key_collection_response = {}
+
+    # this is a map from client id to versioned key metadata
+    # map<client_id, tuple(dag_name, map<fname, map<string, VersionedKeyList>>)>
+    # used in conservative protocol for causal consistency
+    versioned_key_map = {}
+
     connect_socket = ctx.socket(zmq.REP)
     connect_socket.bind(sutils.BIND_ADDR_TEMPLATE % (CONNECT_PORT))
 
@@ -85,6 +94,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     pin_accept_socket.bind(sutils.BIND_ADDR_TEMPLATE %
                            (sutils.PIN_ACCEPT_PORT))
 
+    versioned_key_collection_socket = ctx.socket(zmq.PULL)
+    versioned_key_collection_socket.bind(sutils.BIND_ADDR_TEMPLATE % (utils.SCHEDULERS_VERSIONED_KEY_COLLECTION_PORT))
+
     requestor_cache = SocketCache(ctx, zmq.REQ)
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
@@ -99,6 +111,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(exec_status_socket, zmq.POLLIN)
     poller.register(sched_update_socket, zmq.POLLIN)
     poller.register(backoff_socket, zmq.POLLIN)
+    poller.register(versioned_key_collection_socket, zmq.POLLIN)
 
     executors = set()
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
@@ -148,7 +161,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                 call_frequency[fname] += 1
 
             rid = call_dag(call, pusher_cache, dags, func_locations,
-                           key_ip_map, running_counts, backoff)
+                           key_ip_map, running_counts, backoff, ip, pending_versioned_key_collection_response, versioned_key_map)
 
             resp = GenericResponse()
             resp.success = True
@@ -251,6 +264,43 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             backoff[(node, tid)] = time.time()
 
+        if versioned_key_collection_socket in socks and socks[versioned_key_collection_socket] == zmq.POLLIN:
+            #TODO: update pending map and versioned key map. if collected all, run conservative protocol
+            response = CausalSchedulerResponse()
+            response.ParseFromString(versioned_key_collection_socket.recv())
+            if response.succeed == False:
+                # TODO: handle abort
+                xxx
+            else:
+                if response.client_id in pending_versioned_key_collection_response:
+                    pending_versioned_key_collection_response[response.client_id].remove(response.function_name)
+                    versioned_key_map[response.client_id][1][response.function_name] = response.version_chain
+                    if len(pending_versioned_key_collection_response[response.client_id]) == 0:
+                        # trigger conservative protocol
+                        # TODO: refactor to a function
+                        dag_name = versioned_key_map[response.client_id][0]
+                        # a map from function name to a set of function names that trigger it
+                        function_trigger_map = {}
+                        for fname in dags[dag_name][0].functions:
+                            function_trigger_map[fname] = _find_upstream(fname, dags[dag_name][0])
+
+                        finished_functions = set()
+                        while (len(finished_functions) < len(dags[dag_name][0].functions)):
+                            for fname in function_trigger_map:
+                                if not fname in finished_functions:
+                                    finished = True
+                                    for trigger_function in function_trigger_map[fname]:
+                                        if trigger_function not in finished_functions:
+                                            finished = False
+                                    if finished:
+                                        if (len(function_trigger_map[fname]) > 1):
+                                            # check prior version tuples from multiple chains to make sure we don't abort
+                                            xxx
+                                        finished_functions.add(fname)
+
+
+
+
         # periodically clean up the running counts map
         for executor in running_counts:
             call_times = running_counts[executor]
@@ -319,3 +369,11 @@ def _update_cluster_state(requestor_cache, mgmt_ip, executors, key_ip_map,
                                    requestor_cache, False)
 
     return schedulers
+
+def _find_upstream(fname, dag):
+    upstream = set()
+    for conn in dag.connections:
+        if conn.sink == fname:
+            upstream.add(conn.source)
+    return upstream
+
