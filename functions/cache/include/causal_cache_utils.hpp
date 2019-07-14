@@ -82,6 +82,7 @@ struct PendingClientMetadata {
   map<Key, VectorClock> prior_read_map_;
   set<Key> full_read_set_;
   map<Key, std::unordered_set<VectorClock, VectorClockHash>> remote_read_tracker_;
+  set<Key> remove_set_;
   StoreType result_;
   Address executor_response_address_;
   Address scheduler_response_address_;

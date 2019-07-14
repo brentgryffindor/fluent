@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 from .functions_pb2 import *
+from enum import Enum
 
 # shared constants
 FUNC_PREFIX = 'funcs/'
@@ -45,6 +46,22 @@ ok = GenericResponse()
 ok.success = True
 ok_resp = ok.SerializeToString()
 
+class CausalComp(Enum):
+    GreaterOrEqual = 1
+    Less = 2
+    Concurrent = 3
+
+class DagConsistencyMetadata:
+    def __init__(self, name):
+        self.dag_name = name
+        # map<fname, map<head_key, map<key, vc>>>
+        self.per_func_versioned_key_chain = {}
+        # map<fname, set()>
+        self.per_func_read_set = {}
+        # map<key, vc>
+        self.global_causal_cut = {}
+        # map<key, list[tuple(vc, cache_addr, fname)]>
+        self.global_causal_frontier = {}
 
 def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname
@@ -79,3 +96,25 @@ def _get_dag_predecessors(dag, fname):
 
 def _get_user_msg_inbox_addr(ip, tid):
     return 'tcp://' + ip + ':' + str(int(tid) + RECV_INBOX_PORT)
+
+
+def _merge_vector_clock(lhs, rhs):
+    result = lhs.copy()
+    for cid in rhs:
+        if cid not in result:
+            result[cid] = rhs[cid]
+        else:
+            result[cid] = max(result[cid], rhs[cid])
+    return result
+
+def _compare_vector_clock(lhs, rhs):
+    lhs_prev_vc = lhs.copy()
+    lhs_vc = lhs.copy()
+    rhs_vc = rhs.copy()
+    lhs_vc = _merge_vector_clock(lhs_vc, rhs_vc)
+    if lhs_prev_vc == lhs_vc:
+        return CausalComp.GreaterOrEqual
+    elif lhs_vc == rhs_vc:
+        return CausalComp.Less
+    else:
+        return CausalComp.Concurrent

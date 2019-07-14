@@ -78,8 +78,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         # also initialize the versioned key map
         read_set = []
         full_read_set = set()
-        versioned_key_map[schedule.client_id][0] = call.name
-        versioned_key_map[schedule.client_id][1] = {}
+        versioned_key_map[schedule.client_id] = sutils.DagConsistencyMetadata(call.name)
 
 
     for fname in dag.functions:
@@ -98,10 +97,10 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
         # populate read set and full read set
         if schedule.consistency == CROSS:
-            versioned_key_map[schedule.client_id][1][fname] = schedule.locations[fname]
             if len(refs) != 0:
                 read_set[fname] = set(ref.key for ref in refs)
                 full_read_set = full_read_set.union(read_set[fname])
+                versioned_key_map[schedule.client_id].per_func_read_set[fname] = read_set[fname]
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')

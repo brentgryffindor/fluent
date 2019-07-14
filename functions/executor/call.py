@@ -228,7 +228,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
         # combine dependencies from previous func
         for dep in trigger.dependencies:
             if dep.key in dependencies:
-                dependencies[dep.key] = _merge_vector_clock(
+                dependencies[dep.key] = sutils._merge_vector_clock(
                       dependencies[dep.key], dep.vector_clock)
             else:
                 dependencies[dep.key] = dep.vector_clock
@@ -241,7 +241,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
 
     for key in kv_pairs:
         if key in dependencies:
-            dependencies[key] = _merge_vector_clock(dependencies[key],
+            dependencies[key] = sutils._merge_vector_clock(dependencies[key],
                                                     kv_pairs[key][0])
         else:
             dependencies[key] = kv_pairs[key][0]
@@ -372,13 +372,3 @@ def _compute_children_read_set(schedule):
             future_read_set += (ref.key,)
 
     return future_read_set
-
-
-def _merge_vector_clock(lhs, rhs):
-    result = lhs
-    for cid in rhs:
-        if cid not in result:
-            result[cid] = rhs[cid]
-        else:
-            result[cid] = max(result[cid], rhs[cid])
-    return result

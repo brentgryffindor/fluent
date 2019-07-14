@@ -617,6 +617,7 @@ void optimistic_protocol(const ClientIdFunctionPair& cid_function_pair, const se
       }
     }
     pending_cross_metadata[cid_function_pair].executor_response_address_ = response_address;
+    pending_cross_metadata[cid_function_pair].remove_set_ = remove_candidate;
   } else {
     // all local read
     // respond to executor
@@ -628,18 +629,20 @@ void optimistic_protocol(const ClientIdFunctionPair& cid_function_pair, const se
       tp->set_key(pair.first);
       tp->set_payload(serialize(*(pair.second.at(pair.first))));
       // then populate prior_version_tuples
-      for (const auto& key_ptr_pair : pair.second) {
-        PriorVersionTuple* tp = response.add_prior_version_tuples();
-        tp->set_cache_address(cct.causal_cache_versioned_key_request_connect_address());
-        tp->set_function_name(cid_function_pair.second);
-        VersionedKey vk;
-        vk.set_key(key_ptr_pair.first);
-        auto ptr = vk.mutable_vector_clock();
-        for (const auto& client_version_pair :
-             key_ptr_pair.second->reveal().vector_clock.reveal()) {
-          (*ptr)[client_version_pair.first] = client_version_pair.second.reveal();
+      if (remove_candidate.find(pair.first) == remove_candidate.end()) {
+        for (const auto& key_ptr_pair : pair.second) {
+          PriorVersionTuple* tp = response.add_prior_version_tuples();
+          tp->set_cache_address(cct.causal_cache_versioned_key_request_connect_address());
+          tp->set_function_name(cid_function_pair.second);
+          VersionedKey vk;
+          vk.set_key(key_ptr_pair.first);
+          auto ptr = vk.mutable_vector_clock();
+          for (const auto& client_version_pair :
+               key_ptr_pair.second->reveal().vector_clock.reveal()) {
+            (*ptr)[client_version_pair.first] = client_version_pair.second.reveal();
+          }
+          tp->set_versioned_key(std::move(vk));
         }
-        tp->set_versioned_key(std::move(vk));
       }
     }
 
