@@ -215,3 +215,48 @@ message VersionedKeyResponse {
   required string function_name = 2;
   repeated CausalTuple tuples = 3;
 }
+
+message FunctionKeyPair {
+  required string source_function_name = 1;
+  required string target_function_name = 2;
+  required string key = 3;
+}
+
+message PerCacheFunctionKeyPair {
+  required string cache_address = 1;
+  repeated FunctionKeyPair function_key_pairs = 2;
+}
+
+message PerFunctionReadSet {
+  required string function_name = 1;
+  repeated string keys = 2;
+}
+
+message SchedulerKeyShippingRequest {
+  required string client_id = 1;
+  required string response_address = 2;
+  repeated PerFunctionReadSet per_function_readsets = 3;
+  repeated PerCacheFunctionKeyPair per_cache_function_key_pairs = 4;
+}
+
+message SchedulerKeyShippingResponse {
+  required string client_id = 1;
+  required string cache_address = 2;
+}
+
+message KeyShippingRequest {
+  required string client_id = 1;
+  required string response_address = 2;
+  repeated FunctionKeyPair function_key_pairs = 3;
+}
+
+message FunctionCausalTuplePair {
+  required string function_name = 1;
+  required CausalTuple tuple = 2;
+}
+
+message KeyShippingResponse {
+  required string client_id = 1;
+  required string cache_address = 2;
+  repeated FunctionCausalTuplePair function_causal_tuple_pairs = 3;
+}

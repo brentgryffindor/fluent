@@ -37,6 +37,9 @@ const unsigned kCausalCacheVersionGCPort = 7200;
 const unsigned kCausalCacheVersionedKeyRequestPort = 7250;
 const unsigned kCausalCacheVersionedKeyResponsePort = 7300;
 const unsigned kCausalCacheSchedulerRequestPort = 7350;
+const unsigned kCausalCacheSchedulerKeyShippingRequestPort = 7400;
+const unsigned kCausalCacheKeyShippingRequestPort = 7450;
+const unsigned kCausalCacheKeyShippingResponsePort = 7500;
 
 const string kBindBase = "tcp://*:";
 
@@ -147,6 +150,36 @@ class CausalCacheThread {
   Address causal_cache_scheduler_request_connect_address() const {
     return ip_base_ +
            std::to_string(tid_ + kCausalCacheSchedulerRequestPort);
+  }
+
+  Address causal_cache_scheduler_key_shipping_request_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCausalCacheSchedulerKeyShippingRequestPort);
+  }
+
+  Address causal_cache_scheduler_key_shipping_request_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheSchedulerKeyShippingRequestPort);
+  }
+
+  Address causal_cache_key_shipping_request_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCausalCacheKeyShippingRequestPort);
+  }
+
+  Address causal_cache_key_shipping_request_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheKeyShippingRequestPort);
+  }
+
+  Address causal_cache_key_shipping_response_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCausalCacheKeyShippingResponsePort);
+  }
+
+  Address causal_cache_key_shipping_response_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheKeyShippingResponsePort);
   }
 };
 

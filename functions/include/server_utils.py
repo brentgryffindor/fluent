@@ -26,6 +26,8 @@ DAG_QUEUE_PORT = 4030
 DAG_EXEC_PORT = 4040
 SELF_DEPART_PORT = 4050
 CACHE_VERSION_QUERY_PORT = 7350
+CACHE_SCHEDULER_KEY_SHIPPING_REQUEST_PORT = 7400
+CACHE_KEY_SHIPPING_REQUEST_PORT = 7450
 
 STATUS_PORT = 5007
 SCHED_UPDATE_PORT = 5008
@@ -60,8 +62,11 @@ class DagConsistencyMetadata:
         self.per_func_read_set = {}
         # map<key, vc>
         self.global_causal_cut = {}
-        # map<key, list[tuple(vc, cache_addr, fname)]>
+        # map<key, list[tuple(vc, fname)]>
         self.global_causal_frontier = {}
+        # map<fname, (ip, tid)>
+        self.func_location = {}
+        self.schedule = None
 
 def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname

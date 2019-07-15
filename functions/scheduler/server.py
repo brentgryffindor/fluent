@@ -52,6 +52,10 @@ def scheduler(ip, mgmt_ip, route_addr):
     # used in conservative protocol for causal consistency
     pending_versioned_key_collection_response = {}
 
+    # a map from client id to tuple(schedule, list(pending caches))
+    # used in conservative protocol for causal consistency
+    pending_conservative_response = {}
+
     # this is a map from client id to DagConsistencyMetadata
     # map<client_id, DagConsistencyMetadata>
     # used in conservative protocol for causal consistency
@@ -96,6 +100,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     versioned_key_collection_socket = ctx.socket(zmq.PULL)
     versioned_key_collection_socket.bind(sutils.BIND_ADDR_TEMPLATE % (utils.SCHEDULERS_VERSIONED_KEY_COLLECTION_PORT))
 
+    key_shipping_response_socket = ctx.socket(zmq.PULL)
+    key_shipping_response_socket.bind(sutils.BIND_ADDR_TEMPLATE % (utils.SCHEDULERS_KEY_SHIPPING_RESPONSE_PORT))
+
     requestor_cache = SocketCache(ctx, zmq.REQ)
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
@@ -111,6 +118,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(sched_update_socket, zmq.POLLIN)
     poller.register(backoff_socket, zmq.POLLIN)
     poller.register(versioned_key_collection_socket, zmq.POLLIN)
+    poller.register(key_shipping_response_socket, zmq.POLLIN)
 
     executors = set()
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
@@ -152,8 +160,6 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                 dag_call_socket.send(resp.SerializeToString())
                 continue
-
-            exec_id = generate_timestamp(0)
 
             dag = dags[call.name]
             for fname in dag[0].functions:
@@ -264,11 +270,11 @@ def scheduler(ip, mgmt_ip, route_addr):
             backoff[(node, tid)] = time.time()
 
         if versioned_key_collection_socket in socks and socks[versioned_key_collection_socket] == zmq.POLLIN:
-            #TODO: update pending map and versioned key map. if collected all, run conservative protocol
+            # update pending map and versioned key map. if collected all, run conservative protocol
             response = CausalSchedulerResponse()
             response.ParseFromString(versioned_key_collection_socket.recv())
             if response.succeed == False:
-                # TODO: handle fail
+                # TODO: handle dne
                 xxx
             else:
                 if response.client_id in pending_versioned_key_collection_response:
@@ -286,7 +292,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 versioned_key_map[response.client_id].global_causal_cut[vk.key] = sutils._merge_vector_clock(versioned_key_map[response.client_id].global_causal_cut[vk.key], vk.vector_clock)
                             # also, update global causal frontier
                             if vk.key not in versioned_key_map[response.client_id].global_causal_frontier:
-                                versioned_key_map[response.client_id].global_causal_frontier[vk.key] = [(vk.vector_clock, TODO: CACHE_ADDR, response.function_name)]
+                                versioned_key_map[response.client_id].global_causal_frontier[vk.key] = [(vk.vector_clock, response.function_name)]
                             else:
                                 to_remove = []
                                 dominated = False
@@ -300,7 +306,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                     continue
                                 for tp in to_remove:
                                     versioned_key_map[response.client_id].global_causal_frontier[vk.key].remove(tp)
-                                versioned_key_map[response.client_id].global_causal_frontier[vk.key].append((vk.vector_clock, TODO: CACHE_ADDR, response.function_name))
+                                versioned_key_map[response.client_id].global_causal_frontier[vk.key].append((vk.vector_clock, response.function_name))
 
                     if len(pending_versioned_key_collection_response[response.client_id]) == 0:
                         # trigger conservative protocol
@@ -316,9 +322,67 @@ def scheduler(ip, mgmt_ip, route_addr):
                             function_trigger_map[fname] = _find_upstream(fname, dags[dag_name][0])
 
                         finished_functions = set()
-                        if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, dags, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
+                        if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
                             # the protocol aborted, so we need to do conservative protocol
-                            
+                            per_cache_message_map = {}
+                            pending_conservative_response[response.client_id] = (versioned_key_map[response.client_id].schedule, [])
+                            scheduler_response_address = utils._get_scheduler_key_shipping_response_address(ip)
+                            for fname in versioned_key_map[response.client_id].func_location:
+                                cache_ip = versioned_key_map[response.client_id].func_location[fname][0]
+                                cache_address = utils._get_cache_scheduler_key_shipping_request_address(cache_ip)
+                                if cache_address not in per_cache_message_map:
+                                    pending_conservative_response[response.client_id][1].append(cache_address)
+
+                                    per_cache_message_map[cache_address] = SchedulerKeyShippingRequest()
+                                    per_cache_message_map[cache_address].client_id = response.client_id
+                                    per_cache_message_map[cache_address].response_address = scheduler_response_address
+                                per_function_readset = PerFunctionReadSet()
+                                per_function_readset.function_name = fname
+                                per_function_readset.keys.extend(versioned_key_map[response.client_id].per_func_read_set[fname])
+                                per_cache_message_map[cache_address].per_function_readsets.extend([per_function_readset])
+                                # compute if it needs to fetch keys from other caches
+                                for key in per_function_readset.keys:
+                                    target_vc = versioned_key_map[response.client_id].global_causal_cut[key]
+                                    vc = {}
+                                    if key in versioned_key_map[response.client_id].per_func_versioned_key_chain[fname]:
+                                        vc = versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key][key]
+                                    if sutils._compare_vector_clock(vc, target_vc) != CausalComp.GreaterOrEqual:
+                                        # need to fetch from other caches
+                                        for tp in versioned_key_map[response.client_id].global_causal_frontier[key]:
+                                            if sutils._compare_vector_clock(vc, tp[0]) != CausalComp.GreaterOrEqual:
+                                                # can merge to make it bigger
+                                                vc = sutils._merge_vector_clock(vc, tp[0])
+                                                # populate message to fetch this version
+                                                function_key_pair = FunctionKeyPair()
+                                                function_key_pair.source_function_name = fname
+                                                function_key_pair.target_function_name = tp[1]
+                                                function_key_pair.key = key
+                                                per_cache_function_key_pair = PerCacheFunctionKeyPair()
+                                                target_cache_ip = versioned_key_map[response.client_id].func_location[tp[1]][0]
+                                                per_cache_function_key_pair.cache_address = utils._get_cache_key_shipping_request_address(target_cache_ip)
+                                                per_cache_function_key_pair.function_key_pairs.extend([function_key_pair])
+                                                per_cache_message_map[cache_address].per_cache_function_key_pairs.extend([per_cache_function_key_pair])
+
+                                                if sutils._compare_vector_clock(vc, target_vc) == CausalComp.GreaterOrEqual:
+                                                    break
+                            # send message to caches
+                            for cache_addr in per_cache_message_map:
+                                sckt = pusher_cache.get(cache_addr)
+                                sckt.send(per_cache_message_map[cache_addr].SerializeToString())
+                        # GC
+                        del versioned_key_map[response.client_id]
+
+        if key_shipping_response_socket in socks and socks[key_shipping_response_socket] == zmq.POLLIN:
+            response = SchedulerKeyShippingResponse()
+            response.ParseFromString(key_shipping_response_socket.recv())
+            if response.client_id in pending_conservative_response and response.cache_address in pending_conservative_response[response.client_id][1]:
+                pending_conservative_response[response.client_id][1].remove(response.cache_address)
+                if len(pending_conservative_response[response.client_id][1]) == 0:
+                    # TODO: implement...
+                    _call_dag_conservative(pending_conservative_response[response.client_id][0])
+                    # GC
+                    del pending_conservative_response[response.client_id]
+
 
 
 
@@ -506,8 +570,8 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
     return False
 
 
-def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, dags, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
-    while (len(finished_functions) < len(dags[dag_name][0].functions)):
+def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, total_num_functions, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
+    while len(finished_functions) < total_num_functions:
         for fname in function_trigger_map:
             if not fname in finished_functions:
                 finished = True

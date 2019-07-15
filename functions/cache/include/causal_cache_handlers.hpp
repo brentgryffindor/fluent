@@ -86,4 +86,14 @@ void scheduler_request_handler(
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct);
 
+void scheduler_key_shipping_request_handler(const string& serialized, map<string, pair<set<Address>, Address>>& pending_key_shipping_map,
+                                            std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store, VersionStoreType& version_store,
+                                            const CausalCacheThread& cct, SocketCache& pushers);
+
+void key_shipping_request_handler(const string& serialized, VersionStoreType& version_store, const CausalCacheThread& cct, SocketCache& pushers);
+
+void key_shipping_response_handler(const string& serialized, map<string, pair<set<Address>, Address>>& pending_key_shipping_map,
+                                   std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store, VersionStoreType& version_store,
+                                   const CausalCacheThread& cct, SocketCache& pushers);
+
 #endif  // FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_HANDLERS_HPP_

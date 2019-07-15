@@ -39,6 +39,9 @@ SET(FUNC_CAUSAL_CACHE_SOURCE
 	causal_cache_kvs_response_handler.cpp
 	causal_cache_periodic_migration_handler.cpp
 	causal_cache_scheduler_request_handler.cpp
+	causal_cache_scheduler_key_shipping_request_handler.cpp
+	causal_cache_key_shipping_request_handler.cpp
+	causal_cache_key_shipping_response_handler.cpp
   )
 
 ADD_EXECUTABLE(flfunc-causal-cache ${FUNC_CAUSAL_CACHE_SOURCE})

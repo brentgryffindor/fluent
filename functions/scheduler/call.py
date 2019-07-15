@@ -101,6 +101,10 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                 read_set[fname] = set(ref.key for ref in refs)
                 full_read_set = full_read_set.union(read_set[fname])
                 versioned_key_map[schedule.client_id].per_func_read_set[fname] = read_set[fname]
+                versioned_key_map[schedule.client_id].func_location[fname] = (loc[0], loc[1])
+
+    if schedule.consistency == CROSS:
+        versioned_key_map[schedule.client_id].schedule = schedule
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')

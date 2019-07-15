@@ -50,6 +50,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   // mapping from request id to response address of PUT request
   map<string, Address> request_id_to_address_map;
 
+  // mapping from client id to a set of cache address yet to hear back from
+  // and the scheduler response address, used in conservative protocol
+  map<string, pair<set<Address>, Address>> pending_key_shipping_map;
+
+  std::unordered_map<ClientIdFunctionPair, StoreType, PairHash> conservative_store;
+
   CausalCacheThread cct = CausalCacheThread(ip, thread_id);
 
   // TODO: can we find a way to make the thread classes uniform across
@@ -78,6 +84,15 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   zmq::socket_t scheduler_request_puller(*context, ZMQ_PULL);
   scheduler_request_puller.bind(cct.causal_cache_scheduler_request_bind_address());
 
+  zmq::socket_t scheduler_key_shipping_request_puller(*context, ZMQ_PULL);
+  scheduler_key_shipping_request_puller.bind(cct.causal_cache_scheduler_key_shipping_request_bind_address());
+
+  zmq::socket_t key_shipping_request_puller(*context, ZMQ_PULL);
+  key_shipping_request_puller.bind(cct.causal_cache_key_shipping_request_bind_address());
+
+  zmq::socket_t key_shipping_response_puller(*context, ZMQ_PULL);
+  key_shipping_response_puller.bind(cct.causal_cache_key_shipping_response_bind_address());
+
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(get_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(put_puller), 0, ZMQ_POLLIN, 0},
@@ -86,6 +101,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       {static_cast<void*>(versioned_key_request_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(versioned_key_response_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(scheduler_request_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(scheduler_key_shipping_request_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(key_shipping_request_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(key_shipping_response_puller), 0, ZMQ_POLLIN, 0},
   };
 
   auto report_start = std::chrono::system_clock::now();
@@ -103,8 +121,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
                           pending_single_metadata, pending_cross_metadata,
-                          to_fetch_map, cover_map, pushers, client, log, cct,
-                          client_id_to_address_map);
+                          to_fetch_map, cover_map, pushers, client, log, cct);
     }
 
     // handle a PUT request
@@ -135,8 +152,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         process_response(key, lattice, unmerged_store, in_preparation,
                          causal_cut_store, version_store, single_callback_map,
                          pending_single_metadata, pending_cross_metadata,
-                         to_fetch_map, cover_map, pushers, client, log, cct,
-                         client_id_to_address_map);
+                         to_fetch_map, cover_map, pushers, client, log, cct);
       }
     }
 
@@ -159,15 +175,33 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(
           serialized, causal_cut_store, version_store, pending_cross_metadata,
-          client_id_to_address_map, cct, pushers, kZmqUtil, log);
+          cct, pushers, kZmqUtil, log);
     }
 
-    // handle versioned key response
+    // handle scheduler key version query
     if (pollitems[6].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&scheduler_request_puller);
       scheduler_request_handler(serialized, key_set, unmerged_store, in_preparation, 
         causal_cut_store, version_store, pending_cross_metadata, to_fetch_map, cover_map,
-        pushers, client, log, cct, client_id_to_address_map);
+        pushers, client, log, cct);
+    }
+
+    // handle scheduler key shipping request
+    if (pollitems[7].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&scheduler_key_shipping_request_puller);
+      scheduler_key_shipping_request_handler(xxx);
+    }
+
+    // handle key shipping request
+    if (pollitems[8].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&key_shipping_request_puller);
+      key_shipping_request_handler(xxx);
+    }
+
+    // handle key shipping response
+    if (pollitems[9].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&key_shipping_response_puller);
+      key_shipping_response_handler(xxx);
     }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
@@ -176,7 +210,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                            causal_cut_store, version_store, single_callback_map,
                            pending_single_metadata, pending_cross_metadata,
                            to_fetch_map, cover_map, pushers, client, log, cct,
-                           client_id_to_address_map, request_id_to_address_map);
+                           request_id_to_address_map);
     }
 
     // collect and store internal statistics
@@ -215,7 +249,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
           pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct,
-          client_id_to_address_map, log);
+          log);
       migrate_start = std::chrono::system_clock::now();
     }
 

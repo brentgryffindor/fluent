@@ -26,6 +26,7 @@ EXECUTORS_PORT = 7002
 SCHEDULERS_PORT = 7004
 
 SCHEDULERS_VERSIONED_KEY_COLLECTION_PORT = 5100
+SCHEDULERS_KEY_SHIPPING_RESPONSE_PORT = 5150
 
 
 def _get_func_list(client, prefix, fullname=False):
@@ -72,8 +73,16 @@ def _get_queue_address(ip, tid):
     return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + int(tid))
 
 
-def _get_cache_version_query_address(ip, tid):
-    return 'tcp://' + ip + ':' + str(CACHE_VERSION_QUERY_PORT + int(tid))
+def _get_cache_version_query_address(ip):
+    return 'tcp://' + ip + ':' + str(CACHE_VERSION_QUERY_PORT)
+
+
+def _get_cache_scheduler_key_shipping_request_address(ip):
+    return 'tcp://' + ip + ':' + str(CACHE_SCHEDULER_KEY_SHIPPING_REQUEST_PORT)
+
+
+def _get_cache_key_shipping_request_address(ip):
+    return 'tcp://' + ip + ':' + str(CACHE_KEY_SHIPPING_REQUEST_PORT)
 
 
 def _get_scheduler_list_address(mgmt_ip):
@@ -90,6 +99,10 @@ def _get_scheduler_update_address(ip):
 
 def _get_scheduler_versioned_key_collection_address(ip):
     return 'tcp://' + ip + ':' + str(SCHEDULERS_VERSIONED_KEY_COLLECTION_PORT)
+
+
+def _get_scheduler_key_shipping_response_address(ip):
+    return 'tcp://' + ip + ':' + str(SCHEDULERS_KEY_SHIPPING_RESPONSE_PORT)
 
 
 def _get_ip_set(request_ip, socket_cache, exec_threads=True):
