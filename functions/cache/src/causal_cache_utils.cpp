@@ -329,6 +329,8 @@ void process_response(
         if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
           CausalResponse response;
 
+          response.set_error(ErrorType::NO_ERROR);
+
           for (const Key& key : pending_single_metadata[addr].read_set_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(key);
@@ -622,6 +624,8 @@ void optimistic_protocol(const ClientIdFunctionPair& cid_function_pair, const se
     // all local read
     // respond to executor
     CausalResponse response;
+
+    response.set_error(ErrorType::NO_ERROR);
 
     for (const auto& pair : version_store.at(cid_function_pair).second) {
       // first populate the requested tuple

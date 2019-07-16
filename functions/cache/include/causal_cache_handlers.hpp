@@ -28,7 +28,7 @@ void get_request_handler(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
-    const CausalCacheThread& cct);
+    const CausalCacheThread& cct, std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store);
 
 void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          StoreType& causal_cut_store,

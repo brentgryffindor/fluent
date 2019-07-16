@@ -275,7 +275,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             response.ParseFromString(versioned_key_collection_socket.recv())
             if response.succeed == False:
                 # TODO: handle dne
-                xxx
+                logging.error('Key DNE error.')
             else:
                 if response.client_id in pending_versioned_key_collection_response:
                     pending_versioned_key_collection_response[response.client_id].remove(response.function_name)
@@ -378,8 +378,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             if response.client_id in pending_conservative_response and response.cache_address in pending_conservative_response[response.client_id][1]:
                 pending_conservative_response[response.client_id][1].remove(response.cache_address)
                 if len(pending_conservative_response[response.client_id][1]) == 0:
-                    # TODO: implement...
-                    _call_dag_conservative(pending_conservative_response[response.client_id][0])
+                    _call_dag_conservative(pending_conservative_response[response.client_id][0], dags, pusher_cache)
                     # GC
                     del pending_conservative_response[response.client_id]
 
@@ -475,7 +474,7 @@ def _find_upstream(fname, dag):
     return False'''
 
 
-def _check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
+def _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
     for versioned_key_read in prior_read_list:
         for causal_lowerbound in prior_causal_lowerbound_list:
             if versioned_key_read.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, causal_lowerbound.vector_clock) != CausalComp.GreaterOrEqual:
@@ -586,7 +585,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                         prior_causal_lowerbound_list.extend(prior_per_func_causal_lowerbound_map[source_func])
                         prior_read_list.extend(prior_per_func_read_map[source_func])
 
-                    if len(function_trigger_map[fname]) > 1 and _check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
+                    if len(function_trigger_map[fname]) > 1 and _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
                         # abort
                         return True
                     # turn prior read list into a map
@@ -603,8 +602,17 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
     return False
 
 
+def _call_dag_conservative(schedule, dags, pusher_cache):
+    sources = dags[schedule.dag.name][1]
+    for source in sources:
+        trigger = DagTrigger()
+        trigger.id = schedule.id
+        trigger.source = 'BEGIN'
+        trigger.target_function = source
 
-
+        ip = sutils._get_dag_conservative_trigger_address(schedule.locations[source])
+        sckt = pusher_cache.get(ip)
+        sckt.send(trigger.SerializeToString())
 
 
 

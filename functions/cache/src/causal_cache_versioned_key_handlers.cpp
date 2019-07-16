@@ -93,6 +93,8 @@ void versioned_key_response_handler(
       // respond to executor
       CausalResponse response;
 
+      response.set_error(ErrorType::NO_ERROR);
+
       for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
         // first populate the requested tuple
         CausalTuple* tp = response.add_tuples();

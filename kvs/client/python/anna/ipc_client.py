@@ -111,8 +111,8 @@ class IpcAnnaClient:
                                      str(tp.lattice_type))
             return kv_pairs
 
-    def causal_get(self, keys, future_read_set,
-                   versioned_key_locations, consistency, client_id, dependencies={}):
+    def causal_get(self, keys, full_read_set,
+                   prior_version_tuples, prior_read_map, consistency, client_id, fname, dependencies, conservative):
         if type(keys) != list:
             keys = list(keys)
 
@@ -126,19 +126,17 @@ class IpcAnnaClient:
             logging.error("Error: non causal consistency in causal mode!")
             return None
 
-        request.id = str(client_id)
+        request.conservative = conservative
+        request.client_id = client_id
+        request.function_name = fname
+        request.keys.extend(keys)
 
-        for addr in versioned_key_locations:
-            request.versioned_key_locations[addr].versioned_keys.extend(
-                                versioned_key_locations[addr].versioned_keys)
-
-        for key in keys:
-            tp = request.tuples.add()
-            tp.key = key
+        if not conservative:
+            request.prior_version_tuples.extend(prior_version_tuples)
+            request.prior_read_map.extend(prior_read_map)
+            request.full_read_set.extend(full_read_set)
 
         request.response_address = self.get_response_address
-
-        request.future_read_set.extend(future_read_set)
 
         self.get_request_socket.send(request.SerializeToString())
 
@@ -152,25 +150,29 @@ class IpcAnnaClient:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
             return None
         else:
-            kv_pairs = {}
             resp = CausalResponse()
             resp.ParseFromString(msg)
 
-            for tp in resp.tuples:
-                if tp.error == 1:
-                    logging.info('Key %s does not exist!' % (key))
-                    return None
-
-                val = CrossCausalValue()
-                val.ParseFromString(tp.payload)
-
-                # for now, we just take the first value in the setlattice
-                kv_pairs[tp.key] = (val.vector_clock, val.values[0])
-            if len(resp.versioned_keys) != 0:
-                return ((resp.versioned_key_query_addr,
-                        resp.versioned_keys), kv_pairs)
+            if resp.error == ErrorType.KEY_DNE:
+                return resp.error
+            elif resp.error == ErrorType.ABORT:
+                return resp.error
             else:
-                return (None, kv_pairs)
+                kv_pairs = {}
+                versioned_key_read = []
+                for tp in resp.tuples:
+                    val = CrossCausalValue()
+                    val.ParseFromString(tp.payload)
+
+                    # for now, we just take the first value in the setlattice
+                    kv_pairs[tp.key] = (val.vector_clock, val.values[0])
+                    # construct VersionedKey for keys read
+                    if not conservative:
+                        vk = VersionedKey()
+                        vk.key = tp.key
+                        vk.vector_clock = val.vector_clock
+                        versioned_key_read.append(vk)
+                return (resp.prior_version_tuples, versioned_key_read, kv_pairs)
 
     def put(self, key, value):
         request = KeyRequest()

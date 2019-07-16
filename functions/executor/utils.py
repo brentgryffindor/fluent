@@ -61,3 +61,8 @@ def _get_util_report_address(mgmt_ip):
 
 def _get_depart_done_addr(mgmt_ip):
     return 'tcp://' + mgmt_ip + ':' + str(EXECUTOR_DEPART_PORT)
+
+
+def _get_schedule_gc_address(ip_tid):
+    ip, tid = ip_tid.split(':')
+    return 'tcp://' + ip + ':' + str(int(tid) + server_utils.DAG_SCHEDULE_GC_PORT)

@@ -35,6 +35,7 @@ enum ErrorType {
   DAG_ALREADY_EXISTS = 6;
   KEY_DNE = 7;
   ABORT = 8;
+  NO_ERROR = 9;
 }
 
 enum ConsistencyType {
@@ -115,6 +116,7 @@ message DagSchedule {
   optional string response_address = 8;
   optional string output_key = 9;
   optional string client_id = 10;
+  repeated string full_read_set = 11;
 }
 
 message VersionedKey {
@@ -126,13 +128,21 @@ message VersionedKeyList {
   repeated VersionedKey versioned_keys = 1;
 }
 
+message PriorVersionTuple {
+  required string cache_address = 1;
+  required string function_name = 2;
+  required VersionedKey versioned_key = 3;
+}
+
 message DagTrigger {
   required string id = 1;
   required string target_function = 2; // which function is this trigger for
   required string source = 3;
-  optional ArgList arguments = 4;
-  map<string, VersionedKeyList> versioned_key_locations = 5;
-  repeated VersionedKey dependencies = 6;
+  optional bool abort = 4; // whether the DAG should be aborted under causal consistency
+  optional ArgList arguments = 5;
+  repeated PriorVersionTuple prior_version_tuples = 6;
+  repeated VersionedKey prior_read_map = 7;
+  repeated VersionedKey dependencies = 8;
 }
 
 message ExecutorStatistics {
@@ -160,26 +170,21 @@ message CausalTuple {
   optional bytes payload = 2;
 }
 
-message PriorVersionTuple {
-  required string cache_address = 1;
-  required string function_name = 2;
-  required VersionedKey versioned_key = 3;
-}
-
 message CausalRequest {
   required ConsistencyType consistency = 1;
-  required string client_id = 2;
-  required string function_name = 3;
-  repeated string keys = 4;
-  repeated string full_read_set = 5;
-  repeated VersionedKey prior_read_map = 6;
-  repeated PriorVersionTuple prior_version_tuples = 7;
-  optional string response_address = 8;
+  required bool conservative = 2;
+  required string client_id = 3;
+  required string function_name = 4;
+  repeated string keys = 5;
+  repeated string full_read_set = 6;
+  repeated VersionedKey prior_read_map = 7;
+  repeated PriorVersionTuple prior_version_tuples = 8;
+  optional string response_address = 9;
 }
 
 message CausalResponse {
   repeated CausalTuple tuples = 1;
-  optional ErrorType error = 2;
+  required ErrorType error = 2;
   repeated PriorVersionTuple prior_version_tuples = 3;
 }
 
@@ -259,4 +264,9 @@ message KeyShippingResponse {
   required string client_id = 1;
   required string cache_address = 2;
   repeated FunctionCausalTuplePair function_causal_tuple_pairs = 3;
+}
+
+message ScheduleGCRequest {
+  required string function_name = 1;
+  required string schedule_id = 2;
 }

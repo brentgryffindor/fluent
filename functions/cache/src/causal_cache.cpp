@@ -159,8 +159,16 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // handle version GC request
     if (pollitems[3].revents & ZMQ_POLLIN) {
       // assume this string is the client id
-      string serialized = kZmqUtil->recv_string(&version_gc_puller);
-      version_store.erase(serialized);
+      string cid = kZmqUtil->recv_string(&version_gc_puller);
+      std::unordered_set<ClientIdFunctionPair, PairHash> remove_set;
+      for (const auto& pair : version_store) {
+        if (pair.first.first == cid) {
+          remove_set.insert(pair.first);
+        }
+      }
+      for (const auto& pair : remove_set) {
+        version_store.erase(pair);
+      }
     }
 
     // handle versioned key request

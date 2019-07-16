@@ -25,6 +25,9 @@ FUNC_EXEC_PORT = 4020
 DAG_QUEUE_PORT = 4030
 DAG_EXEC_PORT = 4040
 SELF_DEPART_PORT = 4050
+DAG_CONSERVATIVE_EXEC_PORT = 4060
+DAG_SCHEDULE_GC_PORT = 4070
+
 CACHE_VERSION_QUERY_PORT = 7350
 CACHE_SCHEDULER_KEY_SHIPPING_REQUEST_PORT = 7400
 CACHE_KEY_SHIPPING_REQUEST_PORT = 7450
@@ -75,6 +78,11 @@ def _get_func_kvs_name(fname):
 def _get_dag_trigger_address(ip_tid):
     ip, tid = ip_tid.split(':')
     return 'tcp://' + ip + ':' + str(int(tid) + DAG_EXEC_PORT)
+
+
+def _get_dag_conservative_trigger_address(ip_tid):
+    ip, tid = ip_tid.split(':')
+    return 'tcp://' + ip + ':' + str(int(tid) + DAG_CONSERVATIVE_EXEC_PORT)
 
 
 def _get_statistics_report_address(mgmt_ip):

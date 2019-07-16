@@ -58,6 +58,16 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     self_depart_socket.bind(sutils.BIND_ADDR_TEMPLATE %
                             (sutils.SELF_DEPART_PORT + thread_id))
 
+
+    dag_conservative_exec_socket = ctx.socket(zmq.PULL)
+    dag_conservative_exec_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_CONSERVATIVE_EXEC_PORT
+                                                      + thread_id))
+
+
+    dag_schedule_gc_socket = ctx.socket(zmq.PULL)
+    dag_schedule_gc_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_SCHEDULE_GC_PORT
+                                                      + thread_id))
+
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
     poller = zmq.Poller()
@@ -67,6 +77,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(dag_queue_socket, zmq.POLLIN)
     poller.register(dag_exec_socket, zmq.POLLIN)
     poller.register(self_depart_socket, zmq.POLLIN)
+    poller.register(dag_conservative_exec_socket, zmq.POLLIN)
+    poller.register(dag_schedule_gc_socket, zmq.POLLIN)
 
     client = IpcAnnaClient(thread_id)
 
@@ -92,6 +104,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # if multiple triggers are necessary for a function, track the triggers as
     # we receive them
     received_triggers = {}
+
+    # same data structure, but for the conservative version
+    received_conservative_triggers = {}
 
     # track when we received a function request, so we can report e2e latency
     receive_times = {}
@@ -172,7 +187,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                                   pinned_functions[fname], schedule, ip,
                                   thread_id)
                 del received_triggers[trkey]
-                del queue[fname][schedule.id]
 
                 fend = time.time()
                 fstart = receive_times[(schedule.id, fname)]
@@ -208,7 +222,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                                       pinned_functions[fname], schedule, ip,
                                       thread_id)
                     del received_triggers[key]
-                    del queue[fname][trigger.id]
 
                     fend = time.time()
                     fstart = receive_times[(trigger.id, fname)]
@@ -233,6 +246,44 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             utils._push_status(schedulers, pusher_cache, status)
 
             departing = True
+
+        if dag_conservative_exec_socket in socks and socks[dag_conservative_exec_socket] == zmq.POLLIN:
+            # receive conservative execution trigger
+            work_start = time.time()
+            trigger = DagTrigger()
+            trigger.ParseFromString(dag_conservative_exec_socket.recv())
+
+            fname = trigger.target_function
+            logging.info('Received a conservative trigger for schedule %s, function %s.' %
+                         (trigger.id, fname))
+
+            key = (trigger.id, fname)
+            if key not in received_conservative_triggers:
+                received_conservative_triggers[key] = {}
+
+            received_conservative_triggers[key][trigger.source] = trigger
+            if fname in queue and trigger.id in queue[fname]:
+                schedule = queue[fname][trigger.id]
+                if len(received_conservative_triggers[key]) == len(schedule.triggers):
+                    exec_dag_function(pusher_cache, client,
+                                      received_conservative_triggers[key],
+                                      pinned_functions[fname], schedule, ip,
+                                      thread_id, True)
+                    del received_conservative_triggers[key]
+                    del queue[fname][trigger.id]
+
+            elapsed = time.time() - work_start
+            event_occupancy['dag_conservative_exec'] += elapsed
+            total_occupancy += elapsed
+
+        if dag_schedule_gc_socket in socks and socks[dag_schedule_gc_socket] == zmq.POLLIN:
+            gc_req = ScheduleGCRequest()
+            gc_req.ParseFromString(dag_schedule_gc_socket.recv())
+            if gc_req.function_name in queue and gc_req.schedule_id in queue[gc_req.function_name]:
+                del queue[gc_req.function_name][gc_req.schedule_id]
+            else:
+                logging.error('Function %s schedule id %s not in queue. Cannot GC' % (gc_req.function_name, gc_req.schedule_id))
+
 
         # periodically report function occupancy
         report_end = time.time()

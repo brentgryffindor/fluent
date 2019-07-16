@@ -48,7 +48,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
             if consistency == NORMAL:
                 result = _exec_func_normal(kvs, f, fargs, user_lib)
             else:
-                result = _exec_single_func_causal(kvs, f, fargs)
+                result = _exec_single_func_causal(kvs, call.name, f, fargs)
             result = serialize_val(result)
         except Exception as e:
             logging.exception('Unexpected error %s while executing function.' %
@@ -66,7 +66,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
     if not succeed:
         logging.info('Put key %s unsuccessful' % call.resp_id)
 
-def _exec_single_func_causal(kvs, func, args):
+def _exec_single_func_causal(kvs, fname, func, args):
     func_args = []
     to_resolve = []
     deserialize = {}
@@ -84,12 +84,12 @@ def _exec_single_func_causal(kvs, func, args):
         keys = [ref.key for ref in to_resolve]
         result = kvs.causal_get(keys, set(),
                                 {},
-                                CROSS, 0)
+                                CROSS, 0, fname, {}, False)
 
         while not result:
             result = kvs.causal_get(keys, set(),
                                 {},
-                                CROSS, 0)
+                                CROSS, 0, fname, {}, False)
 
         kv_pairs = result[1]
 
@@ -105,7 +105,7 @@ def _exec_single_func_causal(kvs, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid):
+                      tid, conservative=False):
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
@@ -113,7 +113,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
-                                  triggers, function, schedule)
+                                  triggers, function, schedule, conservative)
 
     user_lib.close()
 
@@ -135,7 +135,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
         if conn.source == fname:
             is_sink = False
             new_trigger = DagTrigger()
-            new_trigger.id = trigger.id
+            new_trigger.id = schedule.id
             new_trigger.target_function = conn.sink
             new_trigger.source = fname
 
@@ -208,23 +208,32 @@ def _resolve_ref_normal(refs, kvs):
     return kv_pairs
 
 
-def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
+def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative):
     fname = schedule.target_function
+    # first check if we need to abort
+    for trname in schedule.triggers:
+        trigger = triggers[trname]
+        if trigger.HasField('abort') and trigger.abort:
+            _abort_dag(fname, schedule, pusher_cache)
+            return
+
+
     fargs = list(schedule.arguments[fname].args)
 
-    versioned_key_locations = None
+    prior_version_tuples = []
+    prior_read_map = []
+
     dependencies = {}
 
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
-        # combine versioned_key_locations
-        if versioned_key_locations is None:
-            versioned_key_locations = trigger.versioned_key_locations
-        else:
-            for addr in trigger.versioned_key_locations:
-                versioned_key_locations[addr].versioned_keys.extend(
-                        trigger.versioned_key_locations[addr].versioned_keys)
+        if not conservative:
+            # combine prior_version_tuples
+            prior_version_tuples += list(trigger.prior_version_tuples)
+            # combine prior_read_map
+            prior_read_map += list(trigger.prior_read_map)
+
         # combine dependencies from previous func
         for dep in trigger.dependencies:
             if dep.key in dependencies:
@@ -233,11 +242,20 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             else:
                 dependencies[dep.key] = dep.vector_clock
 
+    if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
+        _abort_dag(fname, schedule, pusher_cache)
+        return
+
     fargs = _process_args(fargs)
 
     kv_pairs = {}
+    abort = [False]
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
-                               schedule, versioned_key_locations, dependencies)
+                               schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort)
+
+    if abort[0]:
+        _abort_dag(fname, schedule, pusher_cache)
+        return
 
     for key in kv_pairs:
         if key in dependencies:
@@ -251,7 +269,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
         if conn.source == fname:
             is_sink = False
             new_trigger = DagTrigger()
-            new_trigger.id = trigger.id
+            new_trigger.id = schedule.id
             new_trigger.target_function = conn.sink
             new_trigger.source = fname
 
@@ -262,9 +280,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             al.args.extend(list(map(lambda v: serialize_val(v, None, False),
                                     result)))
 
-            for addr in versioned_key_locations:
-                new_trigger.versioned_key_locations[addr].versioned_keys.extend(
-                                    versioned_key_locations[addr].versioned_keys)
+            new_trigger.prior_version_tuples.extend(prior_version_tuples)
+            new_trigger.prior_read_map.extend(prior_read_map)
 
             for key in dependencies:
                 dep = new_trigger.dependencies.add()
@@ -272,7 +289,10 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                 dep.vector_clock.update(dependencies[key])
 
             dest_ip = schedule.locations[conn.sink]
-            sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
+            if not conservative:
+                sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
+            else:
+                sckt = pusher_cache.get(sutils._get_dag_conservative_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
@@ -297,14 +317,24 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             kvs.causal_put(schedule.output_key, vector_clock,
                            dependencies, serialize_val(result), schedule.client_id)
 
-        # issue requests to GC the version store
-        for cache_addr in versioned_key_locations:
-            gc_addr = cache_addr[:-4] + str(int(cache_addr[-4:]) - 50)
+        # issue requests to GC the version store and schedule
+        observed_cache_address = set()
+        for pvt in prior_version_tuples:
+            if pvt.cache_address not in observed_cache_address:
+                observed_cache_address.add(pvt.cache_address)
+                gc_addr = pvt.cache_address[:-4] + str(int(pvt.cache_address[-4:]) - 50)
+                sckt = pusher_cache.get(gc_addr)
+                sckt.send_string(schedule.client_id)
+        for fname in schedule.locations:
+            gc_req = ScheduleGCRequest()
+            gc_req.function_name = fname
+            gc_req.schedule_id = schedule.id
+            gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
             sckt = pusher_cache.get(gc_addr)
-            sckt.send_string(schedule.client_id)
+            sckt.send(gc_req.SerializeToString())
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
-                      schedule, versioned_key_locations, dependencies):
+                      schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort):
     func_args = []
     to_resolve = []
     deserialize = {}
@@ -319,8 +349,12 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         func_args += (arg,)
 
     if len(to_resolve) > 0:
-        _resolve_ref_causal(to_resolve, kvs, kv_pairs,
-                            schedule, versioned_key_locations, dependencies)
+        error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
+                            schedule, prior_version_tuples, prior_read_map, dependencies, conservative)
+
+        if error == ErrorType.KEY_DNE or error == ErrorType.ABORT:
+            abort[0] = True
+            return None
 
         for key in kv_pairs:
             if deserialize[key]:
@@ -330,45 +364,46 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
-    return  func(*tuple(func_args))
+    return func(*tuple(func_args))
 
-def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations, dependencies):
-    future_read_set = _compute_children_read_set(schedule)
+def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative):
+    full_read_set = schedule.full_resd_set
     keys = [ref.key for ref in refs]
-    result = kvs.causal_get(keys, set(),
-                            versioned_key_locations,
-                            schedule.consistency, schedule.client_id, dependencies)
-
+    result = kvs.causal_get(keys, full_read_set,
+                            prior_version_tuples, prior_read_map,
+                            schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative)
     while not result:
-        result = kvs.causal_get(keys, future_read_set,
-                                versioned_key_locations,
-                                schedule.consistency, schedule.client_id, dependencies)
+        result = kvs.causal_get(keys, full_read_set,
+                                prior_version_tuples, prior_read_map,
+                                schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative)
 
-    if result[0] is not None:
-        versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])
+    if result == ErrorType.KEY_DNE or result == ErrorType.ABORT:
+        return result
 
-    kv_pairs.update(result[1])
+    if not conservative:
+        prior_version_tuples.extend(result[0])
+        prior_read_map.extend(result[1])
 
-def _compute_children_read_set(schedule):
-    future_read_set = ()
-    fname = schedule.target_function
-    children = ()
-    delta = (fname,)
+    kv_pairs.update(result[2])
+    return ErrorType.NO_ERROR
 
-    while not len(delta) == 0:
-        new_delta = ()
-        for conn in schedule.dag.connections:
-            if conn.source in delta and not conn.sink in children:
-                children += (conn.sink,)
-                new_delta += (conn.sink,)
-        delta = new_delta
+def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
+    for versioned_key_read in prior_read_map:
+        for prior_version_tuple in prior_version_tuples:
+            if versioned_key_read.key == prior_version_tuple.versioned_key.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, prior_version_tuple.versioned_key.vector_clock) != CausalComp.GreaterOrEqual:
+                return True
+    return False
 
-    for child in children:
-        fargs = list(schedule.arguments[child].args)
-        refs = list(filter(lambda arg: type(arg) == FluentReference,
-            list(map(lambda arg: get_serializer(arg.type).load(arg.body),
-                fargs))))
-        for ref in refs:
-            future_read_set += (ref.key,)
+def _abort_dag(fname, schedule, pusher_cache):
+    # send abort info to downstream
+    for conn in schedule.dag.connections:
+        if conn.source == fname:
+            new_trigger = DagTrigger()
+            new_trigger.id = schedule.id
+            new_trigger.target_function = conn.sink
+            new_trigger.source = fname
+            new_trigger.abort = True
 
-    return future_read_set
+            dest_ip = schedule.locations[conn.sink]
+            sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
+            sckt.send(new_trigger.SerializeToString())
