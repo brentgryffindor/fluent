@@ -19,7 +19,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          VersionStoreType& version_store,
                          map<string, Address>& request_id_to_address_map,
                          KvsAsyncClientInterface* client, logger log) {
-  CausalRequest request;
+  CausalPutRequest request;
   request.ParseFromString(serialized);
   for (CausalTuple tuple : request.tuples()) {
     Key key = tuple.key();

@@ -15,7 +15,7 @@
 #include "causal_cache_utils.hpp"
 
 void key_shipping_response_handler(const string& serialized, map<string, pair<set<Address>, Address>>& pending_key_shipping_map,
-                                   std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store, VersionStoreType& version_store,
+                                   std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store,
                                    const CausalCacheThread& cct, SocketCache& pushers) {
 
   KeyShippingResponse response;

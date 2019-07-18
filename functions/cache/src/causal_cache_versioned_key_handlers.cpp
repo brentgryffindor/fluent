@@ -62,7 +62,6 @@ void versioned_key_response_handler(
     const string& serialized, StoreType& causal_cut_store,
     VersionStoreType& version_store,
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
-    map<string, set<Address>>& client_id_to_address_map,
     const CausalCacheThread& cct, SocketCache& pushers,
     ZmqUtilInterface* kZmqUtil, logger log) {
   VersionedKeyResponse response;
@@ -91,7 +90,7 @@ void versioned_key_response_handler(
     // if no more remote read, return to executor and GC
     if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() == 0) {
       // respond to executor
-      CausalResponse response;
+      CausalGetResponse response;
 
       response.set_error(ErrorType::NO_ERROR);
 
@@ -108,14 +107,13 @@ void versioned_key_response_handler(
             PriorVersionTuple* tp = response.add_prior_version_tuples();
             tp->set_cache_address(cct.causal_cache_versioned_key_request_connect_address());
             tp->set_function_name(cid_function_pair.second);
-            VersionedKey vk;
-            vk.set_key(key_ptr_pair.first);
-            auto ptr = vk.mutable_vector_clock();
+            auto vk = tp->mutable_versioned_key();
+            vk->set_key(key_ptr_pair.first);
+            auto ptr = vk->mutable_vector_clock();
             for (const auto& client_version_pair :
                  key_ptr_pair.second->reveal().vector_clock.reveal()) {
               (*ptr)[client_version_pair.first] = client_version_pair.second.reveal();
             }
-            tp->set_versioned_key(std::move(vk));
           }
         }
       }

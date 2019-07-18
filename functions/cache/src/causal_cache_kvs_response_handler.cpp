@@ -20,13 +20,12 @@ void kvs_response_handler(
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    map<Address, PendingClientMetadata>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map,
     map<string, Address>& request_id_to_address_map) {
   Key key = response.tuples(0).key();
   // first, check if the request failed
@@ -58,8 +57,7 @@ void kvs_response_handler(
       process_response(key, lattice, unmerged_store, in_preparation,
                        causal_cut_store, version_store, single_callback_map,
                        pending_single_metadata, pending_cross_metadata,
-                       to_fetch_map, cover_map, pushers, client, log, cct,
-                       client_id_to_address_map);
+                       to_fetch_map, cover_map, pushers, client, log, cct);
     } else {
       if (request_id_to_address_map.find(response.response_id()) ==
           request_id_to_address_map.end()) {
@@ -70,9 +68,8 @@ void kvs_response_handler(
               response.tuples(0).key());
         }
       } else {
-        CausalResponse resp;
-        CausalTuple* tp = resp.add_tuples();
-        tp->set_key(key);
+        CausalPutResponse resp;
+        resp.add_keys(key);
         string resp_string;
         resp.SerializeToString(&resp_string);
         kZmqUtil->send_string(

@@ -26,7 +26,7 @@ void get_request_handler(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct, std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store) {
-  CausalRequest request;
+  CausalGetRequest request;
   request.ParseFromString(serialized);
 
   if (request.consistency() == ConsistencyType::SINGLE) {
@@ -47,9 +47,9 @@ void get_request_handler(
     }
     if (!covered_locally) {
       pending_single_metadata[request.response_address()] =
-          PendingClientMetadata(request.id(), read_set, to_cover);
+          PendingClientMetadata(read_set, to_cover);
     } else {
-      CausalResponse response;
+      CausalGetResponse response;
 
       response.set_error(ErrorType::NO_ERROR);
 
@@ -71,7 +71,7 @@ void get_request_handler(
     if (request.conservative()) {
       // fetch from conservative store
       if (conservative_store.find(cid_function_pair) != conservative_store.end()) {
-        CausalResponse response;
+        CausalGetResponse response;
         response.set_error(ErrorType::NO_ERROR);
         for (const Key& key : request.keys()) {
           if (conservative_store[cid_function_pair].find(key) != conservative_store[cid_function_pair].end()) {
@@ -96,7 +96,7 @@ void get_request_handler(
       if (version_store.find(cid_function_pair) != version_store.end()) {
         if (version_store[cid_function_pair].first) {
           // some keys DNE
-          CausalResponse response;
+          CausalGetResponse response;
           response.set_error(ErrorType::KEY_DNE);
           // send response
           string resp_string;
@@ -141,10 +141,13 @@ void get_request_handler(
       } else {
         // scheduler request hasn't arrived yet
         set<Key> read_set;
+        for (const string& key : request.keys()) {
+          read_set.insert(key);
+        }
         set<Key> to_cover;
         CausalFrontierType causal_frontier = construct_causal_frontier(request);
-        if (!covered_locally(read_set, to_cover, key_set, unmerged_store, in_preparation, causal_cut_store, 
-                            version_store, pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct, causal_frontier)) {
+        if (!covered_locally(cid_function_pair, read_set, to_cover, key_set, unmerged_store, in_preparation, causal_cut_store, 
+                            version_store, pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct, causal_frontier, log)) {
           pending_cross_metadata[cid_function_pair].read_set_ = read_set;
           pending_cross_metadata[cid_function_pair].to_cover_set_ =
               to_cover;
@@ -168,8 +171,8 @@ void get_request_handler(
           version_store[cid_function_pair].first = false;
           // retrieve full read set
           set<Key> full_read_set;
-          for (string& key : request.full_read_set()) {
-            full_read_set.emplace(std::move(key));
+          for (const string& key : request.full_read_set()) {
+            full_read_set.insert(key);
           }
           for (const string& key : read_set) {
             set<Key> observed_keys;

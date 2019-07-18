@@ -17,13 +17,13 @@
 void periodic_migration_handler(
     const StoreType& unmerged_store, InPreparationType& in_preparation,
     StoreType& causal_cut_store, VersionStoreType& version_store,
-    map<Address, PendingClientMetadata>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map, logger log) {
+    logger log) {
   for (const auto& pair : unmerged_store) {
     if ((causal_cut_store.find(pair.first) == causal_cut_store.end() ||
          causal_comparison(causal_cut_store[pair.first], pair.second) !=
@@ -39,8 +39,7 @@ void periodic_migration_handler(
         // all dependency met
         merge_into_causal_cut(pair.first, causal_cut_store, in_preparation,
                               version_store, pending_cross_metadata, pushers,
-                              cct, client_id_to_address_map, log,
-                              unmerged_store);
+                              cct, log, unmerged_store);
         to_fetch_map.erase(pair.first);
       }
     }

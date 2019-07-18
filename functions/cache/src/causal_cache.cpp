@@ -121,7 +121,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
                           pending_single_metadata, pending_cross_metadata,
-                          to_fetch_map, cover_map, pushers, client, log, cct);
+                          to_fetch_map, cover_map, pushers, client, log, cct, conservative_store);
     }
 
     // handle a PUT request
@@ -197,19 +197,19 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // handle scheduler key shipping request
     if (pollitems[7].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&scheduler_key_shipping_request_puller);
-      scheduler_key_shipping_request_handler(xxx);
+      scheduler_key_shipping_request_handler(serialized, pending_key_shipping_map, conservative_store, version_store, cct, pushers);
     }
 
     // handle key shipping request
     if (pollitems[8].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&key_shipping_request_puller);
-      key_shipping_request_handler(xxx);
+      key_shipping_request_handler(serialized, version_store, cct, pushers);
     }
 
     // handle key shipping response
     if (pollitems[9].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&key_shipping_response_puller);
-      key_shipping_response_handler(xxx);
+      key_shipping_response_handler(serialized, pending_key_shipping_map, conservative_store, cct, pushers);
     }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);

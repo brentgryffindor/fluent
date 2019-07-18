@@ -186,7 +186,7 @@ void save_versions(const ClientIdFunctionPair& cid_function_pair, const Key& hea
     for (const auto& pair :
          causal_cut_store.at(key)->reveal().dependency.reveal()) {
       save_versions(cid_function_pair, head_key, pair.first, version_store, causal_cut_store,
-                    future_read_set, observed_keys);
+                    full_read_set, observed_keys);
     }
   }
 }
@@ -309,7 +309,7 @@ void process_response(
     StoreType& causal_cut_store, VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    map<Address, PendingClientMetadata>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -325,32 +325,37 @@ void process_response(
       for (const auto& addr : single_callback_map[key]) {
         // pending_single_metadata[addr].to_cover_set should have this
         // key, and we remove it
-        pending_single_metadata[addr].to_cover_set_.erase(key);
-        if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
-          CausalResponse response;
 
-          response.set_error(ErrorType::NO_ERROR);
-
-          for (const Key& key : pending_single_metadata[addr].read_set_) {
-            CausalTuple* tp = response.add_tuples();
-            tp->set_key(key);
-            if (vector_clock_comparison(
-                    VectorClock(),
-                    unmerged_store[key]->reveal().vector_clock) ==
+        if (pending_single_metadata.find(addr) != pending_single_metadata.end()) {
+          // first check if this key DNE, if so return
+          if (vector_clock_comparison(VectorClock(), unmerged_store[key]->reveal().vector_clock) ==
                 kCausalGreaterOrEqual) {
-              tp->set_error(1);
-            } else {
-              tp->set_error(0);
-              tp->set_payload(serialize(*(unmerged_store[key])));
+            CausalGetResponse response;
+            response.set_error(ErrorType::KEY_DNE);
+            // send response
+            string resp_string;
+            response.SerializeToString(&resp_string);
+            kZmqUtil->send_string(resp_string, &pushers[addr]);
+            // GC
+            pending_single_metadata.erase(addr);
+          } else {
+            pending_single_metadata[addr].to_cover_set_.erase(key);
+            if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
+              CausalGetResponse response;
+              response.set_error(ErrorType::NO_ERROR);
+              for (const Key& key : pending_single_metadata[addr].read_set_) {
+                CausalTuple* tp = response.add_tuples();
+                tp->set_key(key);
+                tp->set_payload(serialize(*(unmerged_store[key])));
+              }
+              // send response
+              string resp_string;
+              response.SerializeToString(&resp_string);
+              kZmqUtil->send_string(resp_string, &pushers[addr]);
+              // GC
+              pending_single_metadata.erase(addr);
             }
           }
-
-          // send response
-          string resp_string;
-          response.SerializeToString(&resp_string);
-          kZmqUtil->send_string(resp_string, &pushers[addr]);
-          // GC
-          pending_single_metadata.erase(addr);
         }
       }
       single_callback_map.erase(key);
@@ -504,7 +509,7 @@ bool remove_from_local_readset(const Key& key, CausalFrontierType& causal_fronti
             && vector_clock_comparison(vc, version_store.at(cid_function_pair).second.at(other_key).at(key)->reveal().vector_clock) != kCausalGreaterOrEqual) {
           // consider removing the "other_key" from read set
           remove_candidate.insert(other_key);
-          if (!remove_from_local_readset(other_key, causal_frontier, read_set, remove_candidate, version_store)) {
+          if (!remove_from_local_readset(other_key, causal_frontier, read_set, remove_candidate, version_store, cid_function_pair)) {
             return false;
           }
         }
@@ -514,7 +519,7 @@ bool remove_from_local_readset(const Key& key, CausalFrontierType& causal_fronti
   return true;
 }
 
-CausalFrontierType construct_causal_frontier(const CausalRequest& request) {
+CausalFrontierType construct_causal_frontier(const CausalGetRequest& request) {
   CausalFrontierType causal_frontier;
   for (const auto& prior_version_tuple :
        request.prior_version_tuples()) {
@@ -566,9 +571,9 @@ void optimistic_protocol(const ClientIdFunctionPair& cid_function_pair, const se
           if (prior_read_map.find(pair.first) != prior_read_map.end() && vector_clock_comparison(prior_read_map.at(pair.first), pair.second->reveal().vector_clock) != kCausalGreaterOrEqual) {
             // consider removing this key from local readset
             remove_candidate.insert(key);
-            if (!remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, version_store)) {
+            if (!remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, version_store, cid_function_pair)) {
               // abort
-              CausalResponse response;
+              CausalGetResponse response;
               response.set_error(ErrorType::ABORT);
               // send response
               string resp_string;
@@ -623,7 +628,7 @@ void optimistic_protocol(const ClientIdFunctionPair& cid_function_pair, const se
   } else {
     // all local read
     // respond to executor
-    CausalResponse response;
+    CausalGetResponse response;
 
     response.set_error(ErrorType::NO_ERROR);
 
@@ -638,14 +643,13 @@ void optimistic_protocol(const ClientIdFunctionPair& cid_function_pair, const se
           PriorVersionTuple* tp = response.add_prior_version_tuples();
           tp->set_cache_address(cct.causal_cache_versioned_key_request_connect_address());
           tp->set_function_name(cid_function_pair.second);
-          VersionedKey vk;
-          vk.set_key(key_ptr_pair.first);
-          auto ptr = vk.mutable_vector_clock();
+          auto vk = tp->mutable_versioned_key();
+          vk->set_key(key_ptr_pair.first);
+          auto ptr = vk->mutable_vector_clock();
           for (const auto& client_version_pair :
                key_ptr_pair.second->reveal().vector_clock.reveal()) {
             (*ptr)[client_version_pair.first] = client_version_pair.second.reveal();
           }
-          tp->set_versioned_key(std::move(vk));
         }
       }
     }
@@ -693,7 +697,7 @@ void merge_into_causal_cut(
       if (key_dne) {
         version_store[cid_function_pair].first = true;
         if (pending_cross_metadata[cid_function_pair].executor_response_address_ != "") {
-          CausalResponse response;
+          CausalGetResponse response;
           response.set_error(ErrorType::KEY_DNE);
           // send response
           string resp_string;
@@ -728,7 +732,7 @@ void merge_into_causal_cut(
           }
           if (pending_cross_metadata[cid_function_pair].executor_response_address_ != "") {
             // follow same logic as before...
-            optimistic_protocol(cid_function_pair, pending_cross_metadata[cid_function_pair].read_set_, version_store, pending_cross_metadata, pushers, cct, pending_cross_metadata[cid_function_pair].causal_frontier_, pending_cross_metadata[cid_function_pair].executor_response_address_);
+            optimistic_protocol(cid_function_pair, pending_cross_metadata[cid_function_pair].read_set_, version_store, pending_cross_metadata[cid_function_pair].prior_read_map_, pending_cross_metadata, pushers, cct, pending_cross_metadata[cid_function_pair].causal_frontier_, pending_cross_metadata[cid_function_pair].executor_response_address_);
           }
           if (pending_cross_metadata[cid_function_pair].scheduler_response_address_ != "") {
             CausalSchedulerResponse response;
@@ -748,16 +752,15 @@ void merge_into_causal_cut(
   in_preparation.erase(key);
 }
 
-bool covered_locally(set<Key>& read_set, set<Key>& to_cover, set<Key>& key_set, StoreType& unmerged_store,
+bool covered_locally(const ClientIdFunctionPair& cid_function_pair, const set<Key>& read_set, set<Key>& to_cover, set<Key>& key_set, StoreType& unmerged_store,
     InPreparationType& in_preparation, StoreType& causal_cut_store, VersionStoreType& version_store, std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    SocketCache& pushers, KvsAsyncClientInterface* client, const CausalCacheThread& cct, CausalFrontierType& causal_frontier) {
+    SocketCache& pushers, KvsAsyncClientInterface* client, const CausalCacheThread& cct, CausalFrontierType& causal_frontier, logger log) {
   bool covered = true;
 
-  for (const string& key : request.keys()) {
-    read_set.insert(key);
+  for (const string& key : read_set) {
     key_set.insert(key);
 
     if (causal_cut_store.find(key) == causal_cut_store.end()

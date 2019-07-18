@@ -56,11 +56,14 @@ void scheduler_request_handler(
     // no entry at all
     // we first check if all requested keys are covered by the cache
     set<Key> read_set;
+    for (const string& key : request.keys()) {
+      read_set.insert(key);
+    }
     set<Key> to_cover;
     CausalFrontierType causal_frontier;
 
-    if (!covered_locally(read_set, to_cover, key_set, unmerged_store, in_preparation, causal_cut_store, 
-                        version_store, pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct, causal_frontier)) {
+    if (!covered_locally(cid_function_pair, read_set, to_cover, key_set, unmerged_store, in_preparation, causal_cut_store, 
+                        version_store, pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct, causal_frontier, log)) {
       pending_cross_metadata[cid_function_pair].read_set_ = read_set;
       pending_cross_metadata[cid_function_pair].to_cover_set_ =
           to_cover;
@@ -71,8 +74,8 @@ void scheduler_request_handler(
       version_store[cid_function_pair].first = false;
       // retrieve full read set
       set<Key> full_read_set;
-      for (string& key : request.full_read_set()) {
-        full_read_set.emplace(std::move(key));
+      for (const string& key : request.full_read_set()) {
+        full_read_set.insert(key);
       }
       for (const string& key : request.keys()) {
         set<Key> observed_keys;

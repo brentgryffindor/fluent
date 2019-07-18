@@ -116,7 +116,7 @@ class IpcAnnaClient:
         if type(keys) != list:
             keys = list(keys)
 
-        request = CausalRequest()
+        request = CausalGetRequest()
 
         if consistency == SINGLE:
             request.consistency = SINGLE
@@ -226,9 +226,7 @@ class IpcAnnaClient:
             return resp.tuples[0].error == 0
 
     def causal_put(self, key, vector_clock, dependency, value, client_id):
-        request = CausalRequest()
-        request.consistency = CROSS
-        request.id = str(client_id)
+        request = CausalPutRequest()
 
         tp = request.tuples.add()
         tp.key = key

@@ -15,7 +15,7 @@
 #include "causal_cache_utils.hpp"
 
 void scheduler_key_shipping_request_handler(const string& serialized, map<string, pair<set<Address>, Address>>& pending_key_shipping_map,
-                                            std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store, VersionStoreType& version_store,
+                                            std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>& conservative_store, const VersionStoreType& version_store,
                                             const CausalCacheThread& cct, SocketCache& pushers) {
 
   SchedulerKeyShippingRequest request;
@@ -25,8 +25,8 @@ void scheduler_key_shipping_request_handler(const string& serialized, map<string
   for (const auto& per_function_readset : request.per_function_readsets()) {
     for (const Key& key : per_function_readset.keys()) {
       auto cid_function_pair = std::make_pair(request.client_id(), per_function_readset.function_name());
-      if (version_store[cid_function_pair].second.find(key) != version_store[cid_function_pair].second.end()) {
-        conservative_store[cid_function_pair][key] = version_store[cid_function_pair].second[key][key]
+      if (version_store.at(cid_function_pair).second.find(key) != version_store.at(cid_function_pair).second.end()) {
+        conservative_store[cid_function_pair][key] = version_store.at(cid_function_pair).second.at(key).at(key);
       }
     }
   }
@@ -36,7 +36,12 @@ void scheduler_key_shipping_request_handler(const string& serialized, map<string
     KeyShippingRequest key_shipping_request;
     key_shipping_request.set_client_id(request.client_id());
     key_shipping_request.set_response_address(cct.causal_cache_key_shipping_response_connect_address());
-    key_shipping_request.set_function_key_pairs(per_cache_function_key_pair.function_key_pairs());
+    for (const auto& function_key_pair : per_cache_function_key_pair.function_key_pairs()) {
+      auto new_function_key_pair = key_shipping_request.add_function_key_pairs();
+      new_function_key_pair->set_source_function_name(function_key_pair.source_function_name());
+      new_function_key_pair->set_target_function_name(function_key_pair.target_function_name());
+      new_function_key_pair->set_key(function_key_pair.key());
+    }
     // send request
     string req_string;
     key_shipping_request.SerializeToString(&req_string);

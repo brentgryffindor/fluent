@@ -170,7 +170,7 @@ message CausalTuple {
   optional bytes payload = 2;
 }
 
-message CausalRequest {
+message CausalGetRequest {
   required ConsistencyType consistency = 1;
   required bool conservative = 2;
   required string client_id = 3;
@@ -182,10 +182,19 @@ message CausalRequest {
   optional string response_address = 9;
 }
 
-message CausalResponse {
+message CausalGetResponse {
   repeated CausalTuple tuples = 1;
   required ErrorType error = 2;
   repeated PriorVersionTuple prior_version_tuples = 3;
+}
+
+message CausalPutRequest {
+  required string response_address = 1;
+  repeated CausalTuple tuples = 2;
+}
+
+message CausalPutResponse {
+  repeated string keys = 1;
 }
 
 message CausalSchedulerRequest {
