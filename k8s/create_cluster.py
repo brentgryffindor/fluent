@@ -177,7 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('--ssh-key', nargs='?', type=str,
                         help='The SSH key used to configure and connect to ' +
                         'each node (optional)', dest='sshkey',
-                        default='~/.ssh/id_rsa')
+                        default=os.environ['HOME'] + '/.ssh/id_rsa')
 
     cluster_name = util.check_or_get_env_arg('FLUENT_CLUSTER_NAME')
     kops_bucket = util.check_or_get_env_arg('KOPS_STATE_STORE')
@@ -186,6 +186,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    create_cluster(args.memory, args.ebs, args.function, args.scheduler,
-                   args.routing, args.benchmark, args.conf, args.sshkey,
+    create_cluster(args.memory[0], args.ebs, args.function[0], args.scheduler[0],
+                   args.routing[0], args.benchmark, args.conf, args.sshkey,
                    cluster_name, kops_bucket, aws_key_id, aws_key)
