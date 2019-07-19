@@ -17,13 +17,13 @@
 void periodic_migration_handler(
     const StoreType& unmerged_store, InPreparationType& in_preparation,
     StoreType& causal_cut_store, VersionStoreType& version_store,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
+        pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
-    const CausalCacheThread& cct,
-    logger log) {
+    const CausalCacheThread& cct, logger log) {
   for (const auto& pair : unmerged_store) {
     if ((causal_cut_store.find(pair.first) == causal_cut_store.end() ||
          causal_comparison(causal_cut_store[pair.first], pair.second) !=

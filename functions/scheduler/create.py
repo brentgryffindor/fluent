@@ -28,7 +28,7 @@ from . import utils
 sys_random = random.SystemRandom()
 
 
-def create_func(func_create_socket, kvs, consistency=NORMAL):
+def create_func(func_create_socket, kvs, consistency=CROSS):
     func = Function()
     func.ParseFromString(func_create_socket.recv())
 

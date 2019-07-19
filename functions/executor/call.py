@@ -30,7 +30,7 @@ def _process_args(arg_list):
     return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
 
-def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
+def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())

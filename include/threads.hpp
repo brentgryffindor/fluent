@@ -143,13 +143,11 @@ class CausalCacheThread {
   }
 
   Address causal_cache_scheduler_request_bind_address() const {
-    return kBindBase +
-           std::to_string(tid_ + kCausalCacheSchedulerRequestPort);
+    return kBindBase + std::to_string(tid_ + kCausalCacheSchedulerRequestPort);
   }
 
   Address causal_cache_scheduler_request_connect_address() const {
-    return ip_base_ +
-           std::to_string(tid_ + kCausalCacheSchedulerRequestPort);
+    return ip_base_ + std::to_string(tid_ + kCausalCacheSchedulerRequestPort);
   }
 
   Address causal_cache_scheduler_key_shipping_request_bind_address() const {
@@ -168,8 +166,7 @@ class CausalCacheThread {
   }
 
   Address causal_cache_key_shipping_request_connect_address() const {
-    return ip_base_ +
-           std::to_string(tid_ + kCausalCacheKeyShippingRequestPort);
+    return ip_base_ + std::to_string(tid_ + kCausalCacheKeyShippingRequestPort);
   }
 
   Address causal_cache_key_shipping_response_bind_address() const {

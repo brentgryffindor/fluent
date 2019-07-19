@@ -14,23 +14,30 @@
 
 #include "causal_cache_utils.hpp"
 
-void key_shipping_request_handler(const string& serialized, const VersionStoreType& version_store, const CausalCacheThread& cct, SocketCache& pushers) {
-
+void key_shipping_request_handler(const string& serialized,
+                                  const VersionStoreType& version_store,
+                                  const CausalCacheThread& cct,
+                                  SocketCache& pushers) {
   KeyShippingRequest request;
   request.ParseFromString(serialized);
 
   KeyShippingResponse response;
   response.set_client_id(request.client_id());
-  response.set_cache_address(cct.causal_cache_key_shipping_request_connect_address());
+  response.set_cache_address(
+      cct.causal_cache_key_shipping_request_connect_address());
 
   for (const auto& function_key_pair : request.function_key_pairs()) {
-    auto function_causal_tuple_pair = response.add_function_causal_tuple_pairs();
-    function_causal_tuple_pair->set_function_name(function_key_pair.source_function_name());
-    auto cid_function_pair = std::make_pair(request.client_id(), function_key_pair.target_function_name());
+    auto function_causal_tuple_pair =
+        response.add_function_causal_tuple_pairs();
+    function_causal_tuple_pair->set_function_name(
+        function_key_pair.source_function_name());
+    auto cid_function_pair = std::make_pair(
+        request.client_id(), function_key_pair.target_function_name());
     auto tp = function_causal_tuple_pair->mutable_tuple();
     Key key = function_key_pair.key();
     tp->set_key(key);
-    tp->set_payload(serialize(*(version_store.at(cid_function_pair).second.at(key).at(key))));
+    tp->set_payload(serialize(
+        *(version_store.at(cid_function_pair).second.at(key).at(key))));
   }
 
   // send response

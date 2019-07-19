@@ -45,3 +45,7 @@ spec:
           value: SEED_IP_DUMMY
         - name: MON_IPS
           value: MON_IPS_DUMMY
+        - name: REPO_ORG
+          value: "cw75"
+        - name: REPO_BRANCH
+          value: "causal_snapshot"

@@ -29,22 +29,21 @@ const unsigned kCausalGreaterOrEqual = 0;
 const unsigned kCausalLess = 1;
 const unsigned kCausalConcurrent = 2;
 
-using ClientIdFunctionPair =
-    pair<string, string>;
+using ClientIdFunctionPair = pair<string, string>;
 
 using StoreType =
     map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>;
 
 struct VersionedKeyAddressMetadata {
-  VersionedKeyAddressMetadata(Address cache_address, string function_name) : 
-    cache_address_(std::move(cache_address)),
-    function_name_(std::move(function_name)) {}
+  VersionedKeyAddressMetadata(Address cache_address, string function_name) :
+      cache_address_(std::move(cache_address)),
+      function_name_(std::move(function_name)) {}
   Address cache_address_;
   string function_name_;
 
   bool operator==(const VersionedKeyAddressMetadata& input) const {
     if (cache_address_ == input.cache_address_ &&
-        function_name_ == input.function_name_ ) {
+        function_name_ == input.function_name_) {
       return true;
     } else {
       return false;
@@ -65,12 +64,15 @@ struct VectorClockHash {
 
 struct PairHash {
   template <class T1, class T2>
-  std::size_t operator() (const std::pair<T1, T2> &pair) const {
+  std::size_t operator()(const std::pair<T1, T2>& pair) const {
     return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
   }
 };
 
-using CausalFrontierType = map<Key, std::unordered_map<VectorClock, pair<bool, VersionedKeyAddressMetadata>, VectorClockHash>>;
+using CausalFrontierType =
+    map<Key,
+        std::unordered_map<VectorClock, pair<bool, VersionedKeyAddressMetadata>,
+                           VectorClockHash>>;
 
 using InPreparationType = map<
     Key,
@@ -80,16 +82,16 @@ using InPreparationType = map<
 struct PendingClientMetadata {
   PendingClientMetadata() = default;
 
-  PendingClientMetadata(set<Key> read_set,
-                        set<Key> to_cover_set) :
+  PendingClientMetadata(set<Key> read_set, set<Key> to_cover_set) :
       read_set_(std::move(read_set)),
       to_cover_set_(std::move(to_cover_set)) {}
 
-  PendingClientMetadata(set<Key> read_set,
-                        set<Key> to_cover_set,
-                        CausalFrontierType causal_frontier,
-                        map<Key, VectorClock> prior_read_map,
-                        set<Key> full_read_set, map<Key, std::unordered_set<VectorClock, VectorClockHash>> remote_read_tracker) :
+  PendingClientMetadata(
+      set<Key> read_set, set<Key> to_cover_set,
+      CausalFrontierType causal_frontier, map<Key, VectorClock> prior_read_map,
+      set<Key> full_read_set,
+      map<Key, std::unordered_set<VectorClock, VectorClockHash>>
+          remote_read_tracker) :
       read_set_(std::move(read_set)),
       to_cover_set_(std::move(to_cover_set)),
       causal_frontier_(std::move(causal_frontier)),
@@ -102,15 +104,15 @@ struct PendingClientMetadata {
   CausalFrontierType causal_frontier_;
   map<Key, VectorClock> prior_read_map_;
   set<Key> full_read_set_;
-  map<Key, std::unordered_set<VectorClock, VectorClockHash>> remote_read_tracker_;
+  map<Key, std::unordered_set<VectorClock, VectorClockHash>>
+      remote_read_tracker_;
   set<Key> remove_set_;
   StoreType result_;
   Address executor_response_address_;
   Address scheduler_response_address_;
 
   bool operator==(const PendingClientMetadata& input) const {
-    if (read_set_ == input.read_set_ &&
-        to_cover_set_ == input.to_cover_set_ &&
+    if (read_set_ == input.read_set_ && to_cover_set_ == input.to_cover_set_ &&
         causal_frontier_ == input.causal_frontier_ &&
         prior_read_map_ == input.prior_read_map_ &&
         full_read_set_ == input.full_read_set_ &&
@@ -122,9 +124,11 @@ struct PendingClientMetadata {
   }
 };
 
-using VersionStoreType =
-    std::unordered_map<ClientIdFunctionPair,
-        pair<bool, map<Key, map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>>>, PairHash>;
+using VersionStoreType = std::unordered_map<
+    ClientIdFunctionPair,
+    pair<bool, map<Key, map<Key, std::shared_ptr<
+                                     CrossCausalLattice<SetLattice<string>>>>>>,
+    PairHash>;
 
 // given two cross causal lattices (of the same key), compare which one is
 // bigger
@@ -180,7 +184,8 @@ Address find_address(
 // save the relevant versions in case future caches may need them
 // observed_key is initially passed in as an empty set
 // to prevent infinite loop
-void save_versions(const ClientIdFunctionPair& cid_function_pair, const Key& head_key, const Key& key,
+void save_versions(const ClientIdFunctionPair& cid_function_pair,
+                   const Key& head_key, const Key& key,
                    VersionStoreType& version_store,
                    const StoreType& causal_cut_store,
                    const set<Key>& full_read_set, set<Key>& observed_keys);
@@ -208,7 +213,8 @@ void process_response(
     StoreType& causal_cut_store, VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
+        pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -217,39 +223,58 @@ void process_response(
 
 // construct the causal frontier from previous causal caches
 // this is later used to decide what keys should be read remotely
-void populate_causal_frontier(
-    const Key& key, const VectorClock& vc, const Address& cache_addr, const Address& executor_addr, CausalFrontierType& causal_frontier);
+void populate_causal_frontier(const Key& key, const VectorClock& vc,
+                              const Address& cache_addr,
+                              const Address& executor_addr,
+                              CausalFrontierType& causal_frontier);
 
 // determine if we can remove a local read to prevent a potential abort
-bool remove_from_local_readset(const Key& key, CausalFrontierType& causal_frontier,
-                               const set<Key>& read_set, set<Key>& remove_candidate, const VersionStoreType& version_store,
+bool remove_from_local_readset(const Key& key,
+                               CausalFrontierType& causal_frontier,
+                               const set<Key>& read_set,
+                               set<Key>& remove_candidate,
+                               const VersionStoreType& version_store,
                                const ClientIdFunctionPair& cid_function_pair);
 
 CausalFrontierType construct_causal_frontier(const CausalGetRequest& request);
 
-void optimistic_protocol(const ClientIdFunctionPair& cid_function_pair, const set<Key>& read_set, const VersionStoreType& version_store, const map<Key, VectorClock>& prior_read_map,
-                         std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
-                         SocketCache& pushers, const CausalCacheThread& cct, CausalFrontierType& causal_frontier, const Address& response_address);
+void optimistic_protocol(
+    const ClientIdFunctionPair& cid_function_pair, const set<Key>& read_set,
+    const VersionStoreType& version_store,
+    const map<Key, VectorClock>& prior_read_map,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
+        pending_cross_metadata,
+    SocketCache& pushers, const CausalCacheThread& cct,
+    CausalFrontierType& causal_frontier, const Address& response_address);
 
 // merge a causal chain from in_preparation to causal cut store
 // also notify clients that are waiting for the head key of the chain
 void merge_into_causal_cut(
     const Key& key, StoreType& causal_cut_store,
     InPreparationType& in_preparation, VersionStoreType& version_store,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
-    SocketCache& pushers, const CausalCacheThread& cct,
-    logger log,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
+        pending_cross_metadata,
+    SocketCache& pushers, const CausalCacheThread& cct, logger log,
     const StoreType& unmerged_store);
 
-bool covered_locally(const ClientIdFunctionPair& cid_function_pair, const set<Key>& read_set, set<Key>& to_cover, set<Key>& key_set, StoreType& unmerged_store,
-    InPreparationType& in_preparation, StoreType& causal_cut_store, VersionStoreType& version_store, std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+bool covered_locally(
+    const ClientIdFunctionPair& cid_function_pair, const set<Key>& read_set,
+    set<Key>& to_cover, set<Key>& key_set, StoreType& unmerged_store,
+    InPreparationType& in_preparation, StoreType& causal_cut_store,
+    VersionStoreType& version_store,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
+        pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    SocketCache& pushers, KvsAsyncClientInterface* client, const CausalCacheThread& cct, CausalFrontierType& causal_frontier, logger log);
+    SocketCache& pushers, KvsAsyncClientInterface* client,
+    const CausalCacheThread& cct, CausalFrontierType& causal_frontier,
+    logger log);
 
-void send_scheduler_response(CausalSchedulerResponse& response, const ClientIdFunctionPair& cid_function_pair,
-                             const VersionStoreType& version_store, SocketCache& pushers, const Address& scheduler_address);
-
+void send_scheduler_response(CausalSchedulerResponse& response,
+                             const ClientIdFunctionPair& cid_function_pair,
+                             const VersionStoreType& version_store,
+                             SocketCache& pushers,
+                             const Address& scheduler_address);
 
 #endif  // FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_UTILS_HPP_
