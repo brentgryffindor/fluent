@@ -15,11 +15,15 @@ if len(sys.argv) < 4:
 f_elb = sys.argv[2]
 mode = sys.argv[3]
 
+print("before flconn")
+
 if len(sys.argv) == 5:
     ip = sys.argv[4]
     flconn = flclient.FluentConnection(f_elb, ip)
 else:
     flconn = flclient.FluentConnection(f_elb)
+
+print("after flconn")
 
 kvs = flconn.kvs_client
 

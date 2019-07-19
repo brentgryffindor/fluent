@@ -140,7 +140,7 @@ def run(flconn, kvs, mode, sckt):
         print('Data populated')
         logging.info('Data populated')
 
-    elif mode == 'run'
+    elif mode == 'run':
         print('Running DAG')
         logging.info('Running DAG')
         ### RUN DAG ###
