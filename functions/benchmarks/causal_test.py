@@ -17,6 +17,7 @@ def run(flconn, kvs, mode, sckt):
     dag_name = 'causal_test'
 
     if mode == 'create':
+        print("Creating functions and DAG")
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b,c):
@@ -60,6 +61,7 @@ def run(flconn, kvs, mode, sckt):
             logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
             sys.exit(1)
 
+        print('Successfully tested functions!')
         logging.info('Successfully tested functions!')
 
         ### CREATE DAG ###
@@ -71,9 +73,12 @@ def run(flconn, kvs, mode, sckt):
         if not success:
             logging.info('Failed to register DAG: %s' % (ErrorType.Name(error)))
             sys.exit(1)
+
+        print("Successfully created the DAG")
         logging.info("Successfully created the DAG")
 
     elif mode == 'warmup':
+        print('Warming up keys')
         logging.info('Warming up keys')
         ### CREATE DATA###
         val = '00000'
@@ -132,9 +137,11 @@ def run(flconn, kvs, mode, sckt):
         ccv.values.extend([serialize_val(val)])
         kvs.put(k, ccv)
 
+        print('Data populated')
         logging.info('Data populated')
 
     elif mode == 'run'
+        print('Running DAG')
         logging.info('Running DAG')
         ### RUN DAG ###
         refs1 = (FluentReference('a', True, CROSSCAUSAL), FluentReference('b', True, CROSSCAUSAL), FluentReference('c', True, CROSSCAUSAL),)
@@ -153,4 +160,5 @@ def run(flconn, kvs, mode, sckt):
             res = kvs.get(rid)
         res = deserialize_val(res.values[0])
 
+        print('Result is: %s' % res)
         logging.info('Result is: %s' % res)
