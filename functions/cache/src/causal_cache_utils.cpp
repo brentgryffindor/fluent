@@ -335,6 +335,7 @@ void process_response(
           if (vector_clock_comparison(
                   VectorClock(), unmerged_store[key]->reveal().vector_clock) ==
               kCausalGreaterOrEqual) {
+            log->info("Key DNE error!");
             CausalGetResponse response;
             response.set_error(ErrorType::KEY_DNE);
             // send response
@@ -346,6 +347,7 @@ void process_response(
           } else {
             pending_single_metadata[addr].to_cover_set_.erase(key);
             if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
+              log->info("Responding to {}", addr);
               CausalGetResponse response;
               response.set_error(ErrorType::NO_ERROR);
               for (const Key& key : pending_single_metadata[addr].read_set_) {

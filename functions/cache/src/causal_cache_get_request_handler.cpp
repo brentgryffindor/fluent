@@ -33,11 +33,13 @@ void get_request_handler(
   request.ParseFromString(serialized);
 
   if (request.consistency() == ConsistencyType::SINGLE) {
+    log->info("Receive GET in single mode");
     bool covered_locally = true;
     set<Key> read_set;
     set<Key> to_cover;
     // check if the keys are covered locally
     for (const Key& key : request.keys()) {
+      log->info("Key is {}", key);
       read_set.insert(key);
       key_set.insert(key);
 

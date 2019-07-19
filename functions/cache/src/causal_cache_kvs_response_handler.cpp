@@ -31,6 +31,7 @@ void kvs_response_handler(
   Key key = response.tuples(0).key();
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
+    log->info("Request for key {} timeout", key);
     if (response.type() == RequestType::GET) {
       client->get_async(key);
     } else {
@@ -48,6 +49,7 @@ void kvs_response_handler(
     }
   } else {
     if (response.type() == RequestType::GET) {
+      log->info("Response for key {} received", key);
       auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
       if (response.tuples(0).error() != 1) {
         // key exists
