@@ -42,6 +42,8 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
 
+    logging.info('executor thread is %s', utils._get_exec_address(ip, tid))
+
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 

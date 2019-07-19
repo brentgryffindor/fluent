@@ -138,9 +138,11 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if (func_create_socket in socks and
                 socks[func_create_socket] == zmq.POLLIN):
+            logging.info('Received function create request')
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
+            logging.info('Received function call request')
             call_function(func_call_socket, pusher_cache, executors,
                           key_ip_map, running_counts, backoff)
 

@@ -46,9 +46,13 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
     else:
         try:
             if consistency == NORMAL:
+                logging.info('entering single func normal')
                 result = _exec_func_normal(kvs, f, fargs, user_lib)
+                logging.info('function executed')
             else:
+                logging.info('entering single func causal')
                 result = _exec_single_func_causal(kvs, call.name, f, fargs)
+                logging.info('function executed')
             result = serialize_val(result)
         except Exception as e:
             logging.exception('Unexpected error %s while executing function.' %
@@ -59,9 +63,13 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
 
     user_lib.close()
     if consistency == NORMAL:
+        logging.info('Normal PUT')
         succeed = kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
     else:
+        logging.info('Causal PUT')
         succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
+
+    logging.info('PUT done')
 
     if not succeed:
         logging.info('Put key %s unsuccessful' % call.resp_id)
@@ -82,6 +90,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
     if len(to_resolve) > 0:
         keys = [ref.key for ref in to_resolve]
+        logging.info('enter causal get')
         result = kvs.causal_get(keys, set(),
                                 {},
                                 CROSS, 0, fname, {}, False)
@@ -91,7 +100,8 @@ def _exec_single_func_causal(kvs, fname, func, args):
                                 {},
                                 CROSS, 0, fname, {}, False)
 
-        kv_pairs = result[1]
+        logging.info('causal get done')
+        kv_pairs = result[2]
 
         for key in kv_pairs:
             if deserialize[key]:
@@ -101,6 +111,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
                 func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
+    logging.info('executing function')
     return  func(*tuple(func_args))
 
 

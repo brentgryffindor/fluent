@@ -149,6 +149,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             total_occupancy += elapsed
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
+            logging.info('Received function execution request')
             work_start = time.time()
             exec_function(exec_socket, client, status, ip, thread_id)
 
