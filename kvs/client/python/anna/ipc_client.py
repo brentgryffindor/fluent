@@ -113,6 +113,7 @@ class IpcAnnaClient:
 
     def causal_get(self, keys, full_read_set,
                    prior_version_tuples, prior_read_map, consistency, client_id, fname, dependencies, conservative):
+        logging.info('Entering causal GET')
         if type(keys) != list:
             keys = list(keys)
 
@@ -138,11 +139,13 @@ class IpcAnnaClient:
 
         request.response_address = self.get_response_address
 
+        logging.info('sending GET')
         self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
+            logging.info('received response')
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
@@ -150,7 +153,8 @@ class IpcAnnaClient:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
             return None
         else:
-            resp = CausalResponse()
+            logging.info('parsing response')
+            resp = CausalGetResponse()
             resp.ParseFromString(msg)
 
             if resp.error == ErrorType.KEY_DNE:
