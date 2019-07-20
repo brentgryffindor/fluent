@@ -363,7 +363,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, prior_version_tuples, prior_read_map, dependencies, conservative)
 
-        if error == ErrorType.KEY_DNE or error == ErrorType.ABORT:
+        if error == KEY_DNE or error == ABORT:
             abort[0] = True
             return None
 
@@ -388,7 +388,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, pri
                                 prior_version_tuples, prior_read_map,
                                 schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative)
 
-    if result == ErrorType.KEY_DNE or result == ErrorType.ABORT:
+    if result == KEY_DNE or result == ABORT:
         return result
 
     if not conservative:
@@ -396,7 +396,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, pri
         prior_read_map.extend(result[1])
 
     kv_pairs.update(result[2])
-    return ErrorType.NO_ERROR
+    return NO_ERROR
 
 def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
     for versioned_key_read in prior_read_map:

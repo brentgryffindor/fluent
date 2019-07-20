@@ -158,10 +158,10 @@ class IpcAnnaClient:
             resp.ParseFromString(msg)
             logging.info('parsed')
 
-            if resp.error == ErrorType.KEY_DNE:
+            if resp.error == KEY_DNE:
                 logging.info('key dne')
                 return resp.error
-            elif resp.error == ErrorType.ABORT:
+            elif resp.error == ABORT:
                 logging.info('abort')
                 return resp.error
             else:
