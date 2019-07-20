@@ -112,7 +112,12 @@ def _get_user_msg_inbox_addr(ip, tid):
 
 
 def _merge_vector_clock(lhs, rhs):
-    result = lhs.copy()
+    result = {}
+    for cid in lhs:
+        if cid not in result:
+            result[cid] = lhs[cid]
+        else:
+            result[cid] = max(result[cid], lhs[cid])
     for cid in rhs:
         if cid not in result:
             result[cid] = rhs[cid]
@@ -121,13 +126,10 @@ def _merge_vector_clock(lhs, rhs):
     return result
 
 def _compare_vector_clock(lhs, rhs):
-    lhs_prev_vc = lhs.copy()
-    lhs_vc = lhs.copy()
-    rhs_vc = rhs.copy()
-    lhs_vc = _merge_vector_clock(lhs_vc, rhs_vc)
-    if lhs_prev_vc == lhs_vc:
+    merged_vc = _merge_vector_clock(lhs, rhs)
+    if lhs == merged_vc:
         return CausalComp.GreaterOrEqual
-    elif lhs_vc == rhs_vc:
+    elif merged_vc == rhs_vc:
         return CausalComp.Less
     else:
         return CausalComp.Concurrent

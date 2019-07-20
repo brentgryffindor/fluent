@@ -132,6 +132,9 @@ class IpcAnnaClient:
         request.function_name = fname
         request.keys.extend(keys)
 
+        for k in request.keys:
+            logging.info('key to GET is %s' % k)
+
         if not conservative:
             request.prior_version_tuples.extend(prior_version_tuples)
             request.prior_read_map.extend(prior_read_map)

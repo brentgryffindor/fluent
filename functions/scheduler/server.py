@@ -579,6 +579,7 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
 
 
 def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, total_num_functions, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
+    logging.info('entering simulation')
     while len(finished_functions) < total_num_functions:
         for fname in function_trigger_map:
             if not fname in finished_functions:
@@ -596,6 +597,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
 
                     if len(function_trigger_map[fname]) > 1 and _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
                         # abort
+                        logging.info('abort due to parallel flow checking failure')
                         return True
                     # turn prior read list into a map
                     prior_read_map = {}
@@ -606,6 +608,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     prior_per_func_read_map[fname] = prior_read_list
                     if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname]):
                         # abort
+                        logging.info('abort due to optimistic protocol failure')
                         return True
                     finished_functions.add(fname)
     return False
