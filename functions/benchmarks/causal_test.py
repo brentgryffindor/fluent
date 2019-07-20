@@ -123,14 +123,14 @@ def run(flconn, kvs, mode, sckt):
         ccv.values.extend([serialize_val(val)])
         kvs.put(k, ccv)
 
-        # key 'e'
+        # key 'f'
         k = 'f'
         ccv = CrossCausalValue()
         ccv.vector_clock['base'] = 1
         ccv.values.extend([serialize_val(val)])
         kvs.put(k, ccv)
 
-        # key 'e'
+        # key 'g'
         k = 'g'
         ccv = CrossCausalValue()
         ccv.vector_clock['base'] = 1

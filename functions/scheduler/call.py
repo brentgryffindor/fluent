@@ -136,10 +136,11 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
     # if we are in causal mode, start the conservative protocol by querying the caches for key versions
     if schedule.consistency == CROSS:
+        logging.info('send scheduler version query')
         for func in schedule.locations:
             if func in read_set:
                 loc = schedule.locations[func].split(':')
-                ip = utils._get_cache_version_query_address(loc[0], 0)
+                ip = utils._get_cache_version_query_address(loc[0])
                 version_query_request = CausalSchedulerRequest()
                 version_query_request.client_id = schedule.client_id
                 version_query_request.function_name = func
@@ -156,6 +157,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                     pending_versioned_key_collection_response[schedule.client_id] = set(func)
                 else:
                     pending_versioned_key_collection_response[schedule.client_id].add(func)
+        logging.info('done scheduler version query')
 
     if schedule.HasField('output_key'):
         return schedule.output_key

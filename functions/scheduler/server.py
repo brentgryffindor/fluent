@@ -282,6 +282,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                 if response.client_id in pending_versioned_key_collection_response:
                     pending_versioned_key_collection_response[response.client_id].remove(response.function_name)
                     # update per_func_versioned_key_chain
+                    logging.info('populating per func versioned key chain')
                     versioned_key_map[response.client_id].per_func_versioned_key_chain[response.function_name] = {}
                     for head_key in response.version_chain:
                         versioned_key_map[response.client_id].per_func_versioned_key_chain[response.function_name][head_key] = {}
@@ -313,6 +314,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                     if len(pending_versioned_key_collection_response[response.client_id]) == 0:
                         # trigger conservative protocol
                         # TODO: refactor to a function
+                        logging.info('start conservative protocol')
                         dag_name = versioned_key_map[response.client_id].dag_name
                         # a map from function name to accumulated version lowerbound
                         prior_per_func_causal_lowerbound_map = {}
@@ -326,6 +328,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                         finished_functions = set()
                         if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
                             # the protocol aborted, so we need to do conservative protocol
+                            logging.info('optimistic protocol will abort')
                             per_cache_message_map = {}
                             pending_conservative_response[response.client_id] = (versioned_key_map[response.client_id].schedule, [])
                             scheduler_response_address = utils._get_scheduler_key_shipping_response_address(ip)
@@ -372,6 +375,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 sckt = pusher_cache.get(cache_addr)
                                 sckt.send(per_cache_message_map[cache_addr].SerializeToString())
                         # GC
+                        logging.info('optimistic protocol will succeed. GC versioned key map')
                         del versioned_key_map[response.client_id]
 
         if key_shipping_response_socket in socks and socks[key_shipping_response_socket] == zmq.POLLIN:
