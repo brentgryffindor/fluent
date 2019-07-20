@@ -594,10 +594,15 @@ void optimistic_protocol(
                  .at(key)
                  ->reveal()
                  .vector_clock;
+        // debug
+        for (const auto& vec_pair : vc.reveal()) {
+          log->info("vector clock of {} has cid {} v_num {}", key, vec_pair.first, vec_pair.second.reveal());
+        }
       }
       for (auto& vc_payload_pair : causal_frontier[key]) {
         if (vector_clock_comparison(vc, vc_payload_pair.first) !=
             kCausalGreaterOrEqual) {
+          log->info("setting remote read flag of key {} to be true", key);
           // set remote read flag to true
           vc_payload_pair.second.first = true;
           vc.merge(vc_payload_pair.first);
@@ -685,7 +690,10 @@ void optimistic_protocol(
   if (addr_request_map.size() != 0) {
     log->info("has remote read");
     // remote read sent, merge local read to pending map
+    // debug
+    log->info("printing version store keys");
     for (const auto& pair : version_store.at(cid_function_pair).second) {
+      log->info("key is {}", pair.first);
       if (remove_candidate.find(pair.first) == remove_candidate.end()) {
         pending_cross_metadata[cid_function_pair].result_[pair.first] =
             pair.second.at(pair.first);

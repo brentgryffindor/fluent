@@ -129,7 +129,7 @@ def _compare_vector_clock(lhs, rhs):
     merged_vc = _merge_vector_clock(lhs, rhs)
     if lhs == merged_vc:
         return CausalComp.GreaterOrEqual
-    elif merged_vc == rhs_vc:
+    elif merged_vc == rhs:
         return CausalComp.Less
     else:
         return CausalComp.Concurrent
