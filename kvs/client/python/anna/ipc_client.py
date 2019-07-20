@@ -169,6 +169,7 @@ class IpcAnnaClient:
                 kv_pairs = {}
                 versioned_key_read = []
                 for tp in resp.tuples:
+                    logging.info('key is %s', tp.key)
                     val = CrossCausalValue()
                     val.ParseFromString(tp.payload)
 

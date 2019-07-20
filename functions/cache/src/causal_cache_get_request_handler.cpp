@@ -70,11 +70,13 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
+    log->info("Receive GET in cross mode");
     // we first check if the version store is already populated by the scheduler
     // if so, means that all data should already be fetched or DNE
     auto cid_function_pair =
         std::make_pair(request.client_id(), request.function_name());
     if (request.conservative()) {
+      log->info("GET for conservative protocol");
       // fetch from conservative store
       if (conservative_store.find(cid_function_pair) !=
           conservative_store.end()) {
@@ -104,6 +106,7 @@ void get_request_handler(
             "no matching cid function pair found in conservative store.");
       }
     } else {
+      log->info("GET for optimistic protocol");
       if (version_store.find(cid_function_pair) != version_store.end()) {
         if (version_store[cid_function_pair].first) {
           // some keys DNE
@@ -136,7 +139,7 @@ void get_request_handler(
           }
           optimistic_protocol(cid_function_pair, read_set, version_store,
                               prior_read_map, pending_cross_metadata, pushers,
-                              cct, causal_frontier, request.response_address());
+                              cct, causal_frontier, request.response_address(), log);
         }
       } else if (pending_cross_metadata.find(cid_function_pair) !=
                  pending_cross_metadata.end()) {
@@ -166,6 +169,7 @@ void get_request_handler(
         // scheduler request hasn't arrived yet
         set<Key> read_set;
         for (const string& key : request.keys()) {
+          log->info("inserting {} to read set", key);
           read_set.insert(key);
         }
         set<Key> to_cover;
@@ -175,6 +179,7 @@ void get_request_handler(
                              version_store, pending_cross_metadata,
                              to_fetch_map, cover_map, pushers, client, cct,
                              causal_frontier, log)) {
+          log->info("not covered");
           pending_cross_metadata[cid_function_pair].read_set_ = read_set;
           pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
           pending_cross_metadata[cid_function_pair].executor_response_address_ =
@@ -197,6 +202,7 @@ void get_request_handler(
                 std::move(key));
           }
         } else {
+          log->info("covered");
           // all keys covered, first populate version store entry
           // in this case, it's not possible that keys DNE
           version_store[cid_function_pair].first = false;
@@ -228,7 +234,7 @@ void get_request_handler(
           }
           optimistic_protocol(cid_function_pair, read_set, version_store,
                               prior_read_map, pending_cross_metadata, pushers,
-                              cct, causal_frontier, request.response_address());
+                              cct, causal_frontier, request.response_address(), log);
         }
       }
     }

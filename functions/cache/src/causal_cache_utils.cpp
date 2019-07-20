@@ -571,16 +571,19 @@ void optimistic_protocol(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    CausalFrontierType& causal_frontier, const Address& response_address) {
+    CausalFrontierType& causal_frontier, const Address& response_address, logger log) {
   // all keys present, need to check causal consistency
   // and figure out if we need to read anything from remote
   // ---
   // first, check from upstream to downstream to get minimum versions we must
   // read
+  log->info("Entering optimistic protocol");
   for (const Key& key : read_set) {
+    log->info("up -> down, checking key {}", key);
     if (causal_frontier.find(key) != causal_frontier.end()) {
       // figure out what key/addr need remote read assuming the local key is
       // read
+      log->info("found {} in causal frontier", key);
       VectorClock vc;
       if (version_store.at(cid_function_pair).second.find(key) !=
           version_store.at(cid_function_pair).second.end()) {
@@ -605,12 +608,13 @@ void optimistic_protocol(
   // then for each local read, check version store to see if its chain
   // is inconsistent with a previous read. If so we try to find a version from
   // prior chain to read (recursively). If not possible then we need to abort
-
+  log->info("checking from down->up");
   set<Key> remove_candidate;
   for (const Key& key : read_set) {
     if (remove_candidate.find(key) == remove_candidate.end()) {
       if (version_store.at(cid_function_pair).second.find(key) !=
           version_store.at(cid_function_pair).second.end()) {
+        log->info("version store has key {}", key);
         // we may not reach this branch if the executor request reaches before
         // the scheduler request
         for (const auto& pair :
@@ -620,6 +624,7 @@ void optimistic_protocol(
                                       pair.second->reveal().vector_clock) !=
                   kCausalGreaterOrEqual) {
             // consider removing this key from local readset
+            log->info("considering key {} for removal", key);
             remove_candidate.insert(key);
             if (!remove_from_local_readset(key, causal_frontier, read_set,
                                            remove_candidate, version_store,
@@ -646,6 +651,7 @@ void optimistic_protocol(
     for (const auto& vc_payload_pair : pair.second) {
       if (vc_payload_pair.second.first) {
         // remote read
+        log->info("remote read key {}", pair.first);
         const VersionedKeyAddressMetadata& metadata =
             vc_payload_pair.second.second;
         if (addr_request_map.find(metadata.cache_address_) ==
@@ -677,6 +683,7 @@ void optimistic_protocol(
     kZmqUtil->send_string(req_string, &pushers[pair.first]);
   }
   if (addr_request_map.size() != 0) {
+    log->info("has remote read");
     // remote read sent, merge local read to pending map
     for (const auto& pair : version_store.at(cid_function_pair).second) {
       if (remove_candidate.find(pair.first) == remove_candidate.end()) {
@@ -688,6 +695,7 @@ void optimistic_protocol(
         response_address;
     pending_cross_metadata[cid_function_pair].remove_set_ = remove_candidate;
   } else {
+    log->info("all local read");
     // all local read
     // respond to executor
     CausalGetResponse response;
@@ -695,6 +703,7 @@ void optimistic_protocol(
     response.set_error(ErrorType::NO_ERROR);
 
     for (const auto& pair : version_store.at(cid_function_pair).second) {
+      log->info("local read key {}", pair.first);
       // first populate the requested tuple
       CausalTuple* tp = response.add_tuples();
       tp->set_key(pair.first);
@@ -761,6 +770,7 @@ void merge_into_causal_cut(
     if (pending_cross_metadata.find(cid_function_pair) !=
         pending_cross_metadata.end()) {
       if (key_dne) {
+        log->info("key dne for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
         version_store[cid_function_pair].first = true;
         if (pending_cross_metadata[cid_function_pair]
                 .executor_response_address_ != "") {
@@ -792,6 +802,7 @@ void merge_into_causal_cut(
         pending_cross_metadata[cid_function_pair].to_cover_set_.erase(key);
         if (pending_cross_metadata[cid_function_pair].to_cover_set_.size() ==
             0) {
+          log->info("all key covered for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
           // all keys covered, first populate version store entry
           // set DNE to false
           version_store[cid_function_pair].first = false;
@@ -818,7 +829,7 @@ void merge_into_causal_cut(
                 pending_cross_metadata, pushers, cct,
                 pending_cross_metadata[cid_function_pair].causal_frontier_,
                 pending_cross_metadata[cid_function_pair]
-                    .executor_response_address_);
+                    .executor_response_address_, log);
           }
           if (pending_cross_metadata[cid_function_pair]
                   .scheduler_response_address_ != "") {

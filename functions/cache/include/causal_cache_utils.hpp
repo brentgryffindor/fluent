@@ -245,7 +245,7 @@ void optimistic_protocol(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    CausalFrontierType& causal_frontier, const Address& response_address);
+    CausalFrontierType& causal_frontier, const Address& response_address, logger log);
 
 // merge a causal chain from in_preparation to causal cut store
 // also notify clients that are waiting for the head key of the chain
