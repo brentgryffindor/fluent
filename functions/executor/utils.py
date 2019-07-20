@@ -38,7 +38,7 @@ def _retrieve_function(name, kvs, consistency=CROSS):
             return None
     else:
         logging.info('Causal mode')
-        result = kvs.causal_get([kvs_name], set(), [], [], SINGLE, 0, '', {}, False)
+        result = kvs.causal_get([kvs_name], set(), [], [], SINGLE, '0', '', {}, False)
         if result:
             return serializer.function_ser.load(result[2][kvs_name][1])
         else:
