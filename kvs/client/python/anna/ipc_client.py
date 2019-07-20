@@ -156,12 +156,16 @@ class IpcAnnaClient:
             logging.info('parsing response')
             resp = CausalGetResponse()
             resp.ParseFromString(msg)
+            logging.info('parsed')
 
             if resp.error == ErrorType.KEY_DNE:
+                logging.info('key dne')
                 return resp.error
             elif resp.error == ErrorType.ABORT:
+                logging.info('abort')
                 return resp.error
             else:
+                logging.info('GET successful')
                 kv_pairs = {}
                 versioned_key_read = []
                 for tp in resp.tuples:
@@ -176,6 +180,7 @@ class IpcAnnaClient:
                         vk.key = tp.key
                         vk.vector_clock = val.vector_clock
                         versioned_key_read.append(vk)
+                logging.info('returning from causal GET')
                 return (resp.prior_version_tuples, versioned_key_read, kv_pairs)
 
     def put(self, key, value):
