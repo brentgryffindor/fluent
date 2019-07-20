@@ -407,7 +407,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, pri
 def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
     for versioned_key_read in prior_read_map:
         for prior_version_tuple in prior_version_tuples:
-            if versioned_key_read.key == prior_version_tuple.versioned_key.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, prior_version_tuple.versioned_key.vector_clock) != CausalComp.GreaterOrEqual:
+            if versioned_key_read.key == prior_version_tuple.versioned_key.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, prior_version_tuple.versioned_key.vector_clock) != sutils.CausalComp.GreaterOrEqual:
                 return True
     return False
 

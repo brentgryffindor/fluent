@@ -108,7 +108,9 @@ void get_request_handler(
     } else {
       log->info("GET for optimistic protocol");
       if (version_store.find(cid_function_pair) != version_store.end()) {
+        log->info("version store already present");
         if (version_store[cid_function_pair].first) {
+          log->info("DNE");
           // some keys DNE
           CausalGetResponse response;
           response.set_error(ErrorType::KEY_DNE);
@@ -118,6 +120,16 @@ void get_request_handler(
           kZmqUtil->send_string(resp_string,
                                 &pushers[request.response_address()]);
         } else {
+          log->info("printing prior version tuples");
+          // debug: print what's in the prior_version_tuples
+          for (const auto& prior_version_tuple : request.prior_version_tuples()) {
+            log->info("cache addr is {}", prior_version_tuple.cache_address());
+            log->info("function name is {}", prior_version_tuple.function_name());
+            log->info("key is {}", prior_version_tuple.versioned_key().key());
+            for (const auto& vec_pair : prior_version_tuple.versioned_key().vector_clock()) {
+              log->info("cid {} version num {}", vec_pair.first, vec_pair.second);
+            }
+          }
           CausalFrontierType causal_frontier =
               construct_causal_frontier(request);
           // construct a read set

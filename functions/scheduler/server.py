@@ -303,9 +303,9 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 to_remove = []
                                 dominated = False
                                 for tp in versioned_key_map[response.client_id].global_causal_frontier[vk.key]:
-                                    if sutils._compare_vector_clock(tp[0], vk.vector_clock) == CausalComp.Less:
+                                    if sutils._compare_vector_clock(tp[0], vk.vector_clock) == sutils.CausalComp.Less:
                                         to_remove.append(tp)
-                                    elif sutils._compare_vector_clock(tp[0], vk.vector_clock) == CausalComp.GreaterOrEqual:
+                                    elif sutils._compare_vector_clock(tp[0], vk.vector_clock) == sutils.CausalComp.GreaterOrEqual:
                                         dominated = True
                                         break
                                 if dominated:
@@ -354,10 +354,10 @@ def scheduler(ip, mgmt_ip, route_addr):
                                     vc = {}
                                     if key in versioned_key_map[response.client_id].per_func_versioned_key_chain[fname]:
                                         vc = versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key][key]
-                                    if sutils._compare_vector_clock(vc, target_vc) != CausalComp.GreaterOrEqual:
+                                    if sutils._compare_vector_clock(vc, target_vc) != sutils.CausalComp.GreaterOrEqual:
                                         # need to fetch from other caches
                                         for tp in versioned_key_map[response.client_id].global_causal_frontier[key]:
-                                            if sutils._compare_vector_clock(vc, tp[0]) != CausalComp.GreaterOrEqual:
+                                            if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
                                                 # can merge to make it bigger
                                                 vc = sutils._merge_vector_clock(vc, tp[0])
                                                 # populate message to fetch this version
@@ -371,7 +371,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                                 per_cache_function_key_pair.function_key_pairs.extend([function_key_pair])
                                                 per_cache_message_map[cache_address].per_cache_function_key_pairs.extend([per_cache_function_key_pair])
 
-                                                if sutils._compare_vector_clock(vc, target_vc) == CausalComp.GreaterOrEqual:
+                                                if sutils._compare_vector_clock(vc, target_vc) == sutils.CausalComp.GreaterOrEqual:
                                                     break
                             # send message to caches
                             for cache_addr in per_cache_message_map:
@@ -478,7 +478,7 @@ def _find_upstream(fname, dag):
             for func_causal_lowerbound in function_trigger_map[fname]:
                 if func_causal_lowerbound != func_read_set:
                     for causal_lowerbound in prior_causal_lowerbound_map[func_causal_lowerbound]:
-                        if versioned_key.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key.vector_clock, causal_lowerbound.vector_clock) != CausalComp.GreaterOrEqual:
+                        if versioned_key.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key.vector_clock, causal_lowerbound.vector_clock) != sutils.CausalComp.GreaterOrEqual:
                             return True
     return False'''
 
@@ -486,7 +486,7 @@ def _find_upstream(fname, dag):
 def _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
     for versioned_key_read in prior_read_list:
         for causal_lowerbound in prior_causal_lowerbound_list:
-            if versioned_key_read.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, causal_lowerbound.vector_clock) != CausalComp.GreaterOrEqual:
+            if versioned_key_read.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, causal_lowerbound.vector_clock) != sutils.CausalComp.GreaterOrEqual:
                 return True
     return False
 
@@ -500,9 +500,9 @@ def _construct_causal_frontier(prior_causal_lowerbound_list):
             to_remove = []
             dominated = False
             for tp in causal_frontier[versioned_key.key]:
-                if sutils._compare_vector_clock(tp[0], versioned_key.vector_clock) == CausalComp.Less:
+                if sutils._compare_vector_clock(tp[0], versioned_key.vector_clock) == sutils.CausalComp.Less:
                     to_remove.append(tp)
-                elif sutils._compare_vector_clock(tp[0], versioned_key.vector_clock) == CausalComp.GreaterOrEqual:
+                elif sutils._compare_vector_clock(tp[0], versioned_key.vector_clock) == sutils.CausalComp.GreaterOrEqual:
                     dominated = True
                     break
             if dominated:
@@ -521,13 +521,13 @@ def _remove_from_local_readset(key, causal_frontier, read_set, remove_candidate,
         if tp[1]:
             vc = sutils._merge_vector_clock(vc, tp[0])
     for tp in causal_frontier[key]:
-        if sutils._compare_vector_clock(vc, tp[0]) != CausalComp.GreaterOrEqual:
+        if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
             tp[1] = True
             vc = sutils._merge_vector_clock(vc, tp[0])
     for other_key in read_set:
         if not other_key in remove_candidate:
             if other_key in version_store:
-                if key in version_store[other_key] and sutils._compare_vector_clock(vc, version_store[other_key][key]) != CausalComp.GreaterOrEqual:
+                if key in version_store[other_key] and sutils._compare_vector_clock(vc, version_store[other_key][key]) != sutils.CausalComp.GreaterOrEqual:
                     remove_candidate.add(other_key)
                     if not _remove_from_local_readset(other_key, causal_frontier, read_set, remove_candidate, version_store):
                         return False
@@ -541,7 +541,7 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
             if key in versioned_key_map[cid].per_func_versioned_key_chain[fname]:
                 vc = versioned_key_map[cid].per_func_versioned_key_chain[fname][key][key]
             for tp in causal_frontier[key]:
-                if sutils._compare_vector_clock(vc, tp[0]) != CausalComp.GreaterOrEqual:
+                if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
                     tp[1] = True
                     vc = sutils._merge_vector_clock(vc, tp[0])
 
@@ -550,7 +550,7 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
         if key not in remove_candidate:
             if key in versioned_key_map[cid].per_func_versioned_key_chain[fname]:
                 for dep_key in versioned_key_map[cid].per_func_versioned_key_chain[fname][key]:
-                    if dep_key in prior_read_map and sutils._compare_vector_clock(prior_read_map[dep_key], versioned_key_map[cid].per_func_versioned_key_chain[fname][key][dep_key]) != CausalComp.GreaterOrEqual:
+                    if dep_key in prior_read_map and sutils._compare_vector_clock(prior_read_map[dep_key], versioned_key_map[cid].per_func_versioned_key_chain[fname][key][dep_key]) != sutils.CausalComp.GreaterOrEqual:
                         remove_candidate.add(key)
                         if not _remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, versioned_key_map[cid].per_func_versioned_key_chain[fname]):
                             # abort
