@@ -395,6 +395,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, pri
     logging.info('causal GET done')
 
     if result == KEY_DNE or result == ABORT:
+        logging.info('dne or abort')
         return result
 
     if not conservative:
