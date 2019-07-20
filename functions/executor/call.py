@@ -383,7 +383,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative):
     logging.info('resolve ref causal')
-    full_read_set = schedule.full_resd_set
+    full_read_set = schedule.full_read_set
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,

@@ -155,7 +155,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                 sckt.send(version_query_request.SerializeToString())
 
                 if schedule.client_id not in pending_versioned_key_collection_response:
-                    pending_versioned_key_collection_response[schedule.client_id] = set(func)
+                    pending_versioned_key_collection_response[schedule.client_id] = set((func,))
                 else:
                     pending_versioned_key_collection_response[schedule.client_id].add(func)
         logging.info('done scheduler version query')
