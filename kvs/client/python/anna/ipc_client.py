@@ -176,10 +176,12 @@ class IpcAnnaClient:
                     kv_pairs[tp.key] = (val.vector_clock, val.values[0])
                     # construct VersionedKey for keys read
                     if not conservative:
+                        logging.info('creating versioned key for read set')
                         vk = VersionedKey()
                         vk.key = tp.key
-                        vk.vector_clock = val.vector_clock
+                        vk.vector_clock.update(val.vector_clock)
                         versioned_key_read.append(vk)
+                        logging.info('finished creation')
                 logging.info('returning from causal GET')
                 return (resp.prior_version_tuples, versioned_key_read, kv_pairs)
 
