@@ -139,6 +139,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         logging.info('send scheduler version query')
         for func in schedule.locations:
             if func in read_set:
+                logging.info('function name is %s' % func)
                 loc = schedule.locations[func].split(':')
                 ip = utils._get_cache_version_query_address(loc[0])
                 version_query_request = CausalSchedulerRequest()

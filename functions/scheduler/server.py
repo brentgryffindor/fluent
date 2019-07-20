@@ -280,6 +280,9 @@ def scheduler(ip, mgmt_ip, route_addr):
                 logging.error('Key DNE error.')
             else:
                 if response.client_id in pending_versioned_key_collection_response:
+                    for fn in pending_versioned_key_collection_response[response.client_id]:
+                        logging.info('function %s remains in map' % fn)
+                    logging.info('function %s in resopnse' % response.function_name)
                     pending_versioned_key_collection_response[response.client_id].remove(response.function_name)
                     # update per_func_versioned_key_chain
                     logging.info('populating per func versioned key chain')
