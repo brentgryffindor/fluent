@@ -174,8 +174,7 @@ void get_request_handler(
         }
         // store full read set for constructing version store later
         for (const Key& key : request.full_read_set()) {
-          pending_cross_metadata[cid_function_pair].full_read_set_.emplace(
-              std::move(key));
+          pending_cross_metadata[cid_function_pair].full_read_set_.insert(key);
         }
       } else {
         // scheduler request hasn't arrived yet

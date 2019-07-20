@@ -77,6 +77,10 @@ void scheduler_request_handler(
       pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
       pending_cross_metadata[cid_function_pair].scheduler_response_address_ =
           request.scheduler_address();
+      // store full read set for constructing version store later
+      for (const Key& key : request.full_read_set()) {
+        pending_cross_metadata[cid_function_pair].full_read_set_.insert(key);
+      }
     } else {
       // all keys covered, first populate version store entry
       // in this case, it's not possible that keys DNE
