@@ -258,6 +258,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 dependencies[dep.key] = dep.vector_clock
 
     if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
+        logging.info('abort due to parallel flow check failure')
         _abort_dag(fname, schedule, pusher_cache)
         return
 
@@ -334,11 +335,13 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                            dependencies, serialize_val(result), schedule.client_id)
 
         # issue requests to GC the version store and schedule
+        logging.info('GCing version store and schedule')
         observed_cache_address = set()
         for pvt in prior_version_tuples:
             if pvt.cache_address not in observed_cache_address:
                 observed_cache_address.add(pvt.cache_address)
                 gc_addr = pvt.cache_address[:-4] + str(int(pvt.cache_address[-4:]) - 50)
+                logging.info('cache GC address is %s' % gc_addr)
                 sckt = pusher_cache.get(gc_addr)
                 sckt.send_string(schedule.client_id)
         for fname in schedule.locations:
@@ -346,6 +349,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             gc_req.function_name = fname
             gc_req.schedule_id = schedule.id
             gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
+            logging.info('schedule GC address is %s' % gc_addr)
             sckt = pusher_cache.get(gc_addr)
             sckt.send(gc_req.SerializeToString())
 

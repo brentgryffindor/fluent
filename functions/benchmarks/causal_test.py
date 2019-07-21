@@ -144,8 +144,8 @@ def run(flconn, kvs, mode, sckt):
         logging.info('Running DAG')
         ### RUN DAG ###
         refs1 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
-        refs2 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
-        refs3 = (FluentReference('d', False, CROSSCAUSAL),)
+        refs2 = (FluentReference('d', False, CROSSCAUSAL), FluentReference('e', False, CROSSCAUSAL), FluentReference('f', False, CROSSCAUSAL),)
+        refs3 = (FluentReference('g', False, CROSSCAUSAL),)
 
         arg_map = { 'strmnp1' : refs1 ,
                     'strmnp2' : refs2 ,
