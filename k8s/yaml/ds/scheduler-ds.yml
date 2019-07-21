@@ -30,6 +30,7 @@ spec:
       nodeSelector:
         role: scheduler
       hostNetwork: true
+      restartPolicy: Never
       hostIPC: true
       containers:
       - name: scheduler-container

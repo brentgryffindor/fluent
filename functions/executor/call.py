@@ -117,6 +117,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                       tid, conservative=False):
+    logging.info('conservative flag is %b' % conservative)
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,

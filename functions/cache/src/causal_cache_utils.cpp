@@ -500,8 +500,10 @@ bool remove_from_local_readset(const Key& key,
   // (via remote read) 2: the consistency of other local reads need to be
   // satisfied, otherwise try to not read them from local as well
   // ---
+  std::cout << "entering remove from local read set\n";
   if (causal_frontier.find(key) == causal_frontier.end()) {
     // abort
+    std::cout << "no upstream data available, abort\n";
     return false;
   }
   VectorClock vc;
@@ -538,6 +540,7 @@ bool remove_from_local_readset(const Key& key,
                 kCausalGreaterOrEqual) {
           // consider removing the "other_key" from read set
           log->info("considering key {} for removal", other_key);
+          std::cout << "considering key " + other_key + " for removal\n";
           remove_candidate.insert(other_key);
           if (!remove_from_local_readset(other_key, causal_frontier, read_set,
                                          remove_candidate, version_store,
@@ -582,6 +585,7 @@ void optimistic_protocol(
   // first, check from upstream to downstream to get minimum versions we must
   // read
   log->info("Entering optimistic protocol");
+  std::cout << "Entering optimistic protocol\n";
   for (const Key& key : read_set) {
     log->info("up -> down, checking key {}", key);
     if (causal_frontier.find(key) != causal_frontier.end()) {
@@ -618,6 +622,7 @@ void optimistic_protocol(
   // is inconsistent with a previous read. If so we try to find a version from
   // prior chain to read (recursively). If not possible then we need to abort
   log->info("checking from down->up");
+  std::cout << "checking from down->up\n";
   set<Key> remove_candidate;
   for (const Key& key : read_set) {
     if (remove_candidate.find(key) == remove_candidate.end()) {

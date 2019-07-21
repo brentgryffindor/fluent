@@ -35,6 +35,7 @@ spec:
         hostPath:
           path: /tmp
       hostNetwork: true
+      restartPolicy: Never
       hostIPC: true
       containers:
       - name: function-1
