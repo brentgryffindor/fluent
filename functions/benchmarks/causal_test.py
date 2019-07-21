@@ -6,9 +6,8 @@ import sys
 import time
 import uuid
 
-from anna.lattices import *
-from include.functions_pb2 import *
-from include.kvs_pb2 import *
+from anna.functions_pb2 import *
+from anna.kvs_pb2 import *
 from include.serializer import *
 from include.shared import *
 from . import utils
@@ -152,8 +151,8 @@ def run(flconn, kvs, mode, sckt):
                     'strmnp2' : refs2 ,
                     'strmnp3' : refs3 }
 
-        rid = flconn.call_dag(dag_name, arg_map, False, CROSS, 'result', 'test_cid')
-        print("output key is ", rid)
+        rid = flconn.call_dag(dag_name, arg_map, False, CROSS, 'aaa', 'bbb')
+        print("output key is %s" % rid)
 
         res = kvs.get(rid)
         while not res:
