@@ -492,7 +492,7 @@ bool remove_from_local_readset(const Key& key,
                                const set<Key>& read_set,
                                set<Key>& remove_candidate,
                                const VersionStoreType& version_store,
-                               const ClientIdFunctionPair& cid_function_pair) {
+                               const ClientIdFunctionPair& cid_function_pair, logger log) {
   // first, check if causal_frontier have at least a version to read
   // first check if not reading from local is OK
   // if we don't read from local, we need to ensure two things:
@@ -537,10 +537,11 @@ bool remove_from_local_readset(const Key& key,
                                             .vector_clock) !=
                 kCausalGreaterOrEqual) {
           // consider removing the "other_key" from read set
+          log->info("considering key {} for removal", other_key);
           remove_candidate.insert(other_key);
           if (!remove_from_local_readset(other_key, causal_frontier, read_set,
                                          remove_candidate, version_store,
-                                         cid_function_pair)) {
+                                         cid_function_pair, log)) {
             return false;
           }
         }
@@ -636,7 +637,7 @@ void optimistic_protocol(
             remove_candidate.insert(key);
             if (!remove_from_local_readset(key, causal_frontier, read_set,
                                            remove_candidate, version_store,
-                                           cid_function_pair)) {
+                                           cid_function_pair, log)) {
               // abort
               CausalGetResponse response;
               response.set_error(ErrorType::ABORT);

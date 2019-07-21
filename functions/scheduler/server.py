@@ -336,6 +336,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                             pending_conservative_response[response.client_id] = (versioned_key_map[response.client_id].schedule, [])
                             scheduler_response_address = utils._get_scheduler_key_shipping_response_address(ip)
                             for fname in versioned_key_map[response.client_id].func_location:
+                                logging.info('checking function %s' % fname)
                                 cache_ip = versioned_key_map[response.client_id].func_location[fname][0]
                                 cache_address = utils._get_cache_scheduler_key_shipping_request_address(cache_ip)
                                 if cache_address not in per_cache_message_map:
@@ -349,6 +350,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 per_function_readset.keys.extend(versioned_key_map[response.client_id].per_func_read_set[fname])
                                 per_cache_message_map[cache_address].per_function_readsets.extend([per_function_readset])
                                 # compute if it needs to fetch keys from other caches
+                                logging.info('computing remote fetch')
                                 for key in per_function_readset.keys:
                                     target_vc = versioned_key_map[response.client_id].global_causal_cut[key]
                                     vc = {}
@@ -356,9 +358,11 @@ def scheduler(ip, mgmt_ip, route_addr):
                                         vc = versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key][key]
                                     if sutils._compare_vector_clock(vc, target_vc) != sutils.CausalComp.GreaterOrEqual:
                                         # need to fetch from other caches
+                                        logging.info('need to fetch from remote')
                                         for tp in versioned_key_map[response.client_id].global_causal_frontier[key]:
                                             if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
                                                 # can merge to make it bigger
+                                                logging.info('fetch %s from function %s' % (key, tp[1]))
                                                 vc = sutils._merge_vector_clock(vc, tp[0])
                                                 # populate message to fetch this version
                                                 function_key_pair = FunctionKeyPair()
@@ -374,6 +378,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                                 if sutils._compare_vector_clock(vc, target_vc) == sutils.CausalComp.GreaterOrEqual:
                                                     break
                             # send message to caches
+                            logging.info('sending key shipping request to cache')
                             for cache_addr in per_cache_message_map:
                                 sckt = pusher_cache.get(cache_addr)
                                 sckt.send(per_cache_message_map[cache_addr].SerializeToString())

@@ -234,7 +234,7 @@ bool remove_from_local_readset(const Key& key,
                                const set<Key>& read_set,
                                set<Key>& remove_candidate,
                                const VersionStoreType& version_store,
-                               const ClientIdFunctionPair& cid_function_pair);
+                               const ClientIdFunctionPair& cid_function_pair, logger log);
 
 CausalFrontierType construct_causal_frontier(const CausalGetRequest& request);
 
