@@ -108,6 +108,7 @@ void recursive_dependency_check(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     KvsAsyncClientInterface* client, logger log) {
+  log->info("enter recursive dependency check, head key {}", head_key);
   for (const auto& pair : lattice->reveal().dependency.reveal()) {
     Key dep_key = pair.first;
     // first, check if the dependency is already satisfied in the causal cut
@@ -877,6 +878,7 @@ bool covered_locally(
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct, CausalFrontierType& causal_frontier,
     logger log) {
+  log->info("covered locally called");
   bool covered = true;
 
   for (const string& key : read_set) {
