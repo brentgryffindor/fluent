@@ -629,6 +629,7 @@ void optimistic_protocol(
       if (version_store.at(cid_function_pair).second.find(key) !=
           version_store.at(cid_function_pair).second.end()) {
         log->info("version store has key {}", key);
+        std::cout << "version store has key " + key + "\n";
         // we may not reach this branch if the executor request reaches before
         // the scheduler request
         for (const auto& pair :
@@ -639,6 +640,7 @@ void optimistic_protocol(
                   kCausalGreaterOrEqual) {
             // consider removing this key from local readset
             log->info("considering key {} for removal", key);
+            std::cout << "considering key " + key + " for removal\n";
             remove_candidate.insert(key);
             if (!remove_from_local_readset(key, causal_frontier, read_set,
                                            remove_candidate, version_store,

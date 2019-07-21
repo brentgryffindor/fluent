@@ -72,12 +72,14 @@ void get_request_handler(
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
     log->info("Receive GET in cross mode");
+    std::cout << "Receive GET in cross mode\n";
     // we first check if the version store is already populated by the scheduler
     // if so, means that all data should already be fetched or DNE
     auto cid_function_pair =
         std::make_pair(request.client_id(), request.function_name());
     if (request.conservative()) {
       log->info("GET for conservative protocol");
+      std::cout << "GET for conservative protocol\n";
       // fetch from conservative store
       if (conservative_store.find(cid_function_pair) !=
           conservative_store.end()) {
@@ -108,8 +110,10 @@ void get_request_handler(
       }
     } else {
       log->info("GET for optimistic protocol");
+      std::cout << "GET for optimistic protocol\n";
       if (version_store.find(cid_function_pair) != version_store.end()) {
         log->info("version store already present");
+        std::cout << "version store already present\n";
         if (version_store[cid_function_pair].first) {
           log->info("DNE");
           // some keys DNE
@@ -136,6 +140,7 @@ void get_request_handler(
           // construct a read set
           set<Key> read_set;
           for (const Key& key : request.keys()) {
+            std::cout << "requested key is " + key + "\n";
             read_set.insert(key);
           }
           // it's not possible to read different versions of the same key in
