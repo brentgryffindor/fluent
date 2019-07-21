@@ -39,10 +39,12 @@ void scheduler_request_handler(
       std::make_pair(request.client_id(), request.function_name());
   if (version_store.find(cid_function_pair) != version_store.end()) {
     // the entry already exists in version store
+    log->info("version store already present");
     CausalSchedulerResponse response;
     response.set_client_id(request.client_id());
     response.set_function_name(request.function_name());
     if (version_store[cid_function_pair].first) {
+      log->info("DNE");
       // some keys DNE
       response.set_succeed(false);
       // send response

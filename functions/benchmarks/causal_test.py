@@ -152,7 +152,7 @@ def run(flconn, kvs, mode, sckt):
                     'strmnp2' : refs2 ,
                     'strmnp3' : refs3 }
 
-        rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key='result', client_id='test_cid')
+        rid = flconn.call_dag(dag_name, arg_map, False, CROSS, 'result', 'test_cid')
         print("output key is ", rid)
 
         res = kvs.get(rid)
