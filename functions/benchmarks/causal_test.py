@@ -66,7 +66,7 @@ def run(flconn, kvs, mode, sckt):
         ### CREATE DAG ###
 
         functions = ['strmnp1', 'strmnp2', 'strmnp3']
-        connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
+        connections = [('strmnp1', 'strmnp3'), ('strmnp2', 'strmnp3')]
         success, error = flconn.register_dag(dag_name, functions, connections)
 
         if not success:
@@ -144,8 +144,8 @@ def run(flconn, kvs, mode, sckt):
         logging.info('Running DAG')
         ### RUN DAG ###
         refs1 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
-        refs2 = (FluentReference('d', False, CROSSCAUSAL), FluentReference('e', False, CROSSCAUSAL),)
-        refs3 = (FluentReference('f', False, CROSSCAUSAL), FluentReference('g', False, CROSSCAUSAL),)
+        refs2 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
+        refs3 = (FluentReference('d', False, CROSSCAUSAL),)
 
         arg_map = { 'strmnp1' : refs1 ,
                     'strmnp2' : refs2 ,
