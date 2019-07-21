@@ -515,6 +515,7 @@ def _construct_causal_frontier(prior_causal_lowerbound_list):
 
 def _remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, version_store):
     if key not in causal_frontier:
+        logging.info('key %s not in causal frontier, aborting' % key)
         return False
     vc = {}
     for tp in causal_frontier[key]:
@@ -552,7 +553,7 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
                 for dep_key in versioned_key_map[cid].per_func_versioned_key_chain[fname][key]:
                     if dep_key in prior_read_map and sutils._compare_vector_clock(prior_read_map[dep_key], versioned_key_map[cid].per_func_versioned_key_chain[fname][key][dep_key]) != sutils.CausalComp.GreaterOrEqual:
                         remove_candidate.add(key)
-                        if not _remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, versioned_key_map[cid].per_func_versioned_key_chain[fname]):
+                        if not _remove_from_local_readset(key, causal_frontier, versioned_key_map[cid].per_func_read_set[fname], remove_candidate, versioned_key_map[cid].per_func_versioned_key_chain[fname]):
                             # abort
                             return True
                         break

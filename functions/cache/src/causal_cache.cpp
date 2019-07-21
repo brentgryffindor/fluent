@@ -44,9 +44,14 @@ void warmup(VersionStoreType& version_store) {
   // func 1 key c
   CrossCausalPayload<SetLattice<string>> ccp_1_c;
   ccp_1_c.vector_clock.insert("base", 1);
+  ccp_1_c.dependency.insert("e", VectorClock({{"base", 1}}));
   ccp_1_c.value = value;
   version_store[cid_function_pair].second["c"]["c"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_c);
-
+  CrossCausalPayload<SetLattice<string>> ccp_1_c_e;
+  ccp_1_c_e.vector_clock.insert("base", 1);
+  ccp_1_c_e.value = value;
+  version_store[cid_function_pair].second["c"]["e"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_c_e);
+  
   // func 2
   cid_function_pair = std::make_pair("test_cid", "strmnp2");
   version_store[cid_function_pair].first = false;
@@ -62,9 +67,14 @@ void warmup(VersionStoreType& version_store) {
   version_store[cid_function_pair].second["d"]["a"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_d_a);
   // func 2 key e
   CrossCausalPayload<SetLattice<string>> ccp_2_e;
-  ccp_2_e.vector_clock.insert("base", 1);
+  ccp_2_e.vector_clock.insert("base", 2);
+  ccp_2_e.dependency.insert("d", VectorClock({{"base", 2}}));
   ccp_2_e.value = value;
   version_store[cid_function_pair].second["e"]["e"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_e);
+  CrossCausalPayload<SetLattice<string>> ccp_2_e_d;
+  ccp_2_e_d.vector_clock.insert("base", 2);
+  ccp_2_e_d.value = value;
+  version_store[cid_function_pair].second["e"]["d"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_e_d);
 
   // func 3
   cid_function_pair = std::make_pair("test_cid", "strmnp3");
