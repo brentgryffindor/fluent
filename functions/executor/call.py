@@ -383,7 +383,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             else:
                 logging.info('no deserialization of key %s' % key)
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
-                logging.info('value is %s' % kv_pairs[key][1]).decode('ascii')
+                logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
 
     # execute the function
     for f_arg in func_args:
