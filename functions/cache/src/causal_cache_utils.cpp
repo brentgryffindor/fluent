@@ -151,6 +151,7 @@ void recursive_dependency_check(
         to_fetch_map[head_key].insert(dep_key);
         cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
             .insert(head_key);
+        log->info("firing get request for key {} in recursive dependency check", dep_key);
         client->get_async(dep_key);
       }
     }
@@ -446,6 +447,7 @@ void process_response(
       cover_map.erase(key);
     } else {
       // not fully covered, so we re-issue the read request
+      log->info("firing get request for key {} in process_response", key);
       client->get_async(key);
     }
   }
@@ -928,6 +930,7 @@ bool covered_locally(
           in_preparation[key].first.insert(cid_function_pair);
           covered = false;
           to_cover.insert(key);
+          log->info("firing get request for key {} in covered locally", key);
           client->get_async(key);
         }
       }

@@ -47,6 +47,7 @@ void get_request_handler(
         covered_locally = false;
         to_cover.insert(key);
         single_callback_map[key].insert(request.response_address());
+        log->info("firing get request for key {} in single routine", key);
         client->get_async(key);
       }
     }
