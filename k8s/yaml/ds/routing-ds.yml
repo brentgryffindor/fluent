@@ -30,7 +30,6 @@ spec:
       nodeSelector:
         role: routing
       hostNetwork: true
-      restartPolicy: Never
       containers:
       - name: routing-container
         image: fluentproject/annakvs

@@ -30,7 +30,6 @@ spec:
       nodeSelector:
         role: memory
       hostNetwork: true
-      restartPolicy: Never
       containers:
       - name: memory-container
         image: fluentproject/annakvs

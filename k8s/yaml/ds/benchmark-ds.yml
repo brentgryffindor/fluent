@@ -27,7 +27,6 @@ spec:
       labels:
         role: benchmark
     spec:
-      restartPolicy: Never
       nodeSelector:
         role: benchmark
       containers:
