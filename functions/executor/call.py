@@ -334,24 +334,25 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             kvs.causal_put(schedule.output_key, vector_clock,
                            dependencies, serialize_val(result), schedule.client_id)
 
-        # issue requests to GC the version store and schedule
-        logging.info('GCing version store and schedule')
-        observed_cache_address = set()
-        for pvt in prior_version_tuples:
-            if pvt.cache_address not in observed_cache_address:
-                observed_cache_address.add(pvt.cache_address)
-                gc_addr = pvt.cache_address[:-4] + str(int(pvt.cache_address[-4:]) - 50)
-                logging.info('cache GC address is %s' % gc_addr)
+        # if optimistic protocol, issue requests to GC the version store and schedule
+        if not conservative:
+            logging.info('GCing version store and schedule')
+            observed_cache_address = set()
+            for pvt in prior_version_tuples:
+                if pvt.cache_address not in observed_cache_address:
+                    observed_cache_address.add(pvt.cache_address)
+                    gc_addr = pvt.cache_address[:-4] + str(int(pvt.cache_address[-4:]) - 50)
+                    logging.info('cache GC address is %s' % gc_addr)
+                    sckt = pusher_cache.get(gc_addr)
+                    sckt.send_string(schedule.client_id)
+            for fname in schedule.locations:
+                gc_req = ScheduleGCRequest()
+                gc_req.function_name = fname
+                gc_req.schedule_id = schedule.id
+                gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
+                logging.info('schedule GC address is %s' % gc_addr)
                 sckt = pusher_cache.get(gc_addr)
-                sckt.send_string(schedule.client_id)
-        for fname in schedule.locations:
-            gc_req = ScheduleGCRequest()
-            gc_req.function_name = fname
-            gc_req.schedule_id = schedule.id
-            gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
-            logging.info('schedule GC address is %s' % gc_addr)
-            sckt = pusher_cache.get(gc_addr)
-            sckt.send(gc_req.SerializeToString())
+                sckt.send(gc_req.SerializeToString())
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
                       schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort):
