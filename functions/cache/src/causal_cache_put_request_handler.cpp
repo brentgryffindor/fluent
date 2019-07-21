@@ -40,6 +40,8 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
     // write to KVS
     string req_id = client->put_async(key, serialize(*unmerged_store[key]),
                                       LatticeType::CROSSCAUSAL);
+    // TODO: remove this when running in non-test mode!
+    unmerged_store.erase(key);
     request_id_to_address_map[req_id] = request.response_address();
   }
 }
