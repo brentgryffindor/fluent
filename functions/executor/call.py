@@ -266,6 +266,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     abort = [False]
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort)
+    logging.info('finish executing function')
 
     if abort[0]:
         _abort_dag(fname, schedule, pusher_cache)
@@ -366,11 +367,13 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, prior_version_tuples, prior_read_map, dependencies, conservative)
+        logging.info('Done resolving reference')
 
         if error == KEY_DNE or error == ABORT:
             abort[0] = True
             return None
 
+        logging.info('swapping args and deserializing')
         for key in kv_pairs:
             if deserialize[key]:
                 func_args[key_index_map[key]] = \
@@ -379,6 +382,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
+    logging.info('executing function')
     return func(*tuple(func_args))
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative):
