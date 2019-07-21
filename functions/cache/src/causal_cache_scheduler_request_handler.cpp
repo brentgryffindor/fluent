@@ -31,6 +31,10 @@ void scheduler_request_handler(
   // first, check the version store and see if all data is already there
   // this happens when the executor request reached first and already finished
   // populating the version store
+
+  // debug
+  log->info("client id is {}", request.client_id());
+  log->info("function name is {}", request.function_name());
   auto cid_function_pair =
       std::make_pair(request.client_id(), request.function_name());
   if (version_store.find(cid_function_pair) != version_store.end()) {

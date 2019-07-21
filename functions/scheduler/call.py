@@ -137,6 +137,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     # if we are in causal mode, start the conservative protocol by querying the caches for key versions
     if schedule.consistency == CROSS:
         logging.info('send scheduler version query')
+        # debug
+        logging.info('client id is %s' % schedule.client_id)
         for func in schedule.locations:
             if func in read_set:
                 logging.info('function name is %s' % func)
