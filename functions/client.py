@@ -156,9 +156,11 @@ class FluentConnection():
 
         if output_key:
             dc.output_key = output_key
+            print('output key is %s' % dc.output_key)
 
         if client_id:
             dc.client_id = client_id
+            print('client id is %s' % dc.client_id)
 
         for fname in arg_map:
             args = [serialize_val(arg, serialize=False) for arg in

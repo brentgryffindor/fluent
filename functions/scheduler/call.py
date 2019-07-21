@@ -68,11 +68,21 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     if call.HasField('response_address'):
         schedule.response_address = call.response_address
 
+    # debug
+    logging.info('check if call has output key')
     if call.HasField('output_key'):
+        logging.info('has output key %s' % call.output_key)
         schedule.output_key = call.output_key
+    else:
+        logging.info('no output_key!')
 
+    # debug
+    logging.info('check if call has client id')
     if call.HasField('client_id'):
+        logging.info('has client id')
         schedule.client_id = call.client_id
+    else:
+        logging.info('no client id!')
 
     if schedule.consistency == CROSS:
         # define read set and full read set
