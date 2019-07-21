@@ -40,13 +40,13 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          KvsAsyncClientInterface* client, logger log);
 
 void versioned_key_request_handler(const string& serialized,
-                                   VersionStoreType& version_store,
+                                   const VersionStoreType& version_store,
                                    SocketCache& pushers, logger log,
                                    ZmqUtilInterface* kZmqUtil);
 
 void versioned_key_response_handler(
     const string& serialized, StoreType& causal_cut_store,
-    VersionStoreType& version_store,
+    const VersionStoreType& version_store,
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
@@ -101,7 +101,7 @@ void scheduler_key_shipping_request_handler(
 void key_shipping_request_handler(const string& serialized,
                                   const VersionStoreType& version_store,
                                   const CausalCacheThread& cct,
-                                  SocketCache& pushers);
+                                  SocketCache& pushers, logger log);
 
 void key_shipping_response_handler(
     const string& serialized,

@@ -309,7 +309,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       std::cout << "received key shipping request\n";
       log->info("received key shipping request");
       string serialized = kZmqUtil->recv_string(&key_shipping_request_puller);
-      key_shipping_request_handler(serialized, version_store, cct, pushers);
+      key_shipping_request_handler(serialized, version_store, cct, pushers, log);
       log->info("done key shipping request");
       std::cout << "done key shipping request\n";
     }

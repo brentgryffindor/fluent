@@ -15,7 +15,7 @@
 #include "causal_cache_utils.hpp"
 
 void versioned_key_request_handler(const string& serialized,
-                                   VersionStoreType& version_store,
+                                   const VersionStoreType& version_store,
                                    SocketCache& pushers, logger log,
                                    ZmqUtilInterface* kZmqUtil) {
   VersionedKeyRequest request;
@@ -31,7 +31,7 @@ void versioned_key_request_handler(const string& serialized,
     if (version_store.find(cid_function_pair) != version_store.end()) {
       bool found = false;
       for (const auto& head_key_chain_pair :
-           version_store[cid_function_pair].second) {
+           version_store.at(cid_function_pair).second) {
         for (const auto& key_ptr_pair : head_key_chain_pair.second) {
           if (key_ptr_pair.first == versioned_key_request_tuple.key()) {
             found = true;
@@ -67,7 +67,7 @@ void versioned_key_request_handler(const string& serialized,
 
 void versioned_key_response_handler(
     const string& serialized, StoreType& causal_cut_store,
-    VersionStoreType& version_store,
+    const VersionStoreType& version_store,
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
