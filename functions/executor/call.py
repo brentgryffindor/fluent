@@ -376,12 +376,18 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         logging.info('swapping args and deserializing')
         for key in kv_pairs:
             if deserialize[key]:
+                logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
+                logging.info('value is %s' % deserialize_val(kv_pairs[key][1]))
             else:
+                logging.info('no deserialization of key %s' % key)
                 func_args[key_index_map[key]] = kv_pairs[key][1]
+                logging.info('value is %s' % kv_pairs[key][1])
 
     # execute the function
+    for f_arg in func_args:
+        logging.info('argument is %s' % f_arg)
     logging.info('executing function')
     return func(*tuple(func_args))
 

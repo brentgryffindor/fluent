@@ -143,15 +143,15 @@ def run(flconn, kvs, mode, sckt):
         print('Running DAG')
         logging.info('Running DAG')
         ### RUN DAG ###
-        refs1 = (FluentReference('a', True, CROSSCAUSAL), FluentReference('b', True, CROSSCAUSAL), FluentReference('c', True, CROSSCAUSAL),)
-        refs2 = (FluentReference('d', True, CROSSCAUSAL), FluentReference('e', True, CROSSCAUSAL),)
-        refs3 = (FluentReference('f', True, CROSSCAUSAL), FluentReference('g', True, CROSSCAUSAL),)
+        refs1 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
+        refs2 = (FluentReference('d', False, CROSSCAUSAL), FluentReference('e', False, CROSSCAUSAL),)
+        refs3 = (FluentReference('f', False, CROSSCAUSAL), FluentReference('g', False, CROSSCAUSAL),)
 
         arg_map = { 'strmnp1' : refs1 ,
                     'strmnp2' : refs2 ,
                     'strmnp3' : refs3 }
 
-        rid = flconn.call_dag(dag_name, arg_map, False, CROSS, 'aaa', 'bbb')
+        rid = flconn.call_dag(dag_name, arg_map, False, CROSS, 'result', 'test_cid')
         print("output key is %s" % rid)
 
         res = kvs.get(rid)
