@@ -500,9 +500,11 @@ bool remove_from_local_readset(const Key& key,
   // (via remote read) 2: the consistency of other local reads need to be
   // satisfied, otherwise try to not read them from local as well
   // ---
+  log->info("entering remove from local read set");
   std::cout << "entering remove from local read set\n";
   if (causal_frontier.find(key) == causal_frontier.end()) {
     // abort
+    log->info("no upstream data available, abort");
     std::cout << "no upstream data available, abort\n";
     return false;
   }

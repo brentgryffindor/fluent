@@ -120,7 +120,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                        'unpin': 0.0,
                        'func_exec': 0.0,
                        'dag_queue': 0.0,
-                       'dag_exec': 0.0}
+                       'dag_exec': 0.0,
+                       'dag_conservative_exec': 0.0,}
     total_occupancy = 0.0
 
     while True:
