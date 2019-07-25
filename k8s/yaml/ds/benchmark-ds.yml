@@ -44,7 +44,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_snapshot"
+          value: "causal_baseline"
       - name: benchmark-2
         image: fluentproject/executor
         env: 
@@ -59,7 +59,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_snapshot"
+          value: "causal_baseline"
       - name: benchmark-3
         image: fluentproject/executor
         env: 
@@ -74,7 +74,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_snapshot"
+          value: "causal_baseline"
       - name: benchmark-4
         image: fluentproject/executor
         env: 
@@ -89,4 +89,4 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_snapshot"
+          value: "causal_baseline"
