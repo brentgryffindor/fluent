@@ -383,7 +383,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 sckt = pusher_cache.get(cache_addr)
                                 sckt.send(per_cache_message_map[cache_addr].SerializeToString())
                         # GC
-                        logging.info('GC versioned key map')
+                        logging.info('GC pending versioned key collection map and versioned key map')
+                        del pending_versioned_key_collection_response[response.client_id]
                         del versioned_key_map[response.client_id]
 
         if key_shipping_response_socket in socks and socks[key_shipping_response_socket] == zmq.POLLIN:

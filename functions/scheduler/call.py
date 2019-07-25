@@ -196,17 +196,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
         if len(running_counts[key]) > 1000 and len(executors) > 1:
             executors.discard(key)
 
-    executors = set(valid_executors)
-    for executor in backoff:
-        if len(executors) > 1:
-            executors.discard(executor)
-
-    keys = list(running_counts.keys())
-    sys_random.shuffle(keys)
-    for key in keys:
-        if len(running_counts[key]) > 1000 and len(executors) > 1:
-            executors.discard(key)
-
     executor_ips = [e[0] for e in executors]
 
     for ref in refs:
