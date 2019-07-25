@@ -93,9 +93,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # we receive them
     received_triggers = {}
 
-    # same data structure, but for the conservative version
-    received_conservative_triggers = {}
-
     # track when we received a function request, so we can report e2e latency
     receive_times = {}
 
