@@ -18,8 +18,7 @@ void scheduler_request_handler(
     const string& serialized, set<Key>& key_set, StoreType& unmerged_store,
     InPreparationType& in_preparation, StoreType& causal_cut_store,
     VersionStoreType& version_store,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
+    map<string, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -34,83 +33,34 @@ void scheduler_request_handler(
 
   // debug
   log->info("client id is {}", request.client_id());
-  log->info("function name is {}", request.function_name());
-  auto cid_function_pair =
-      std::make_pair(request.client_id(), request.function_name());
-  if (version_store.find(cid_function_pair) != version_store.end()) {
-    // the entry already exists in version store
-    log->info("version store already present");
-    CausalSchedulerResponse response;
-    response.set_client_id(request.client_id());
-    response.set_function_name(request.function_name());
-    if (version_store[cid_function_pair].first) {
-      log->info("DNE");
-      // some keys DNE
-      response.set_succeed(false);
-      // send response
-      string resp_string;
-      response.SerializeToString(&resp_string);
-      kZmqUtil->send_string(resp_string, &pushers[request.scheduler_address()]);
-    } else {
-      send_scheduler_response(response, cid_function_pair, version_store,
-                              pushers, request.scheduler_address());
-    }
-  } else if (pending_cross_metadata.find(cid_function_pair) !=
-             pending_cross_metadata.end()) {
-    // no entry in version store
-    // but has entry in pending cross metadata
-    // this means that executor already issued the GET request but not all
-    // required data have been fetched from the KVS, so we just add scheduler
-    // address to the pending map
-    pending_cross_metadata[cid_function_pair].scheduler_response_address_ =
+  // we first check if all requested keys are covered by the cache
+  set<Key> read_set;
+  for (const string& key : request.keys()) {
+    read_set.insert(key);
+  }
+  set<Key> to_cover;
+
+  if (!covered_locally(request.client_id(), read_set, to_cover, key_set,
+                       unmerged_store, in_preparation, causal_cut_store,
+                       version_store, pending_cross_metadata, to_fetch_map,
+                       cover_map, pushers, client, cct, log)) {
+    pending_cross_metadata[request.client_id()].read_set_ = read_set;
+    pending_cross_metadata[request.client_id()].to_cover_set_ = to_cover;
+    pending_cross_metadata[request.client_id()].scheduler_response_address_ =
         request.scheduler_address();
   } else {
-    // no entry at all
-    // we first check if all requested keys are covered by the cache
-    set<Key> read_set;
+    // all keys covered, first populate version store entry
+    // in this case, it's not possible that keys DNE
     for (const string& key : request.keys()) {
-      read_set.insert(key);
+      version_store[request.client_id()][key] = causal_cut_store.at(key);
     }
-    set<Key> to_cover;
-    CausalFrontierType causal_frontier;
-
-    if (!covered_locally(cid_function_pair, read_set, to_cover, key_set,
-                         unmerged_store, in_preparation, causal_cut_store,
-                         version_store, pending_cross_metadata, to_fetch_map,
-                         cover_map, pushers, client, cct, causal_frontier,
-                         log)) {
-      pending_cross_metadata[cid_function_pair].read_set_ = read_set;
-      pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
-      pending_cross_metadata[cid_function_pair].scheduler_response_address_ =
-          request.scheduler_address();
-      // store full read set for constructing version store later
-      for (const Key& key : request.full_read_set()) {
-        pending_cross_metadata[cid_function_pair].full_read_set_.insert(key);
-      }
-    } else {
-      // all keys covered, first populate version store entry
-      // in this case, it's not possible that keys DNE
-      version_store[cid_function_pair].first = false;
-      // retrieve full read set
-      set<Key> full_read_set;
-      for (const string& key : request.full_read_set()) {
-        full_read_set.insert(key);
-      }
-      for (const string& key : request.keys()) {
-        set<Key> observed_keys;
-        if (causal_cut_store.find(key) != causal_cut_store.end()) {
-          // for scheduler, this if statement should always pass because causal
-          // frontier is set to empty
-          save_versions(cid_function_pair, key, key, version_store,
-                        causal_cut_store, full_read_set, observed_keys);
-        }
-      }
-      // then respond to scheduler
-      CausalSchedulerResponse response;
-      response.set_client_id(request.client_id());
-      response.set_function_name(request.function_name());
-      send_scheduler_response(response, cid_function_pair, version_store,
-                              pushers, request.scheduler_address());
-    }
+    // then respond to scheduler
+    CausalSchedulerResponse response;
+    response.set_client_id(request.client_id());
+    response.set_succeed(true);
+    // send response
+    string resp_string;
+    response.SerializeToString(&resp_string);
+    kZmqUtil->send_string(resp_string, &pushers[request.scheduler_address()]);
   }
 }

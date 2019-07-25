@@ -23,15 +23,7 @@ void get_request_handler(
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
-    map<Key, set<Key>>& to_fetch_map,
-    map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
-        cover_map,
-    SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
-    const CausalCacheThread& cct,
-    std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
-        conservative_store);
+    SocketCache& pushers, KvsAsyncClientInterface* client, logger log);
 
 void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          StoreType& causal_cut_store,
@@ -39,27 +31,13 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          map<string, Address>& request_id_to_address_map,
                          KvsAsyncClientInterface* client, logger log);
 
-void versioned_key_request_handler(const string& serialized,
-                                   const VersionStoreType& version_store,
-                                   SocketCache& pushers, logger log,
-                                   ZmqUtilInterface* kZmqUtil);
-
-void versioned_key_response_handler(
-    const string& serialized, StoreType& causal_cut_store,
-    const VersionStoreType& version_store,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
-    const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil, logger log);
-
 void kvs_response_handler(
     const KeyResponse& response, StoreType& unmerged_store,
     InPreparationType& in_preparation, StoreType& causal_cut_store,
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
+    map<string, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -70,8 +48,7 @@ void kvs_response_handler(
 void periodic_migration_handler(
     const StoreType& unmerged_store, InPreparationType& in_preparation,
     StoreType& causal_cut_store, VersionStoreType& version_store,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
+    map<string, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -82,32 +59,11 @@ void scheduler_request_handler(
     const string& serialized, set<Key>& key_set, StoreType& unmerged_store,
     InPreparationType& in_preparation, StoreType& causal_cut_store,
     VersionStoreType& version_store,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
+    map<string, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct);
-
-void scheduler_key_shipping_request_handler(
-    const string& serialized,
-    map<string, pair<set<Address>, Address>>& pending_key_shipping_map,
-    std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
-        conservative_store,
-    const VersionStoreType& version_store, const CausalCacheThread& cct,
-    SocketCache& pushers);
-
-void key_shipping_request_handler(const string& serialized,
-                                  const VersionStoreType& version_store,
-                                  const CausalCacheThread& cct,
-                                  SocketCache& pushers, logger log);
-
-void key_shipping_response_handler(
-    const string& serialized,
-    map<string, pair<set<Address>, Address>>& pending_key_shipping_map,
-    std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
-        conservative_store,
-    const CausalCacheThread& cct, SocketCache& pushers);
 
 #endif  // FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_HANDLERS_HPP_

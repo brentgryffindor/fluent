@@ -17,8 +17,7 @@
 void periodic_migration_handler(
     const StoreType& unmerged_store, InPreparationType& in_preparation,
     StoreType& causal_cut_store, VersionStoreType& version_store,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
+    map<string, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,

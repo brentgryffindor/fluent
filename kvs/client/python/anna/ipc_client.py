@@ -111,8 +111,7 @@ class IpcAnnaClient:
                                      str(tp.lattice_type))
             return kv_pairs
 
-    def causal_get(self, keys, full_read_set,
-                   prior_version_tuples, prior_read_map, consistency, client_id, fname, dependencies, conservative):
+    def causal_get(self, keys, consistency, client_id, dependencies, sink):
         logging.info('Entering causal GET')
         if type(keys) != list:
             keys = list(keys)
@@ -127,18 +126,12 @@ class IpcAnnaClient:
             logging.error("Error: non causal consistency in causal mode!")
             return None
 
-        request.conservative = conservative
         request.client_id = client_id
-        request.function_name = fname
         request.keys.extend(keys)
+        request.gc = sink
 
         for k in request.keys:
             logging.info('key to GET is %s' % k)
-
-        if not conservative:
-            request.prior_version_tuples.extend(prior_version_tuples)
-            request.prior_read_map.extend(prior_read_map)
-            request.full_read_set.extend(full_read_set)
 
         request.response_address = self.get_response_address
 
@@ -161,33 +154,17 @@ class IpcAnnaClient:
             resp.ParseFromString(msg)
             logging.info('parsed')
 
-            if resp.error == KEY_DNE:
-                logging.info('key dne')
-                return resp.error
-            elif resp.error == ABORT:
-                logging.info('abort')
-                return resp.error
-            else:
-                logging.info('GET successful')
-                kv_pairs = {}
-                versioned_key_read = []
-                for tp in resp.tuples:
-                    logging.info('key is %s', tp.key)
-                    val = CrossCausalValue()
-                    val.ParseFromString(tp.payload)
+            logging.info('GET successful')
+            kv_pairs = {}
+            for tp in resp.tuples:
+                logging.info('key is %s', tp.key)
+                val = CrossCausalValue()
+                val.ParseFromString(tp.payload)
 
-                    # for now, we just take the first value in the setlattice
-                    kv_pairs[tp.key] = (val.vector_clock, val.values[0])
-                    # construct VersionedKey for keys read
-                    if not conservative:
-                        logging.info('creating versioned key for read set')
-                        vk = VersionedKey()
-                        vk.key = tp.key
-                        vk.vector_clock.update(val.vector_clock)
-                        versioned_key_read.append(vk)
-                        logging.info('finished creation')
-                logging.info('returning from causal GET')
-                return (resp.prior_version_tuples, versioned_key_read, kv_pairs)
+                # for now, we just take the first value in the setlattice
+                kv_pairs[tp.key] = (val.vector_clock, val.values[0])
+            logging.info('returning from causal GET')
+            return kv_pairs
 
     def put(self, key, value):
         request = KeyRequest()

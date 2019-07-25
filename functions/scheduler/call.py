@@ -57,7 +57,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
 
 
 def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
-             running_counts, backoff, scheduler_ip, pending_versioned_key_collection_response, versioned_key_map):
+             running_counts, backoff, scheduler_ip, pending_versioned_key_collection_response):
     dag, sources = dags[call.name]
 
     schedule = DagSchedule()
@@ -84,14 +84,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     else:
         logging.info('no client id!')
 
-    if schedule.consistency == CROSS:
-        # define read set and full read set
-        # and set dag name
-        # also initialize the versioned key map
-        read_set = {}
-        full_read_set = set()
-        versioned_key_map[schedule.client_id] = sutils.DagConsistencyMetadata(call.name)
-
+    full_refs = []
+    locations = None
 
     for fname in dag.functions:
         locations = func_locations[fname]
@@ -100,25 +94,51 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         refs = list(filter(lambda arg: type(arg) == FluentReference,
                     map(lambda arg: get_serializer(arg.type).load(arg.body),
                         args)))
-        loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
-        schedule.locations[fname] = loc[0] + ':' + str(loc[1])
+        full_refs.append(refs)
+        #loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
+        #schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
 
-        # populate read set and full read set
-        if schedule.consistency == CROSS:
-            if len(refs) != 0:
-                read_set[fname] = set(ref.key for ref in refs)
-                full_read_set = full_read_set.union(read_set[fname])
-                versioned_key_map[schedule.client_id].per_func_read_set[fname] = read_set[fname]
-                versioned_key_map[schedule.client_id].func_location[fname] = (loc[0], loc[1])
+    full_key_set = set(ref.key for ref in full_refs)
 
-    if schedule.consistency == CROSS:
-        schedule.full_read_set.extend(full_read_set)
-        versioned_key_map[schedule.client_id].schedule = schedule
+    executors = set(locations)
+    cache_ips = [e[0] for e in executors]
+    cache_ip = sys_random.choice(cache_ips)
 
+    # issue request to cache
+    ip = utils._get_cache_version_query_address(cache_ip)
+    version_query_request = CausalSchedulerRequest()
+    version_query_request.client_id = schedule.client_id
+    version_query_request.scheduler_address = utils._get_scheduler_versioned_key_collection_address(scheduler_ip)
+    version_query_request.keys.extend(list(full_key_set))
+
+    sckt = pusher_cache.get(ip)
+    sckt.send(version_query_request.SerializeToString())
+
+    # a map from function name to a set of function names that trigger it
+    function_trigger_map = {}
+    for fname in dag.functions:
+        function_trigger_map[fname] = _find_upstream(fname, dag)
+    finished_functions = set()
+    tid = 0
+    while len(finished_functions) < len(dag.functions):
+        for fname in function_trigger_map:
+            if not fname in finished_functions:
+                finished = True
+                for trigger_function in function_trigger_map[fname]:
+                    if trigger_function not in finished_functions:
+                        finished = False
+                if finished:
+                    schedule.locations[fname] = cache_ip + ':' + str(tid%3)
+                    tid += 1
+                    finished_functions.add(fname)
+
+    pending_versioned_key_collection_response[schedule.client_id] = schedule
+
+    # send schedule
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
         ip = utils._get_queue_address(loc[0], loc[1])
@@ -134,7 +154,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         sckt = pusher_cache.get(ip)
         sckt.send(schedule.SerializeToString())
 
-    for source in sources:
+    '''for source in sources:
         trigger = DagTrigger()
         trigger.id = schedule.id
         trigger.source = 'BEGIN'
@@ -142,35 +162,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
         ip = sutils._get_dag_trigger_address(schedule.locations[source])
         sckt = pusher_cache.get(ip)
-        sckt.send(trigger.SerializeToString())
-
-    # if we are in causal mode, start the conservative protocol by querying the caches for key versions
-    if schedule.consistency == CROSS:
-        logging.info('send scheduler version query')
-        # debug
-        logging.info('client id is %s' % schedule.client_id)
-        for func in schedule.locations:
-            if func in read_set:
-                logging.info('function name is %s' % func)
-                loc = schedule.locations[func].split(':')
-                ip = utils._get_cache_version_query_address(loc[0])
-                version_query_request = CausalSchedulerRequest()
-                version_query_request.client_id = schedule.client_id
-                version_query_request.function_name = func
-                version_query_request.scheduler_address = utils._get_scheduler_versioned_key_collection_address(scheduler_ip)
-                # find out which arguments are kvs references
-                version_query_request.keys.extend(read_set[func])
-                # populate full read set
-                version_query_request.full_read_set.extend(full_read_set)
-
-                sckt = pusher_cache.get(ip)
-                sckt.send(version_query_request.SerializeToString())
-
-                if schedule.client_id not in pending_versioned_key_collection_response:
-                    pending_versioned_key_collection_response[schedule.client_id] = set((func,))
-                else:
-                    pending_versioned_key_collection_response[schedule.client_id].add(func)
-        logging.info('done scheduler version query')
+        sckt.send(trigger.SerializeToString())'''
 
     if schedule.HasField('output_key'):
         return schedule.output_key
@@ -178,36 +170,15 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         return schedule.id
 
 
-def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
+def _pick_node(valid_executors, key_ip_map, refs):
     # Construct a map which maps from IP addresses to the number of
     # relevant arguments they have cached. For the time begin, we will
     # just pick the machine that has the most number of keys cached.
     arg_map = {}
-    reason = ''
 
     executors = set(valid_executors)
-    for executor in backoff:
-        if len(executors) > 1:
-            executors.discard(executor)
 
-    keys = list(running_counts.keys())
-    sys_random.shuffle(keys)
-    for key in keys:
-        if len(running_counts[key]) > 1000 and len(executors) > 1:
-            executors.discard(key)
-
-    executors = set(valid_executors)
-    for executor in backoff:
-        if len(executors) > 1:
-            executors.discard(executor)
-
-    keys = list(running_counts.keys())
-    sys_random.shuffle(keys)
-    for key in keys:
-        if len(running_counts[key]) > 1000 and len(executors) > 1:
-            executors.discard(key)
-
-    executor_ips = [e[0] for e in executors]
+    cache_ips = [e[0] for e in executors]
 
     for ref in refs:
         if ref.key in key_ip_map:
@@ -216,7 +187,7 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
             for ip in ips:
                 # only choose this cached node if its a valid executor for our
                 # purposes
-                if ip in executor_ips:
+                if ip in cache_ips:
                     if ip not in arg_map:
                         arg_map[ip] = 0
 
@@ -229,22 +200,11 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
             max_count = arg_map[ip]
             max_ip = ip
 
-    # pick a random thead from our potential executors that is on that IP
-    # address; we also route some requests to a random valid node
-    if max_ip:
-        candidates = list(filter(lambda e: e[0] == max_ip, executors))
-        max_ip = sys_random.choice(candidates)
-
-    # This only happens if max_ip is never set, and that means that
-    # there were no machines with any of the keys cached. In this case,
-    # we pick a random IP that was in the set of IPs that was running
-    # most recently.
-    if not max_ip or sys_random.random() < 0.20:
-        max_ip = sys_random.sample(executors, 1)[0]
-
-    if max_ip not in running_counts:
-        running_counts[max_ip] = set()
-
-    running_counts[max_ip].add(time.time())
-
     return max_ip
+
+def _find_upstream(fname, dag):
+    upstream = set()
+    for conn in dag.connections:
+        if conn.sink == fname:
+            upstream.add(conn.source)
+    return upstream

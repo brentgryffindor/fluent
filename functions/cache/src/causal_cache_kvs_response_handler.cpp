@@ -20,8 +20,7 @@ void kvs_response_handler(
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
     map<Address, PendingClientMetadata>& pending_single_metadata,
-    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
-        pending_cross_metadata,
+    map<string, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,

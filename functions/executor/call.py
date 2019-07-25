@@ -115,8 +115,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
     return  func(*tuple(func_args))
 
 
-def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, conservative=False):
+def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
     logging.info('conservative flag is %s' % conservative)
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
@@ -125,7 +124,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
-                                  triggers, function, schedule, conservative)
+                                  triggers, function, schedule)
 
     user_lib.close()
 
@@ -221,33 +220,17 @@ def _resolve_ref_normal(refs, kvs):
     return kv_pairs
 
 
-def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative):
+def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     logging.info('exec dag causal')
     fname = schedule.target_function
-    # first check if we need to abort
-    for trname in schedule.triggers:
-        trigger = triggers[trname]
-        if trigger.HasField('abort') and trigger.abort:
-            logging.info('abort')
-            _abort_dag(fname, schedule, pusher_cache)
-            return
-
 
     fargs = list(schedule.arguments[fname].args)
-
-    prior_version_tuples = []
-    prior_read_map = []
 
     dependencies = {}
 
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
-        if not conservative:
-            # combine prior_version_tuples
-            prior_version_tuples += list(trigger.prior_version_tuples)
-            # combine prior_read_map
-            prior_read_map += list(trigger.prior_read_map)
 
         # combine dependencies from previous func
         for dep in trigger.dependencies:
@@ -257,22 +240,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             else:
                 dependencies[dep.key] = dep.vector_clock
 
-    if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
-        logging.info('abort due to parallel flow check failure')
-        _abort_dag(fname, schedule, pusher_cache)
-        return
-
     fargs = _process_args(fargs)
 
     kv_pairs = {}
-    abort = [False]
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
-                               schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort)
+                               schedule, dependencies, _is_sink(fname, schedule.dag.connections))
     logging.info('finish executing function')
-
-    if abort[0]:
-        _abort_dag(fname, schedule, pusher_cache)
-        return
 
     for key in kv_pairs:
         if key in dependencies:
@@ -297,19 +270,13 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             al.args.extend(list(map(lambda v: serialize_val(v, None, False),
                                     result)))
 
-            new_trigger.prior_version_tuples.extend(prior_version_tuples)
-            new_trigger.prior_read_map.extend(prior_read_map)
-
             for key in dependencies:
                 dep = new_trigger.dependencies.add()
                 dep.key = key
                 dep.vector_clock.update(dependencies[key])
 
             dest_ip = schedule.locations[conn.sink]
-            if not conservative:
-                sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
-            else:
-                sckt = pusher_cache.get(sutils._get_dag_conservative_trigger_address(dest_ip))
+            sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
@@ -334,28 +301,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             kvs.causal_put(schedule.output_key, vector_clock,
                            dependencies, serialize_val(result), schedule.client_id)
 
-        # if optimistic protocol, issue requests to GC the version store and schedule
-        if not conservative:
-            logging.info('GCing version store and schedule')
-            observed_cache_address = set()
-            for pvt in prior_version_tuples:
-                if pvt.cache_address not in observed_cache_address:
-                    observed_cache_address.add(pvt.cache_address)
-                    gc_addr = pvt.cache_address[:-4] + str(int(pvt.cache_address[-4:]) - 50)
-                    logging.info('cache GC address is %s' % gc_addr)
-                    sckt = pusher_cache.get(gc_addr)
-                    sckt.send_string(schedule.client_id)
-            for fname in schedule.locations:
-                gc_req = ScheduleGCRequest()
-                gc_req.function_name = fname
-                gc_req.schedule_id = schedule.id
-                gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
-                logging.info('schedule GC address is %s' % gc_addr)
-                sckt = pusher_cache.get(gc_addr)
-                sckt.send(gc_req.SerializeToString())
-
 def _exec_func_causal(kvs, func, args, kv_pairs,
-                      schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort):
+                      schedule, dependencies, sink):
     logging.info('exec func causal')
     func_args = []
     to_resolve = []
@@ -372,11 +319,10 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
-                            schedule, prior_version_tuples, prior_read_map, dependencies, conservative)
+                            schedule, dependencies, sink)
         logging.info('Done resolving reference')
 
-        if error == KEY_DNE or error == ABORT:
-            abort[0] = True
+        if error == KEY_DNE:
             return None
 
         logging.info('swapping args and deserializing')
@@ -397,51 +343,21 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     logging.info('executing function')
     return func(*tuple(func_args))
 
-def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative):
+def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     logging.info('resolve ref causal')
-    full_read_set = schedule.full_read_set
     keys = [ref.key for ref in refs]
-    result = kvs.causal_get(keys, full_read_set,
-                            prior_version_tuples, prior_read_map,
-                            schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative)
+    result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
     while not result:
-        result = kvs.causal_get(keys, full_read_set,
-                                prior_version_tuples, prior_read_map,
-                                schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative)
+        result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
     logging.info('causal GET done')
 
-    if result == KEY_DNE or result == ABORT:
-        logging.info('dne or abort')
-        return result
-
-    if not conservative:
-        prior_version_tuples.extend(result[0])
-        prior_read_map.extend(result[1])
-        # debug print
-        for prior_version_tuple in prior_version_tuples:
-            logging.info('function name is %s' % prior_version_tuple.function_name)
-            logging.info('key is %s' % prior_version_tuple.versioned_key.key)
-
-    kv_pairs.update(result[2])
+    kv_pairs.update(result)
     return NO_ERROR
 
-def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
-    for versioned_key_read in prior_read_map:
-        for prior_version_tuple in prior_version_tuples:
-            if versioned_key_read.key == prior_version_tuple.versioned_key.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, prior_version_tuple.versioned_key.vector_clock) != sutils.CausalComp.GreaterOrEqual:
-                return True
-    return False
-
-def _abort_dag(fname, schedule, pusher_cache):
-    # send abort info to downstream
-    for conn in schedule.dag.connections:
+def _is_sink(fname, connections):
+    is_sink = True
+    for conn in connections:
         if conn.source == fname:
-            new_trigger = DagTrigger()
-            new_trigger.id = schedule.id
-            new_trigger.target_function = conn.sink
-            new_trigger.source = fname
-            new_trigger.abort = True
+            is_sink = False
+    return is_sink
 
-            dest_ip = schedule.locations[conn.sink]
-            sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
-            sckt.send(new_trigger.SerializeToString())

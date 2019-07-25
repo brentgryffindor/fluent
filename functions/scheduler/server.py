@@ -48,18 +48,8 @@ def scheduler(ip, mgmt_ip, route_addr):
     running_counts = {}
     backoff = {}
 
-    # this is a map from client id to a list of function names
-    # used in conservative protocol for causal consistency
+    # this is a map from client id to schedule
     pending_versioned_key_collection_response = {}
-
-    # a map from client id to tuple(schedule, list(pending caches))
-    # used in conservative protocol for causal consistency
-    pending_conservative_response = {}
-
-    # this is a map from client id to DagConsistencyMetadata
-    # map<client_id, DagConsistencyMetadata>
-    # used in conservative protocol for causal consistency
-    versioned_key_map = {}
 
     connect_socket = ctx.socket(zmq.REP)
     connect_socket.bind(sutils.BIND_ADDR_TEMPLATE % (CONNECT_PORT))
@@ -100,8 +90,6 @@ def scheduler(ip, mgmt_ip, route_addr):
     versioned_key_collection_socket = ctx.socket(zmq.PULL)
     versioned_key_collection_socket.bind(sutils.BIND_ADDR_TEMPLATE % (utils.SCHEDULERS_VERSIONED_KEY_COLLECTION_PORT))
 
-    key_shipping_response_socket = ctx.socket(zmq.PULL)
-    key_shipping_response_socket.bind(sutils.BIND_ADDR_TEMPLATE % (utils.SCHEDULERS_KEY_SHIPPING_RESPONSE_PORT))
 
     requestor_cache = SocketCache(ctx, zmq.REQ)
     pusher_cache = SocketCache(ctx, zmq.PUSH)
@@ -118,7 +106,6 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(sched_update_socket, zmq.POLLIN)
     poller.register(backoff_socket, zmq.POLLIN)
     poller.register(versioned_key_collection_socket, zmq.POLLIN)
-    poller.register(key_shipping_response_socket, zmq.POLLIN)
 
     executors = set()
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
@@ -168,7 +155,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                 call_frequency[fname] += 1
 
             rid = call_dag(call, pusher_cache, dags, func_locations,
-                           key_ip_map, running_counts, backoff, ip, pending_versioned_key_collection_response, versioned_key_map)
+                           key_ip_map, running_counts, backoff, ip, pending_versioned_key_collection_response)
 
             resp = GenericResponse()
             resp.success = True
@@ -280,121 +267,21 @@ def scheduler(ip, mgmt_ip, route_addr):
                 logging.error('Key DNE error.')
             else:
                 if response.client_id in pending_versioned_key_collection_response:
-                    for fn in pending_versioned_key_collection_response[response.client_id]:
-                        logging.info('function %s remains in map' % fn)
-                    logging.info('function %s in resopnse' % response.function_name)
-                    pending_versioned_key_collection_response[response.client_id].remove(response.function_name)
-                    # update per_func_versioned_key_chain
-                    logging.info('populating per func versioned key chain')
-                    versioned_key_map[response.client_id].per_func_versioned_key_chain[response.function_name] = {}
-                    for head_key in response.version_chain:
-                        versioned_key_map[response.client_id].per_func_versioned_key_chain[response.function_name][head_key] = {}
-                        for vk in response.version_chain[head_key].versioned_keys:
-                            versioned_key_map[response.client_id].per_func_versioned_key_chain[response.function_name][head_key][vk.key] = vk.vector_clock
-                            # also, update global_causal_cut
-                            if vk.key not in versioned_key_map[response.client_id].global_causal_cut:
-                                versioned_key_map[response.client_id].global_causal_cut[vk.key] = vk.vector_clock
-                            else:
-                                versioned_key_map[response.client_id].global_causal_cut[vk.key] = sutils._merge_vector_clock(versioned_key_map[response.client_id].global_causal_cut[vk.key], vk.vector_clock)
-                            # also, update global causal frontier
-                            if vk.key not in versioned_key_map[response.client_id].global_causal_frontier:
-                                versioned_key_map[response.client_id].global_causal_frontier[vk.key] = [(vk.vector_clock, response.function_name)]
-                            else:
-                                to_remove = []
-                                dominated = False
-                                for tp in versioned_key_map[response.client_id].global_causal_frontier[vk.key]:
-                                    if sutils._compare_vector_clock(tp[0], vk.vector_clock) == sutils.CausalComp.Less:
-                                        to_remove.append(tp)
-                                    elif sutils._compare_vector_clock(tp[0], vk.vector_clock) == sutils.CausalComp.GreaterOrEqual:
-                                        dominated = True
-                                        break
-                                if dominated:
-                                    continue
-                                for tp in to_remove:
-                                    versioned_key_map[response.client_id].global_causal_frontier[vk.key].remove(tp)
-                                versioned_key_map[response.client_id].global_causal_frontier[vk.key].append((vk.vector_clock, response.function_name))
+                    # send triggers to source executors
+                    schedule = pending_versioned_key_collection_response[response.client_id]
+                    dag, sources = dags[schedule.dag.name]
+                    for source in sources:
+                        trigger = DagTrigger()
+                        trigger.id = schedule.id
+                        trigger.source = 'BEGIN'
+                        trigger.target_function = source
 
-                    if len(pending_versioned_key_collection_response[response.client_id]) == 0:
-                        # trigger conservative protocol
-                        # TODO: refactor to a function
-                        logging.info('start conservative protocol')
-                        dag_name = versioned_key_map[response.client_id].dag_name
-                        # a map from function name to accumulated version lowerbound
-                        prior_per_func_causal_lowerbound_map = {}
-                        # a map from function name to prior key versions read
-                        prior_per_func_read_map = {}
-                        # a map from function name to a set of function names that trigger it
-                        function_trigger_map = {}
-                        for fname in dags[dag_name][0].functions:
-                            function_trigger_map[fname] = _find_upstream(fname, dags[dag_name][0])
-
-                        finished_functions = set()
-                        if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
-                            # the protocol aborted, so we need to do conservative protocol
-                            logging.info('optimistic protocol will abort')
-                            per_cache_message_map = {}
-                            pending_conservative_response[response.client_id] = (versioned_key_map[response.client_id].schedule, [])
-                            scheduler_response_address = utils._get_scheduler_key_shipping_response_address(ip)
-                            for fname in versioned_key_map[response.client_id].func_location:
-                                logging.info('checking function %s' % fname)
-                                cache_ip = versioned_key_map[response.client_id].func_location[fname][0]
-                                cache_address = utils._get_cache_scheduler_key_shipping_request_address(cache_ip)
-                                if cache_address not in per_cache_message_map:
-                                    pending_conservative_response[response.client_id][1].append(cache_address)
-
-                                    per_cache_message_map[cache_address] = SchedulerKeyShippingRequest()
-                                    per_cache_message_map[cache_address].client_id = response.client_id
-                                    per_cache_message_map[cache_address].response_address = scheduler_response_address
-                                per_function_readset = PerFunctionReadSet()
-                                per_function_readset.function_name = fname
-                                per_function_readset.keys.extend(versioned_key_map[response.client_id].per_func_read_set[fname])
-                                per_cache_message_map[cache_address].per_function_readsets.extend([per_function_readset])
-                                # compute if it needs to fetch keys from other caches
-                                logging.info('computing remote fetch')
-                                for key in per_function_readset.keys:
-                                    target_vc = versioned_key_map[response.client_id].global_causal_cut[key]
-                                    vc = {}
-                                    if key in versioned_key_map[response.client_id].per_func_versioned_key_chain[fname]:
-                                        vc = versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key][key]
-                                    if sutils._compare_vector_clock(vc, target_vc) != sutils.CausalComp.GreaterOrEqual:
-                                        # need to fetch from other caches
-                                        logging.info('need to fetch from remote')
-                                        for tp in versioned_key_map[response.client_id].global_causal_frontier[key]:
-                                            if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
-                                                # can merge to make it bigger
-                                                logging.info('fetch %s from function %s' % (key, tp[1]))
-                                                vc = sutils._merge_vector_clock(vc, tp[0])
-                                                # populate message to fetch this version
-                                                function_key_pair = FunctionKeyPair()
-                                                function_key_pair.source_function_name = fname
-                                                function_key_pair.target_function_name = tp[1]
-                                                function_key_pair.key = key
-                                                per_cache_function_key_pair = PerCacheFunctionKeyPair()
-                                                target_cache_ip = versioned_key_map[response.client_id].func_location[tp[1]][0]
-                                                per_cache_function_key_pair.cache_address = utils._get_cache_key_shipping_request_address(target_cache_ip)
-                                                per_cache_function_key_pair.function_key_pairs.extend([function_key_pair])
-                                                per_cache_message_map[cache_address].per_cache_function_key_pairs.extend([per_cache_function_key_pair])
-
-                                                if sutils._compare_vector_clock(vc, target_vc) == sutils.CausalComp.GreaterOrEqual:
-                                                    break
-                            # send message to caches
-                            logging.info('sending key shipping request to cache')
-                            for cache_addr in per_cache_message_map:
-                                sckt = pusher_cache.get(cache_addr)
-                                sckt.send(per_cache_message_map[cache_addr].SerializeToString())
-                        # GC
-                        logging.info('GC versioned key map')
-                        del versioned_key_map[response.client_id]
-
-        if key_shipping_response_socket in socks and socks[key_shipping_response_socket] == zmq.POLLIN:
-            response = SchedulerKeyShippingResponse()
-            response.ParseFromString(key_shipping_response_socket.recv())
-            if response.client_id in pending_conservative_response and response.cache_address in pending_conservative_response[response.client_id][1]:
-                pending_conservative_response[response.client_id][1].remove(response.cache_address)
-                if len(pending_conservative_response[response.client_id][1]) == 0:
-                    _call_dag_conservative(pending_conservative_response[response.client_id][0], dags, pusher_cache)
+                        ip = sutils._get_dag_trigger_address(schedule.locations[source])
+                        sckt = pusher_cache.get(ip)
+                        sckt.send(trigger.SerializeToString())
                     # GC
-                    del pending_conservative_response[response.client_id]
+                    logging.info('GC pending_versioned_key_collection_response')
+                    del pending_versioned_key_collection_response[response.client_id]
 
 
 
@@ -468,169 +355,6 @@ def _update_cluster_state(requestor_cache, mgmt_ip, executors, key_ip_map,
                                    requestor_cache, False)
 
     return schedulers
-
-
-def _find_upstream(fname, dag):
-    upstream = set()
-    for conn in dag.connections:
-        if conn.sink == fname:
-            upstream.add(conn.source)
-    return upstream
-
-'''def _check_parallel_flow(function_trigger_map, prior_read_map, prior_causal_lowerbound_map):
-    for func_read_set in function_trigger_map[fname]:
-        for versioned_key in prior_read_map[func_read_set]:
-            for func_causal_lowerbound in function_trigger_map[fname]:
-                if func_causal_lowerbound != func_read_set:
-                    for causal_lowerbound in prior_causal_lowerbound_map[func_causal_lowerbound]:
-                        if versioned_key.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key.vector_clock, causal_lowerbound.vector_clock) != sutils.CausalComp.GreaterOrEqual:
-                            return True
-    return False'''
-
-
-def _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
-    for versioned_key_read in prior_read_list:
-        for causal_lowerbound in prior_causal_lowerbound_list:
-            if versioned_key_read.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, causal_lowerbound.vector_clock) != sutils.CausalComp.GreaterOrEqual:
-                return True
-    return False
-
-
-def _construct_causal_frontier(prior_causal_lowerbound_list):
-    causal_frontier = {}
-    for versioned_key in prior_causal_lowerbound_list:
-        if versioned_key.key not in causal_frontier:
-            causal_frontier[versioned_key.key] = [[versioned_key.vector_clock, False]]
-        else:
-            to_remove = []
-            dominated = False
-            for tp in causal_frontier[versioned_key.key]:
-                if sutils._compare_vector_clock(tp[0], versioned_key.vector_clock) == sutils.CausalComp.Less:
-                    to_remove.append(tp)
-                elif sutils._compare_vector_clock(tp[0], versioned_key.vector_clock) == sutils.CausalComp.GreaterOrEqual:
-                    dominated = True
-                    break
-            if dominated:
-                continue
-            for tp in to_remove:
-                causal_frontier.remove(tp)
-            causal_frontier[versioned_key.key].append([versioned_key.vector_clock, False])
-    return causal_frontier
-
-
-def _remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, version_store):
-    if key not in causal_frontier:
-        logging.info('key %s not in causal frontier, aborting' % key)
-        return False
-    vc = {}
-    for tp in causal_frontier[key]:
-        if tp[1]:
-            vc = sutils._merge_vector_clock(vc, tp[0])
-    for tp in causal_frontier[key]:
-        if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
-            tp[1] = True
-            vc = sutils._merge_vector_clock(vc, tp[0])
-    for other_key in read_set:
-        if not other_key in remove_candidate:
-            if other_key in version_store:
-                if key in version_store[other_key] and sutils._compare_vector_clock(vc, version_store[other_key][key]) != sutils.CausalComp.GreaterOrEqual:
-                    remove_candidate.add(other_key)
-                    if not _remove_from_local_readset(other_key, causal_frontier, read_set, remove_candidate, version_store):
-                        return False
-    return True
-
-
-def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, causal_lowerbound_list, prior_read_list):
-    for key in versioned_key_map[cid].per_func_read_set[fname]:
-        if key in causal_frontier:
-            vc = {}
-            if key in versioned_key_map[cid].per_func_versioned_key_chain[fname]:
-                vc = versioned_key_map[cid].per_func_versioned_key_chain[fname][key][key]
-            for tp in causal_frontier[key]:
-                if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
-                    tp[1] = True
-                    vc = sutils._merge_vector_clock(vc, tp[0])
-
-    remove_candidate = set()
-    for key in versioned_key_map[cid].per_func_read_set[fname]:
-        if key not in remove_candidate:
-            if key in versioned_key_map[cid].per_func_versioned_key_chain[fname]:
-                for dep_key in versioned_key_map[cid].per_func_versioned_key_chain[fname][key]:
-                    if dep_key in prior_read_map and sutils._compare_vector_clock(prior_read_map[dep_key], versioned_key_map[cid].per_func_versioned_key_chain[fname][key][dep_key]) != sutils.CausalComp.GreaterOrEqual:
-                        remove_candidate.add(key)
-                        if not _remove_from_local_readset(key, causal_frontier, versioned_key_map[cid].per_func_read_set[fname], remove_candidate, versioned_key_map[cid].per_func_versioned_key_chain[fname]):
-                            # abort
-                            return True
-                        break
-    # gather readset versions and prior causal lowerbound
-    for key in versioned_key_map[cid].per_func_read_set[fname]:
-        vk = VersionedKey()
-        vk.key = key
-        vc = {}
-        if key not in remove_candidate and key in versioned_key_map[cid].per_func_versioned_key_chain[fname]:
-            vc = versioned_key_map[cid].per_func_versioned_key_chain[fname][key][key]
-            for dep_key in versioned_key_map[cid].per_func_versioned_key_chain[fname][key]:
-                dep_vk = VersionedKey()
-                dep_vk.key = dep_key
-                dep_vk.vector_clock.update(versioned_key_map[cid].per_func_versioned_key_chain[fname][key][dep_key])
-                causal_lowerbound_list.append(dep_vk)
-        if key in causal_frontier:
-            for tp in causal_frontier[key]:
-                if tp[1]:
-                    vc = sutils._merge_vector_clock(vc, tp[0])
-        vk.vector_clock.update(vc)
-        prior_read_list.append(vk)
-    # no abort
-    return False
-
-
-def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, total_num_functions, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
-    logging.info('entering simulation')
-    while len(finished_functions) < total_num_functions:
-        for fname in function_trigger_map:
-            if not fname in finished_functions:
-                finished = True
-                for trigger_function in function_trigger_map[fname]:
-                    if trigger_function not in finished_functions:
-                        finished = False
-                if finished:
-                    # aggregate the prior_causal_lowerbound_list and prior_read_list respectively
-                    prior_causal_lowerbound_list = []
-                    prior_read_list = []
-                    for source_func in function_trigger_map[fname]:
-                        prior_causal_lowerbound_list.extend(prior_per_func_causal_lowerbound_map[source_func])
-                        prior_read_list.extend(prior_per_func_read_map[source_func])
-
-                    if len(function_trigger_map[fname]) > 1 and _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
-                        # abort
-                        logging.info('abort due to parallel flow checking failure')
-                        return True
-                    # turn prior read list into a map
-                    prior_read_map = {}
-                    for versioned_key in prior_read_list:
-                        prior_read_map[versioned_key.key] = versioned_key.vector_clock
-                    causal_frontier = _construct_causal_frontier(prior_causal_lowerbound_list)
-                    prior_per_func_causal_lowerbound_map[fname] = prior_causal_lowerbound_list
-                    prior_per_func_read_map[fname] = prior_read_list
-                    if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname]):
-                        # abort
-                        logging.info('abort due to optimistic protocol failure')
-                        return True
-                    finished_functions.add(fname)
-    return False
-
-
-def _call_dag_conservative(schedule, dags, pusher_cache):
-    sources = dags[schedule.dag.name][1]
-    for source in sources:
-        trigger = DagTrigger()
-        trigger.id = schedule.id
-        trigger.source = 'BEGIN'
-        trigger.target_function = source
-
-        ip = sutils._get_dag_conservative_trigger_address(schedule.locations[source])
-        sckt = pusher_cache.get(ip)
-        sckt.send(trigger.SerializeToString())
 
 
 

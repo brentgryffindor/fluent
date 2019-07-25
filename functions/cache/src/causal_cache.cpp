@@ -20,62 +20,6 @@
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
-void warmup(VersionStoreType& version_store) {
-  SetLattice<string> value;
-  value.insert("00000");
-  // func 1
-  ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp1");
-  version_store[cid_function_pair].first = false;
-  // func 1 key a
-  CrossCausalPayload<SetLattice<string>> ccp_1_a;
-  ccp_1_a.vector_clock.insert("base", 1);
-  ccp_1_a.value = value;
-  version_store[cid_function_pair].second["a"]["a"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_a);
-  // func 1 key b
-  CrossCausalPayload<SetLattice<string>> ccp_1_b;
-  ccp_1_b.vector_clock.insert("base", 1);
-  ccp_1_b.value = value;
-  version_store[cid_function_pair].second["b"]["b"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_b);
-  // func 1 key c
-  CrossCausalPayload<SetLattice<string>> ccp_1_c;
-  ccp_1_c.vector_clock.insert("base", 1);
-  ccp_1_c.value = value;
-  version_store[cid_function_pair].second["c"]["c"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_c);
-  
-  // func 2
-  cid_function_pair = std::make_pair("test_cid", "strmnp2");
-  version_store[cid_function_pair].first = false;
-  // func 2 key d
-  CrossCausalPayload<SetLattice<string>> ccp_2_d;
-  ccp_2_d.vector_clock.insert("base", 2);
-  ccp_2_d.dependency.insert("a", VectorClock({{"base", 2}}));
-  ccp_2_d.value = value;
-  version_store[cid_function_pair].second["d"]["d"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_d);
-  CrossCausalPayload<SetLattice<string>> ccp_2_d_a;
-  ccp_2_d_a.vector_clock.insert("base", 2);
-  ccp_2_d_a.value = value;
-  version_store[cid_function_pair].second["d"]["a"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_d_a);
-  // func 2 key e
-  CrossCausalPayload<SetLattice<string>> ccp_2_e;
-  ccp_2_e.vector_clock.insert("base", 1);
-  ccp_2_e.value = value;
-  version_store[cid_function_pair].second["e"]["e"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_e);
-  // func 2 key f
-  CrossCausalPayload<SetLattice<string>> ccp_2_f;
-  ccp_2_f.vector_clock.insert("base", 1);
-  ccp_2_f.value = value;
-  version_store[cid_function_pair].second["f"]["f"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_f);
-
-  // func 3
-  cid_function_pair = std::make_pair("test_cid", "strmnp3");
-  version_store[cid_function_pair].first = false;
-  // func 3 key g
-  CrossCausalPayload<SetLattice<string>> ccp_3_g;
-  ccp_3_g.vector_clock.insert("base", 1);
-  ccp_3_g.value = value;
-  version_store[cid_function_pair].second["g"]["g"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_3_g);
-}
-
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   string log_file = "causal_cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "causal_cache_log_" + std::to_string(thread_id);
@@ -94,9 +38,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   StoreType causal_cut_store;
   VersionStoreType version_store;
 
-  // warm up for testing purpose only
-  warmup(version_store);
-
   map<Key, set<Key>> to_fetch_map;
   map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>
       cover_map;
@@ -104,18 +45,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   map<Key, set<Address>> single_callback_map;
 
   map<Address, PendingClientMetadata> pending_single_metadata;
-  std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>
-      pending_cross_metadata;
+  map<string, PendingClientMetadata> pending_cross_metadata;
 
   // mapping from request id to response address of PUT request
   map<string, Address> request_id_to_address_map;
-
-  // mapping from client id to a set of cache address yet to hear back from
-  // and the scheduler response address, used in conservative protocol
-  map<string, pair<set<Address>, Address>> pending_key_shipping_map;
-
-  std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>
-      conservative_store;
 
   CausalCacheThread cct = CausalCacheThread(ip, thread_id);
 
@@ -131,45 +64,15 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   zmq::socket_t update_puller(*context, ZMQ_PULL);
   update_puller.bind(cct.causal_cache_update_bind_address());
 
-  zmq::socket_t version_gc_puller(*context, ZMQ_PULL);
-  version_gc_puller.bind(cct.causal_cache_version_gc_bind_address());
-
-  zmq::socket_t versioned_key_request_puller(*context, ZMQ_PULL);
-  versioned_key_request_puller.bind(
-      cct.causal_cache_versioned_key_request_bind_address());
-
-  zmq::socket_t versioned_key_response_puller(*context, ZMQ_PULL);
-  versioned_key_response_puller.bind(
-      cct.causal_cache_versioned_key_response_bind_address());
-
   zmq::socket_t scheduler_request_puller(*context, ZMQ_PULL);
   scheduler_request_puller.bind(
       cct.causal_cache_scheduler_request_bind_address());
-
-  zmq::socket_t scheduler_key_shipping_request_puller(*context, ZMQ_PULL);
-  scheduler_key_shipping_request_puller.bind(
-      cct.causal_cache_scheduler_key_shipping_request_bind_address());
-
-  zmq::socket_t key_shipping_request_puller(*context, ZMQ_PULL);
-  key_shipping_request_puller.bind(
-      cct.causal_cache_key_shipping_request_bind_address());
-
-  zmq::socket_t key_shipping_response_puller(*context, ZMQ_PULL);
-  key_shipping_response_puller.bind(
-      cct.causal_cache_key_shipping_response_bind_address());
 
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(get_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(put_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(update_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void*>(version_gc_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void*>(versioned_key_request_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void*>(versioned_key_response_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(scheduler_request_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void*>(scheduler_key_shipping_request_puller), 0, ZMQ_POLLIN,
-       0},
-      {static_cast<void*>(key_shipping_request_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void*>(key_shipping_response_puller), 0, ZMQ_POLLIN, 0},
   };
 
   auto report_start = std::chrono::system_clock::now();
@@ -188,9 +91,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&get_puller);
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
-                          pending_single_metadata, pending_cross_metadata,
-                          to_fetch_map, cover_map, pushers, client, log, cct,
-                          conservative_store);
+                          pending_single_metadata, pushers, client, log);
       log->info("done GET");
       std::cout << "done GET\n";
     }
@@ -236,50 +137,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       std::cout << "done KVS update\n";
     }
 
-    // handle version GC request
+    // handle scheduler key fetch request
     if (pollitems[3].revents & ZMQ_POLLIN) {
-      std::cout << "received version GC request\n";
-      log->info("received version GC request");
-      // assume this string is the client id
-      string cid = kZmqUtil->recv_string(&version_gc_puller);
-      std::unordered_set<ClientIdFunctionPair, PairHash> remove_set;
-      for (const auto& pair : version_store) {
-        if (pair.first.first == cid) {
-          remove_set.insert(pair.first);
-        }
-      }
-      for (const auto& pair : remove_set) {
-        version_store.erase(pair);
-      }
-      log->info("done version GC request");
-      std::cout << "done version GC request\n";
-    }
-
-    // handle versioned key request
-    if (pollitems[4].revents & ZMQ_POLLIN) {
-      std::cout << "received version key request\n";
-      log->info("received version key request");
-      string serialized = kZmqUtil->recv_string(&versioned_key_request_puller);
-      versioned_key_request_handler(serialized, version_store, pushers, log,
-                                    kZmqUtil);
-      log->info("done version key request");
-      std::cout << "done version key request\n";
-    }
-
-    // handle versioned key response
-    if (pollitems[5].revents & ZMQ_POLLIN) {
-      std::cout << "received version key response\n";
-      log->info("received version key response");
-      string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
-      versioned_key_response_handler(serialized, causal_cut_store,
-                                     version_store, pending_cross_metadata, cct,
-                                     pushers, kZmqUtil, log);
-      log->info("done version key response");
-      std::cout << "done version key response\n";
-    }
-
-    // handle scheduler key version query
-    if (pollitems[6].revents & ZMQ_POLLIN) {
       std::cout << "received scheduler key version query\n";
       log->info("received scheduler key version query");
       string serialized = kZmqUtil->recv_string(&scheduler_request_puller);
@@ -291,39 +150,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       std::cout << "done scheduler key version query\n";
     }
 
-    // handle scheduler key shipping request
-    if (pollitems[7].revents & ZMQ_POLLIN) {
-      std::cout << "received scheduler key shipping request\n";
-      log->info("received scheduler key shipping request");
-      string serialized =
-          kZmqUtil->recv_string(&scheduler_key_shipping_request_puller);
-      scheduler_key_shipping_request_handler(
-          serialized, pending_key_shipping_map, conservative_store,
-          version_store, cct, pushers);
-      log->info("done scheduler key shipping request");
-      std::cout << "done scheduler key shipping request\n";
-    }
-
-    // handle key shipping request
-    if (pollitems[8].revents & ZMQ_POLLIN) {
-      std::cout << "received key shipping request\n";
-      log->info("received key shipping request");
-      string serialized = kZmqUtil->recv_string(&key_shipping_request_puller);
-      key_shipping_request_handler(serialized, version_store, cct, pushers, log);
-      log->info("done key shipping request");
-      std::cout << "done key shipping request\n";
-    }
-
-    // handle key shipping response
-    if (pollitems[9].revents & ZMQ_POLLIN) {
-      std::cout << "received key shipping response\n";
-      log->info("received key shipping response");
-      string serialized = kZmqUtil->recv_string(&key_shipping_response_puller);
-      key_shipping_response_handler(serialized, pending_key_shipping_map,
-                                    conservative_store, cct, pushers);
-      log->info("done key shipping response");
-      std::cout << "done key shipping response\n";
-    }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
