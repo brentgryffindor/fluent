@@ -109,6 +109,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     cache_ip = sys_random.choice(cache_ips)
 
     # issue request to cache
+    logging.info('sending request to cache with ip %s' % cache_ip)
     ip = utils._get_cache_version_query_address(cache_ip)
     version_query_request = CausalSchedulerRequest()
     version_query_request.client_id = schedule.client_id
@@ -142,6 +143,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
         ip = utils._get_queue_address(loc[0], loc[1])
+        logging.info('sending schedule to ip %s for func %s' % (ip, func))
         schedule.target_function = func
 
         triggers = sutils._get_dag_predecessors(dag, func)

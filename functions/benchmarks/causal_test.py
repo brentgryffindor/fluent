@@ -41,32 +41,32 @@ def run(flconn, kvs, mode, sckt):
             sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
-        refs = ()
-        for _ in range(3):
-            val = '00000'
-            ccv = CrossCausalValue()
-            ccv.vector_clock['base'] = 1
-            ccv.values.extend([serialize_val(val)])
-            k = str(uuid.uuid4())
-            print("key name is ", k)
-            kvs.put(k, ccv)
+        #refs = ()
+        #for _ in range(3):
+        #    val = '00000'
+        #    ccv = CrossCausalValue()
+        #    ccv.vector_clock['base'] = 1
+        #    ccv.values.extend([serialize_val(val)])
+        #    k = str(uuid.uuid4())
+        #    print("key name is ", k)
+        #    kvs.put(k, ccv)
+        #
+        #    refs += (FluentReference(k, True, CROSSCAUSAL),)
 
-            refs += (FluentReference(k, True, CROSSCAUSAL),)
+        #strmnp_test1 = cloud_strmnp1(*refs).get()
+        #strmnp_test2 = cloud_strmnp2(*refs).get()
+        #strmnp_test3 = cloud_strmnp3(*refs).get()
+        #if strmnp_test1 != '00000' or strmnp_test2 != '00000' or strmnp_test3 != '00000':
+            #logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
+            #sys.exit(1)
 
-        strmnp_test1 = cloud_strmnp1(*refs).get()
-        strmnp_test2 = cloud_strmnp2(*refs).get()
-        strmnp_test3 = cloud_strmnp3(*refs).get()
-        if strmnp_test1 != '00000' or strmnp_test2 != '00000' or strmnp_test3 != '00000':
-            logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
-            sys.exit(1)
-
-        print('Successfully tested functions!')
-        logging.info('Successfully tested functions!')
+        #print('Successfully tested functions!')
+        #logging.info('Successfully tested functions!')
 
         ### CREATE DAG ###
 
         functions = ['strmnp1', 'strmnp2', 'strmnp3']
-        connections = [('strmnp1', 'strmnp3'), ('strmnp2', 'strmnp3')]
+        connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
         success, error = flconn.register_dag(dag_name, functions, connections)
 
         if not success:
@@ -143,9 +143,9 @@ def run(flconn, kvs, mode, sckt):
         print('Running DAG')
         logging.info('Running DAG')
         ### RUN DAG ###
-        refs1 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
-        refs2 = (FluentReference('d', False, CROSSCAUSAL), FluentReference('e', False, CROSSCAUSAL), FluentReference('f', False, CROSSCAUSAL),)
-        refs3 = (FluentReference('g', False, CROSSCAUSAL),)
+        refs1 = (FluentReference('a', True, CROSSCAUSAL), FluentReference('b', True, CROSSCAUSAL), FluentReference('c', True, CROSSCAUSAL),)
+        refs2 = (FluentReference('d', True, CROSSCAUSAL), FluentReference('e', True, CROSSCAUSAL),)
+        refs3 = (FluentReference('f', True, CROSSCAUSAL), FluentReference('g', True, CROSSCAUSAL),)
 
         arg_map = { 'strmnp1' : refs1 ,
                     'strmnp2' : refs2 ,
