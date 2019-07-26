@@ -94,7 +94,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         refs = list(filter(lambda arg: type(arg) == FluentReference,
                     map(lambda arg: get_serializer(arg.type).load(arg.body),
                         args)))
-        full_refs.append(refs)
+        full_refs = full_refs + refs
         #loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
         #schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
