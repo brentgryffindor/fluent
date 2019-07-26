@@ -272,7 +272,7 @@ def check_function_load(context, function_frequencies, function_runtimes,
                           'threshold. Reducing to %d replicas.') % (fname,
                                                                     call_count,
                                                                     decrease))
-            dereplicate_function(fname, context, decrease, func_locations)
+            #dereplicate_function(fname, context, decrease, func_locations)
         elif fname in latency_history:
             historical, count = latency_history[fname]
             logging.info('Function %s: %.4f historical latency.' %
