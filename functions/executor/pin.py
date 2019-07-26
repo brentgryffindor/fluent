@@ -29,12 +29,14 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
 
     if len(pinned_functions) > 0 or not status.running:
+        print('pin error')
         resp = sutils.error.SerializeToString()
         sckt.send(sutils.error.SerializeToString())
         return
 
     logging.info('Adding function %s to my local pinned functions.' % (name))
     sckt.send(sutils.ok_resp)
+    print('pin ok')
 
     func = utils._retrieve_function(name, client)
 

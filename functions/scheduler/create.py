@@ -83,6 +83,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
 
         for _ in range(num_replicas):
             if len(candidates) == 0:
+                print('error not enough candidate')
                 sutils.error.error = NO_RESOURCES
                 dag_create_socket.send(sutils.error.SerializeToString())
 
@@ -169,6 +170,7 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
     node, tid = min_ip
 
     sckt = pusher_cache.get(utils._get_pin_address(node, tid))
+    print('%s pin address is %s' % (fname, utils._get_pin_address(node, tid)))
     msg = ip + ':' + fname
     sckt.send_string(msg)
 
@@ -179,12 +181,15 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
         logging.error('Pin operation to %s:%d timed out. Retrying.' %
                       (node, tid))
         # request timed out, try again
+        print('timeout!')
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
                          pusher_cache)
 
     if resp.success:
+        print('pin succeeded')
         return node, tid
     else:  # the pin operation was rejected, remove node and try again
+        print('pin rejected')
         logging.error('Node %s:%d rejected pin operation for %s. Retrying.'
                       % (node, tid, fname))
 
