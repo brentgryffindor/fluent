@@ -30,7 +30,7 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     print('function to pin is %s', name)
     sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
 
-    if len(pinned_functions) > 0 or not status.running:
+    if not status.running:
         logging.info('pin error')
         print('pin error')
         resp = sutils.error.SerializeToString()
