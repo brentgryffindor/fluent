@@ -88,7 +88,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     locations = None
 
     # debug
-    print(func_locations)
+    logging.info(func_locations)
 
     for fname in dag.functions:
         locations = func_locations[fname]
@@ -141,8 +141,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                     finished_functions.add(fname)
 
     for f in schedule.locations:
-        print(f)
-        print(schedule.locations[f])
+        logging.info(f)
+        logging.info(schedule.locations[f])
 
     pending_versioned_key_collection_response[schedule.client_id] = schedule
 

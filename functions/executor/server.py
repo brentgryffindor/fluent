@@ -113,10 +113,12 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         socks = dict(poller.poll(timeout=1000))
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
+            logging.info('receive pin')
             print('receive pin')
             work_start = time.time()
             pin(pin_socket, pusher_cache, client, status, pinned_functions,
                 runtimes, exec_counts)
+            logging.info('finish pin')
             print('finish pin')
             status.type = POST_REQUEST
             utils._push_status(schedulers, pusher_cache, status)

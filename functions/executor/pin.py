@@ -26,9 +26,12 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     splits = msg.split(':')
 
     resp_ip, name = splits[0], splits[1]
+    logging.info('function to pin is %s', name)
+    print('function to pin is %s', name)
     sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
 
     if len(pinned_functions) > 0 or not status.running:
+        logging.info('pin error')
         print('pin error')
         resp = sutils.error.SerializeToString()
         sckt.send(sutils.error.SerializeToString())
@@ -36,6 +39,7 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
 
     logging.info('Adding function %s to my local pinned functions.' % (name))
     sckt.send(sutils.ok_resp)
+    logging.info('pin ok')
     print('pin ok')
 
     func = utils._retrieve_function(name, client)
