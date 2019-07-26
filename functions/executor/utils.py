@@ -40,7 +40,7 @@ def _retrieve_function(name, kvs, consistency=CROSS):
         logging.info('Causal mode')
         result = kvs.causal_get([kvs_name], SINGLE, '0', {}, False)
         if not result == KEY_DNE and not result == ABORT:
-            return serializer.function_ser.load(result[2][kvs_name][1])
+            return serializer.function_ser.load(result[kvs_name][1])
         else:
             return None
 

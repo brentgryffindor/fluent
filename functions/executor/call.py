@@ -91,17 +91,13 @@ def _exec_single_func_causal(kvs, fname, func, args):
     if len(to_resolve) > 0:
         keys = [ref.key for ref in to_resolve]
         logging.info('enter causal get')
-        result = kvs.causal_get(keys, keys,
-                                [], [],
-                                CROSS, '0', fname, {}, False)
+        result = kvs.causal_get(keys, CROSS, '0', {}, False)
 
         while not result:
-            result = kvs.causal_get(keys, keys,
-                                [], [],
-                                CROSS, '0', fname, {}, False)
+            result = kvs.causal_get(keys, CROSS, '0', {}, False)
 
         logging.info('causal get done')
-        kv_pairs = result[2]
+        kv_pairs = result
 
         for key in kv_pairs:
             if deserialize[key]:
