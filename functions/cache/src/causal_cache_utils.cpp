@@ -378,7 +378,9 @@ void merge_into_causal_cut(
           // all keys covered, first populate version store entry
           // set DNE to false
           std::cout << "populating version store\n";
+          log->info("populating version store");
           if (version_store.find(cid) != version_store.end()) {
+            log->info("error: version store already has cid {}", cid);
             std::cout << "error: version store already has cid " + cid + "\n";
           }
           for (const string& key :
@@ -387,6 +389,7 @@ void merge_into_causal_cut(
             if (causal_cut_store.find(key) == causal_cut_store.end()) {
               std::cout << "error: key " + key + " not in causal store!\n";
             }
+            log->info("key to populate is {}", key);
             version_store[cid][key] = causal_cut_store.at(key);
           }
           std::cout << "finish populating version store\n";

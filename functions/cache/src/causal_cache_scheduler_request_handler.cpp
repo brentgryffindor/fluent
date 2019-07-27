@@ -54,6 +54,7 @@ void scheduler_request_handler(
     std::cout << "covered locally\n";
     // all keys covered, first populate version store entry
     // in this case, it's not possible that keys DNE
+    log->info("creating version store entry for client id {}", request.client_id());
     for (const string& key : request.keys()) {
       version_store[request.client_id()][key] = causal_cut_store.at(key);
     }

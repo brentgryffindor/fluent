@@ -68,6 +68,7 @@ void get_request_handler(
     if (version_store.find(request.client_id()) != version_store.end()) {
       CausalGetResponse response;
       for (const Key& key : request.keys()) {
+        log->info("ket to get is {}", key);
         if (version_store.at(request.client_id()).find(key) !=
             version_store.at(request.client_id()).end()) {
           CausalTuple* tp = response.add_tuples();
@@ -84,6 +85,7 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string,
                             &pushers[request.response_address()]);
       if (request.has_gc() && request.gc()) {
+        log->info("gc version store entry {}", request.client_id());
         std::cout << "gc version store entry " + request.client_id() + "\n";
         version_store.erase(request.client_id());
       }
