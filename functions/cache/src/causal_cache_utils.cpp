@@ -108,6 +108,7 @@ void recursive_dependency_check(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     KvsAsyncClientInterface* client, logger log) {
+  std::cout << "enter recursive dependency check\n";
   log->info("enter recursive dependency check, head key {}", head_key);
   for (const auto& pair : lattice->reveal().dependency.reveal()) {
     Key dep_key = pair.first;
@@ -157,6 +158,7 @@ void recursive_dependency_check(
       }
     }
   }
+  std::cout << "exit recursive dependency check\n";
 }
 
 void process_response(
@@ -172,8 +174,10 @@ void process_response(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct) {
+  std::cout << "enter process response\n";
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
+    std::cout << "key not in unmerged map\n";
     // key doesn't exist in unmerged map
     unmerged_store[key] = lattice;
     // check call back addresses for single obj causal consistency
@@ -229,6 +233,7 @@ void process_response(
       unmerged_store[key] = causal_merge(unmerged_store.at(key), lattice);
     }
   }
+  std::cout << "inspecting to fetch map\n";
   // then, inspect the to_fetch_map
   if (to_fetch_map.find(key) != to_fetch_map.end() &&
       to_fetch_map[key].size() == 0) {
@@ -312,6 +317,7 @@ void process_response(
       kCausalGreaterOrEqual) {
     unmerged_store.erase(key);
   }
+  std::cout << "exit process response\n";
 }
 
 void merge_into_causal_cut(
@@ -320,6 +326,7 @@ void merge_into_causal_cut(
     map<string, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct, logger log,
     const StoreType& unmerged_store) {
+  std::cout << "enter merge into causal cut\n";
   bool key_dne = false;
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
@@ -386,6 +393,7 @@ void merge_into_causal_cut(
   }
   // erase the chain in in_preparation
   in_preparation.erase(key);
+  std::cout << "exit merge into causal cut\n";
 }
 
 bool covered_locally(
