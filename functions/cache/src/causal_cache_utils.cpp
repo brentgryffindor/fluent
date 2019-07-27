@@ -377,14 +377,24 @@ void merge_into_causal_cut(
           std::cout << "all key covered for cid " + cid + "\n";
           // all keys covered, first populate version store entry
           // set DNE to false
+          std::cout << "populating version store\n";
+          if (version_store.find(cid) != version_store.end()) {
+            std::cout << "error: version store already has cid " + cid + "\n";
+          }
           for (const string& key :
                pending_cross_metadata[cid].read_set_) {
+            std::cout << "read set has key " + key + "\n";
+            if (causal_cut_store.find(key) == causal_cut_store.end()) {
+              std::cout << "error: key " + key + " not in causal store!\n";
+            }
             version_store[cid][key] = causal_cut_store.at(key);
           }
+          std::cout << "finish populating version store\n";
           CausalSchedulerResponse response;
           response.set_client_id(cid);
           response.set_succeed(true);
           // send response
+          std::cout << "sending response\n";
           string resp_string;
           response.SerializeToString(&resp_string);
           kZmqUtil->send_string(resp_string, &pushers[pending_cross_metadata[cid]

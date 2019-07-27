@@ -84,6 +84,7 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string,
                             &pushers[request.response_address()]);
       if (request.has_gc() && request.gc()) {
+        std::cout << "gc version store entry " + request.client_id() + "\n";
         version_store.erase(request.client_id());
       }
     } else {
