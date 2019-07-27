@@ -351,11 +351,13 @@ void merge_into_causal_cut(
       key_dne = true;
     }
   }
+  std::cout << "notifying scheduler\n";
   // notify scheduler
   for (const string& cid : in_preparation[key].first) {
     if (pending_cross_metadata.find(cid) !=
         pending_cross_metadata.end()) {
       if (key_dne) {
+        std::cout << "key dne for cid " + cid + "\n";
         log->info("key dne for cid {}", cid);
         CausalSchedulerResponse response;
         response.set_client_id(cid);
@@ -372,6 +374,7 @@ void merge_into_causal_cut(
         pending_cross_metadata[cid].to_cover_set_.erase(key);
         if (pending_cross_metadata[cid].to_cover_set_.size() == 0) {
           log->info("all key covered for cid {}", cid);
+          std::cout << "all key covered for cid " + cid + "\n";
           // all keys covered, first populate version store entry
           // set DNE to false
           for (const string& key :
@@ -386,6 +389,7 @@ void merge_into_causal_cut(
           response.SerializeToString(&resp_string);
           kZmqUtil->send_string(resp_string, &pushers[pending_cross_metadata[cid]
                                       .scheduler_response_address_]);
+          std::cout << "erasing cid " + cid + "in pending metadata\n";
           pending_cross_metadata.erase(cid);
         }
       }
@@ -408,6 +412,7 @@ bool covered_locally(
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct, logger log) {
   log->info("covered locally called");
+  std::cout << "enter covered locally\n";
   bool covered = true;
 
   for (const string& key : read_set) {
@@ -466,5 +471,6 @@ bool covered_locally(
       }
     }
   }
+  std::cout << "exit covered locally\n";
   return covered;
 }
