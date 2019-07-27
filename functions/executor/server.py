@@ -113,13 +113,13 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         socks = dict(poller.poll(timeout=1000))
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
-            logging.info('receive pin')
-            print('receive pin')
+            #logging.info('receive pin')
+            #print('receive pin')
             work_start = time.time()
             pin(pin_socket, pusher_cache, client, status, pinned_functions,
                 runtimes, exec_counts)
-            logging.info('finish pin')
-            print('finish pin')
+            #logging.info('finish pin')
+            #print('finish pin')
             status.type = POST_REQUEST
             utils._push_status(schedulers, pusher_cache, status)
 
@@ -139,7 +139,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             total_occupancy += elapsed
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
-            logging.info('Received function execution request')
+            #logging.info('Received function execution request')
             work_start = time.time()
             exec_function(exec_socket, client, status, ip, thread_id)
 
@@ -157,8 +157,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             schedule.ParseFromString(dag_queue_socket.recv())
             fname = schedule.target_function
 
-            logging.info('Received a schedule for DAG %s (%s), function %s.' %
-                         (schedule.dag.name, schedule.id, fname))
+            #logging.info('Received a schedule for DAG %s (%s), function %s.' %
+            #             (schedule.dag.name, schedule.id, fname))
 
             if fname not in queue:
                 queue[fname] = {}
@@ -194,8 +194,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_exec_socket.recv())
 
             fname = trigger.target_function
-            logging.info('Received a trigger for schedule %s, function %s.' %
-                         (trigger.id, fname))
+            #logging.info('Received a trigger for schedule %s, function %s.' %
+            #             (trigger.id, fname))
 
             key = (trigger.id, fname)
             if key not in received_triggers:

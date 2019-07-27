@@ -32,8 +32,8 @@ void scheduler_request_handler(
   // populating the version store
 
   // debug
-  log->info("client id is {}", request.client_id());
-  std::cout << "client id is " + request.client_id() + "\n";
+  //log->info("client id is {}", request.client_id());
+  //std::cout << "client id is " + request.client_id() + "\n";
   // we first check if all requested keys are covered by the cache
   set<Key> read_set;
   for (const string& key : request.keys()) {
@@ -45,16 +45,16 @@ void scheduler_request_handler(
                        unmerged_store, in_preparation, causal_cut_store,
                        version_store, pending_cross_metadata, to_fetch_map,
                        cover_map, pushers, client, cct, log)) {
-    std::cout << "not covered locally\n";
+    //std::cout << "not covered locally\n";
     pending_cross_metadata[request.client_id()].read_set_ = read_set;
     pending_cross_metadata[request.client_id()].to_cover_set_ = to_cover;
     pending_cross_metadata[request.client_id()].scheduler_response_address_ =
         request.scheduler_address();
   } else {
-    std::cout << "covered locally\n";
+    //std::cout << "covered locally\n";
     // all keys covered, first populate version store entry
     // in this case, it's not possible that keys DNE
-    log->info("creating version store entry for client id {}", request.client_id());
+    //log->info("creating version store entry for client id {}", request.client_id());
     for (const string& key : request.keys()) {
       version_store[request.client_id()][key] = causal_cut_store.at(key);
     }

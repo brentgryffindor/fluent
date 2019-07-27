@@ -46,13 +46,13 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
     else:
         try:
             if consistency == NORMAL:
-                logging.info('entering single func normal')
+                #logging.info('entering single func normal')
                 result = _exec_func_normal(kvs, f, fargs, user_lib)
-                logging.info('function executed')
+                #logging.info('function executed')
             else:
-                logging.info('entering single func causal')
+                #logging.info('entering single func causal')
                 result = _exec_single_func_causal(kvs, call.name, f, fargs)
-                logging.info('function executed')
+                #logging.info('function executed')
             result = serialize_val(result)
         except Exception as e:
             logging.exception('Unexpected error %s while executing function.' %
@@ -63,13 +63,13 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
 
     user_lib.close()
     if consistency == NORMAL:
-        logging.info('Normal PUT')
+        #logging.info('Normal PUT')
         succeed = kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
     else:
-        logging.info('Causal PUT')
+        #logging.info('Causal PUT')
         succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
 
-    logging.info('PUT done')
+    #logging.info('PUT done')
 
     if not succeed:
         logging.info('Put key %s unsuccessful' % call.resp_id)
@@ -90,13 +90,13 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
     if len(to_resolve) > 0:
         keys = [ref.key for ref in to_resolve]
-        logging.info('enter causal get')
+        #logging.info('enter causal get')
         result = kvs.causal_get(keys, CROSS, '0', {}, False)
 
         while not result:
             result = kvs.causal_get(keys, CROSS, '0', {}, False)
 
-        logging.info('causal get done')
+        #logging.info('causal get done')
         kv_pairs = result
 
         for key in kv_pairs:
@@ -107,7 +107,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
                 func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
-    logging.info('executing function')
+    #logging.info('executing function')
     return  func(*tuple(func_args))
 
 
@@ -126,7 +126,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
                               user_lib):
-    logging.info('exec dag normal')
+    #logging.info('exec dag normal')
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
@@ -216,7 +216,7 @@ def _resolve_ref_normal(refs, kvs):
 
 
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
-    logging.info('exec dag causal')
+    #logging.info('exec dag causal')
     fname = schedule.target_function
 
     fargs = list(schedule.arguments[fname].args)
@@ -240,7 +240,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     kv_pairs = {}
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, dependencies, _is_sink(fname, schedule.dag.connections))
-    logging.info('finish executing function')
+    #logging.info('finish executing function')
 
     for key in kv_pairs:
         if key in dependencies:
@@ -277,12 +277,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     if is_sink:
         result = serialize_val(result)
         if schedule.HasField('response_address'):
-            logging.info('direct respond')
+            #logging.info('direct respond')
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result)
         else:
-            logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
-                    (schedule.dag.name, schedule.id, schedule.output_key))
+            #logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
+            #        (schedule.dag.name, schedule.id, schedule.output_key))
 
             vector_clock = {}
             if schedule.output_key in dependencies:
@@ -304,7 +304,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
                       schedule, dependencies, sink):
-    logging.info('exec func causal')
+    #logging.info('exec func causal')
     func_args = []
     to_resolve = []
     deserialize = {}
@@ -321,36 +321,36 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, dependencies, sink)
-        logging.info('Done resolving reference')
+        #logging.info('Done resolving reference')
 
         if error == KEY_DNE:
             return None
 
-        logging.info('swapping args and deserializing')
+        #logging.info('swapping args and deserializing')
         for key in kv_pairs:
             if deserialize[key]:
-                logging.info('deserializing key %s' % key)
+                #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
-                logging.info('value is %s' % deserialize_val(kv_pairs[key][1]))
+                #logging.info('value is %s' % deserialize_val(kv_pairs[key][1]))
             else:
-                logging.info('no deserialization of key %s' % key)
+                #logging.info('no deserialization of key %s' % key)
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
-                logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
+                #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
 
     # execute the function
-    for f_arg in func_args:
-        logging.info('argument is %s' % f_arg)
-    logging.info('executing function')
+    #for f_arg in func_args:
+    #    logging.info('argument is %s' % f_arg)
+    #logging.info('executing function')
     return func(*tuple(func_args))
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
-    logging.info('resolve ref causal')
+    #logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
     while not result:
         result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
-    logging.info('causal GET done')
+    #logging.info('causal GET done')
 
     kv_pairs.update(result)
     return NO_ERROR

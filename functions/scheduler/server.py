@@ -125,11 +125,11 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if (func_create_socket in socks and
                 socks[func_create_socket] == zmq.POLLIN):
-            logging.info('Received function create request')
+            #logging.info('Received function create request')
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            logging.info('Received function call request')
+            #logging.info('Received function call request')
             call_function(func_call_socket, pusher_cache, executors,
                           key_ip_map, running_counts, backoff)
 
@@ -280,7 +280,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                         sckt = pusher_cache.get(dag_trigger_ip)
                         sckt.send(trigger.SerializeToString())
                     # GC
-                    logging.info('GC pending_versioned_key_collection_response')
+                    #logging.info('GC pending_versioned_key_collection_response')
                     del pending_versioned_key_collection_response[response.client_id]
 
 

@@ -28,11 +28,11 @@ void kvs_response_handler(
     const CausalCacheThread& cct,
     map<string, Address>& request_id_to_address_map) {
   Key key = response.tuples(0).key();
-  std::cout << "response for key " + key + "\n";
+  //std::cout << "response for key " + key + "\n";
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
-    std::cout << "request for key " + key + "timeout\n";
-    log->info("Request for key {} timeout", key);
+    //std::cout << "request for key " + key + "timeout\n";
+    //log->info("Request for key {} timeout", key);
     if (response.type() == RequestType::GET) {
       client->get_async(key);
     } else {
@@ -50,7 +50,7 @@ void kvs_response_handler(
     }
   } else {
     if (response.type() == RequestType::GET) {
-      log->info("Response for key {} received", key);
+      //log->info("Response for key {} received", key);
       auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
       if (response.tuples(0).error() != 1) {
         // key exists

@@ -25,13 +25,13 @@ void get_request_handler(
   request.ParseFromString(serialized);
 
   if (request.consistency() == ConsistencyType::SINGLE) {
-    log->info("Receive GET in single mode");
+   // log->info("Receive GET in single mode");
     bool covered_locally = true;
     set<Key> read_set;
     set<Key> to_cover;
     // check if the keys are covered locally
     for (const Key& key : request.keys()) {
-      log->info("Key is {}", key);
+      //log->info("Key is {}", key);
       read_set.insert(key);
       key_set.insert(key);
 
@@ -39,7 +39,7 @@ void get_request_handler(
         covered_locally = false;
         to_cover.insert(key);
         single_callback_map[key].insert(request.response_address());
-        log->info("firing get request for key {} in single routine", key);
+        //log->info("firing get request for key {} in single routine", key);
         client->get_async(key);
       }
     }
@@ -63,12 +63,12 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
-    log->info("Receive GET in cross mode");
-    std::cout << "Receive GET in cross mode\n";
+    //log->info("Receive GET in cross mode");
+    //std::cout << "Receive GET in cross mode\n";
     if (version_store.find(request.client_id()) != version_store.end()) {
       CausalGetResponse response;
       for (const Key& key : request.keys()) {
-        log->info("ket to get is {}", key);
+        //log->info("ket to get is {}", key);
         if (version_store.at(request.client_id()).find(key) !=
             version_store.at(request.client_id()).end()) {
           CausalTuple* tp = response.add_tuples();
@@ -85,8 +85,8 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string,
                             &pushers[request.response_address()]);
       if (request.has_gc() && request.gc()) {
-        log->info("gc version store entry {}", request.client_id());
-        std::cout << "gc version store entry " + request.client_id() + "\n";
+        //log->info("gc version store entry {}", request.client_id());
+        //std::cout << "gc version store entry " + request.client_id() + "\n";
         version_store.erase(request.client_id());
       }
     } else {

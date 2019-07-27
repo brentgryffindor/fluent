@@ -108,8 +108,8 @@ void recursive_dependency_check(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     KvsAsyncClientInterface* client, logger log) {
-  std::cout << "enter recursive dependency check\n";
-  log->info("enter recursive dependency check, head key {}", head_key);
+  //std::cout << "enter recursive dependency check\n";
+  //log->info("enter recursive dependency check, head key {}", head_key);
   for (const auto& pair : lattice->reveal().dependency.reveal()) {
     Key dep_key = pair.first;
     // first, check if the dependency is already satisfied in the causal cut
@@ -153,12 +153,12 @@ void recursive_dependency_check(
         to_fetch_map[head_key].insert(dep_key);
         cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
             .insert(head_key);
-        log->info("firing get request for key {} in recursive dependency check", dep_key);
+        //log->info("firing get request for key {} in recursive dependency check", dep_key);
         client->get_async(dep_key);
       }
     }
   }
-  std::cout << "exit recursive dependency check\n";
+  //std::cout << "exit recursive dependency check\n";
 }
 
 void process_response(
@@ -174,10 +174,10 @@ void process_response(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct) {
-  std::cout << "enter process response\n";
+  //std::cout << "enter process response\n";
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
-    std::cout << "key not in unmerged map\n";
+    //std::cout << "key not in unmerged map\n";
     // key doesn't exist in unmerged map
     unmerged_store[key] = lattice;
     // check call back addresses for single obj causal consistency
@@ -193,7 +193,7 @@ void process_response(
           if (vector_clock_comparison(
                   VectorClock(), unmerged_store[key]->reveal().vector_clock) ==
               kCausalGreaterOrEqual) {
-            log->info("Key DNE error!");
+            log->error("Key DNE error!");
             CausalGetResponse response;
             response.set_error(ErrorType::KEY_DNE);
             // send response
@@ -205,7 +205,7 @@ void process_response(
           } else {
             pending_single_metadata[addr].to_cover_set_.erase(key);
             if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
-              log->info("Responding to {}", addr);
+              //log->info("Responding to {}", addr);
               CausalGetResponse response;
               response.set_error(ErrorType::NO_ERROR);
               for (const Key& key : pending_single_metadata[addr].read_set_) {
@@ -233,7 +233,7 @@ void process_response(
       unmerged_store[key] = causal_merge(unmerged_store.at(key), lattice);
     }
   }
-  std::cout << "inspecting to fetch map\n";
+  //std::cout << "inspecting to fetch map\n";
   // then, inspect the to_fetch_map
   if (to_fetch_map.find(key) != to_fetch_map.end() &&
       to_fetch_map[key].size() == 0) {
@@ -305,7 +305,7 @@ void process_response(
       cover_map.erase(key);
     } else {
       // not fully covered, so we re-issue the read request
-      log->info("firing get request for key {} in process_response", key);
+      //log->info("firing get request for key {} in process_response", key);
       client->get_async(key);
     }
   }
@@ -317,7 +317,7 @@ void process_response(
       kCausalGreaterOrEqual) {
     unmerged_store.erase(key);
   }
-  std::cout << "exit process response\n";
+  //std::cout << "exit process response\n";
 }
 
 void merge_into_causal_cut(
@@ -326,7 +326,7 @@ void merge_into_causal_cut(
     map<string, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct, logger log,
     const StoreType& unmerged_store) {
-  std::cout << "enter merge into causal cut\n";
+  //std::cout << "enter merge into causal cut\n";
   bool key_dne = false;
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
@@ -351,14 +351,14 @@ void merge_into_causal_cut(
       key_dne = true;
     }
   }
-  std::cout << "notifying scheduler\n";
+  //std::cout << "notifying scheduler\n";
   // notify scheduler
   for (const string& cid : in_preparation[key].first) {
     if (pending_cross_metadata.find(cid) !=
         pending_cross_metadata.end()) {
       if (key_dne) {
-        std::cout << "key dne for cid " + cid + "\n";
-        log->info("key dne for cid {}", cid);
+        //std::cout << "key dne for cid " + cid + "\n";
+        //log->info("key dne for cid {}", cid);
         CausalSchedulerResponse response;
         response.set_client_id(cid);
         response.set_succeed(false);
@@ -373,37 +373,37 @@ void merge_into_causal_cut(
       } else {
         pending_cross_metadata[cid].to_cover_set_.erase(key);
         if (pending_cross_metadata[cid].to_cover_set_.size() == 0) {
-          log->info("all key covered for cid {}", cid);
-          std::cout << "all key covered for cid " + cid + "\n";
+          //log->info("all key covered for cid {}", cid);
+          //std::cout << "all key covered for cid " + cid + "\n";
           // all keys covered, first populate version store entry
           // set DNE to false
-          std::cout << "populating version store\n";
-          log->info("populating version store");
-          if (version_store.find(cid) != version_store.end()) {
+          //std::cout << "populating version store\n";
+          //log->info("populating version store");
+          /*if (version_store.find(cid) != version_store.end()) {
             log->info("error: version store already has cid {}", cid);
             std::cout << "error: version store already has cid " + cid + "\n";
-          }
+          }*/
           for (const string& key :
                pending_cross_metadata[cid].read_set_) {
-            std::cout << "read set has key " + key + "\n";
+            /*std::cout << "read set has key " + key + "\n";
             if (causal_cut_store.find(key) == causal_cut_store.end()) {
               std::cout << "error: key " + key + " not in causal store!\n";
             }
-            log->info("key to populate is {}", key);
+            log->info("key to populate is {}", key);*/
             version_store[cid][key] = causal_cut_store.at(key);
           }
-          std::cout << "finish populating version store\n";
+          //std::cout << "finish populating version store\n";
           CausalSchedulerResponse response;
           response.set_client_id(cid);
           response.set_succeed(true);
           // send response
-          std::cout << "sending response\n";
+          //std::cout << "sending response\n";
           string resp_string;
           response.SerializeToString(&resp_string);
-          std::cout << "scheduler response address is " + pending_cross_metadata[cid].scheduler_response_address_ + "\n";
+          //std::cout << "scheduler response address is " + pending_cross_metadata[cid].scheduler_response_address_ + "\n";
           kZmqUtil->send_string(resp_string, &pushers[pending_cross_metadata[cid]
                                       .scheduler_response_address_]);
-          std::cout << "erasing cid " + cid + "in pending metadata\n";
+          //std::cout << "erasing cid " + cid + "in pending metadata\n";
           pending_cross_metadata.erase(cid);
         }
       }
@@ -411,7 +411,7 @@ void merge_into_causal_cut(
   }
   // erase the chain in in_preparation
   in_preparation.erase(key);
-  std::cout << "exit merge into causal cut\n";
+  //std::cout << "exit merge into causal cut\n";
 }
 
 bool covered_locally(
@@ -425,8 +425,8 @@ bool covered_locally(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct, logger log) {
-  log->info("covered locally called");
-  std::cout << "enter covered locally\n";
+  //log->info("covered locally called");
+  //std::cout << "enter covered locally\n";
   bool covered = true;
 
   for (const string& key : read_set) {
@@ -479,12 +479,12 @@ bool covered_locally(
           in_preparation[key].first.insert(client_id);
           covered = false;
           to_cover.insert(key);
-          log->info("firing get request for key {} in covered locally", key);
+          //log->info("firing get request for key {} in covered locally", key);
           client->get_async(key);
         }
       }
     }
   }
-  std::cout << "exit covered locally\n";
+  //std::cout << "exit covered locally\n";
   return covered;
 }

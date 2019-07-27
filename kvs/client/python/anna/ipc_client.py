@@ -112,7 +112,7 @@ class IpcAnnaClient:
             return kv_pairs
 
     def causal_get(self, keys, consistency, client_id, dependencies, sink):
-        logging.info('Entering causal GET')
+        #logging.info('Entering causal GET')
         if type(keys) != list:
             keys = list(keys)
 
@@ -130,18 +130,18 @@ class IpcAnnaClient:
         request.keys.extend(keys)
         request.gc = sink
 
-        for k in request.keys:
-            logging.info('key to GET is %s' % k)
+        #for k in request.keys:
+        #    logging.info('key to GET is %s' % k)
 
         request.response_address = self.get_response_address
 
-        logging.info('sending GET')
+        #logging.info('sending GET')
         self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
-            logging.info('received response')
+            #logging.info('received response')
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
@@ -149,21 +149,21 @@ class IpcAnnaClient:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
             return None
         else:
-            logging.info('parsing response')
+            #logging.info('parsing response')
             resp = CausalGetResponse()
             resp.ParseFromString(msg)
-            logging.info('parsed')
+            #logging.info('parsed')
 
-            logging.info('GET successful')
+            #logging.info('GET successful')
             kv_pairs = {}
             for tp in resp.tuples:
-                logging.info('key is %s', tp.key)
+                #logging.info('key is %s', tp.key)
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
 
                 # for now, we just take the first value in the setlattice
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])
-            logging.info('returning from causal GET')
+            #logging.info('returning from causal GET')
             return kv_pairs
 
     def put(self, key, value):

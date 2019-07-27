@@ -42,7 +42,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
 
-    logging.info('executor thread is %s', utils._get_exec_address(ip, tid))
+    #logging.info('executor thread is %s', utils._get_exec_address(ip, tid))
 
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
@@ -69,26 +69,22 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         schedule.response_address = call.response_address
 
     # debug
-    logging.info('check if call has output key')
+    #logging.info('check if call has output key')
     if call.HasField('output_key'):
-        logging.info('has output key %s' % call.output_key)
+        #logging.info('has output key %s' % call.output_key)
         schedule.output_key = call.output_key
-    else:
-        logging.info('no output_key!')
 
     # debug
-    logging.info('check if call has client id')
+    #logging.info('check if call has client id')
     if call.HasField('client_id'):
-        logging.info('has client id')
+        #logging.info('has client id')
         schedule.client_id = call.client_id
-    else:
-        logging.info('no client id!')
 
     full_refs = []
     locations = None
 
     # debug
-    logging.info(func_locations)
+    #logging.info(func_locations)
 
     for fname in dag.functions:
         locations = func_locations[fname]
@@ -112,7 +108,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     cache_ip = sys_random.choice(cache_ips)
 
     # issue request to cache
-    logging.info('sending request to cache with ip %s' % cache_ip)
+    #logging.info('sending request to cache with ip %s' % cache_ip)
     ip = utils._get_cache_version_query_address(cache_ip)
     version_query_request = CausalSchedulerRequest()
     version_query_request.client_id = schedule.client_id
@@ -140,9 +136,9 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                     tid += 1
                     finished_functions.add(fname)
 
-    for f in schedule.locations:
-        logging.info(f)
-        logging.info(schedule.locations[f])
+    #for f in schedule.locations:
+    #    logging.info(f)
+    #    logging.info(schedule.locations[f])
 
     pending_versioned_key_collection_response[schedule.client_id] = schedule
 
@@ -150,7 +146,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
         ip = utils._get_queue_address(loc[0], loc[1])
-        logging.info('sending schedule to ip %s for func %s' % (ip, func))
+        #logging.info('sending schedule to ip %s for func %s' % (ip, func))
         schedule.target_function = func
 
         triggers = sutils._get_dag_predecessors(dag, func)
