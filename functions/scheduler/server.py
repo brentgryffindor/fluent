@@ -276,8 +276,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                         trigger.source = 'BEGIN'
                         trigger.target_function = source
 
-                        ip = sutils._get_dag_trigger_address(schedule.locations[source])
-                        sckt = pusher_cache.get(ip)
+                        dag_trigger_ip = sutils._get_dag_trigger_address(schedule.locations[source])
+                        sckt = pusher_cache.get(dag_trigger_ip)
                         sckt.send(trigger.SerializeToString())
                     # GC
                     logging.info('GC pending_versioned_key_collection_response')
