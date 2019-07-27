@@ -397,6 +397,7 @@ void merge_into_causal_cut(
           std::cout << "sending response\n";
           string resp_string;
           response.SerializeToString(&resp_string);
+          std::cout << "scheduler response address is " + pending_cross_metadata[cid].scheduler_response_address_ + "\n";
           kZmqUtil->send_string(resp_string, &pushers[pending_cross_metadata[cid]
                                       .scheduler_response_address_]);
           std::cout << "erasing cid " + cid + "in pending metadata\n";
