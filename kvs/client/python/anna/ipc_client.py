@@ -23,6 +23,7 @@ from .functions_pb2 import *
 from .kvs_pb2 import *
 from .lattices import *
 import zmq
+import time
 
 class IpcAnnaClient:
     def __init__(self, thread_id = 0):
@@ -136,11 +137,14 @@ class IpcAnnaClient:
         request.response_address = self.get_response_address
 
         #logging.info('sending GET')
+        send_start = time.time()
         self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
+            send_end = time.time()
+            logging.info('took %s to receive response from cache' % (send_end - send_start))
             #logging.info('received response')
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
@@ -150,6 +154,7 @@ class IpcAnnaClient:
             return None
         else:
             #logging.info('parsing response')
+            parse_start = time.time()
             resp = CausalGetResponse()
             resp.ParseFromString(msg)
             #logging.info('parsed')
@@ -164,6 +169,8 @@ class IpcAnnaClient:
                 # for now, we just take the first value in the setlattice
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])
             #logging.info('returning from causal GET')
+            parse_end = time.time()
+            logging.info('parsing took %s' % (parse_end - parse_start))
             return kv_pairs
 
     def put(self, key, value):
