@@ -358,6 +358,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #resolve_start = time.time()
     #logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
+    return NO_ERROR
     #get_start = time.time()
     result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
     while not result:
