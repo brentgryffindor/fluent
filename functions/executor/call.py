@@ -350,7 +350,11 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     #for f_arg in func_args:
     #    logging.info('argument is %s' % f_arg)
     #logging.info('executing function')
-    return func(*tuple(func_args))
+    invoke_start = time.time()
+    result_val = func(*tuple(func_args))
+    invoke_end = time.time()
+    logging.info('invocation took %s' % (invoke_end - invoke_start))
+    return result_val
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #logging.info('resolve ref causal')
