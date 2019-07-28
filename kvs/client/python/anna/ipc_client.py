@@ -144,6 +144,8 @@ class IpcAnnaClient:
 
         #logging.info('sending GET')
         #send_start = time.time()
+        kv_pairs = {}
+        return kv_pairs
         self.get_request_socket.send(request.SerializeToString())
 
 
