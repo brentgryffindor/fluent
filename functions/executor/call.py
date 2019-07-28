@@ -332,33 +332,36 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             return None
 
         #logging.info('swapping args and deserializing')
-        deser_start = time.time()
-        for key in kv_pairs:
-            if deserialize[key]:
+        #deser_start = time.time()
+        #for key in kv_pairs:
+        #    if deserialize[key]:
                 #logging.info('deserializing key %s' % key)
-                func_args[key_index_map[key]] = \
-                                deserialize_val(kv_pairs[key][1])
+        #        func_args[key_index_map[key]] = \
+        #                        deserialize_val(kv_pairs[key][1])
                 #logging.info('value is %s' % deserialize_val(kv_pairs[key][1]))
-            else:
+        #    else:
                 #logging.info('no deserialization of key %s' % key)
-                func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
+        #        func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
                 #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
-        deser_end = time.time()
-        logging.info('deserialization took %s' % (deser_end - deser_start))
+        #deser_end = time.time()
+        #logging.info('deserialization took %s' % (deser_end - deser_start))
 
     # execute the function
     #for f_arg in func_args:
     #    logging.info('argument is %s' % f_arg)
     #logging.info('executing function')
-    return func(*tuple(func_args))
+    return func()
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
     get_start = time.time()
-    result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
-    while not result:
-        result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
+    result = {}
+    for k in keys:
+        result[k] = '0'
+    #result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
+    #while not result:
+    #    result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
     get_end = time.time()
     logging.info('causal get took %s' % (get_end - get_start))
     #logging.info('causal GET done')
