@@ -355,7 +355,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     return result_val
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
-    #resolve_start = time.time()
+    resolve_start = time.time()
     #logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
     #get_start = time.time()
@@ -367,9 +367,9 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #logging.info('causal GET done')
     #update_start = time.time()
     kv_pairs.update(result)
-    #update_end = time.time()
+    update_end = time.time()
     #logging.info('kv pair update took %s' % (update_end - update_start))
-    #logging.info('resolve ref took %s' % (update_end - resolve_start))
+    logging.info('resolve ref took %s' % (update_end - resolve_start))
     return NO_ERROR
 
 def _is_sink(fname, connections):
