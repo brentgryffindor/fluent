@@ -310,11 +310,13 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
 def _exec_func_causal(kvs, func, args, kv_pairs,
                       schedule, dependencies, sink):
     #logging.info('exec func causal')
+    entry_start = time.time()
     func_args = []
     to_resolve = []
     deserialize = {}
 
     # resolve any references to KVS objects
+    segment1_start = time.time()
     key_index_map = {}
     for i, arg in enumerate(args):
         if isinstance(arg, FluentReference):
@@ -322,6 +324,8 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             key_index_map[arg.key] = i
             deserialize[arg.key] = arg.deserialize
         func_args += (arg,)
+    segment1_end = time.time()
+    logging.info('segment1 took %s' % (segment1_end - segment1_start))
 
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
@@ -354,9 +358,11 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     result_val = func(*tuple(func_args))
     invoke_end = time.time()
     logging.info('invocation took %s' % (invoke_end - invoke_start))
+    logging.info('_exec_func_causal inner took %s' % (invoke_end - entry_start))
     return result_val
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
+    resolve_start = time.time()
     #logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
     get_start = time.time()
@@ -370,6 +376,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     kv_pairs.update(result)
     update_end = time.time()
     logging.info('kv pair update took %s' % (update_end - update_start))
+    logging.info('resolve ref took %s' % (update_end - resolve_start))
     return NO_ERROR
 
 def _is_sink(fname, connections):
