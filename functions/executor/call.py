@@ -330,12 +330,12 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, dependencies, sink)
-        #logging.info('Done resolving reference')
+        logging.info('Done resolving reference')
 
         if error == KEY_DNE:
             return None
 
-        #logging.info('swapping args and deserializing')
+        logging.info('swapping args and deserializing')
         for key in kv_pairs:
             if deserialize[key]:
                 func_args[key_index_map[key]] = \
@@ -346,7 +346,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     # execute the function
     #for f_arg in func_args:
     #    logging.info('argument is %s' % f_arg)
-    #logging.info('executing function')
+    logging.info('executing function')
     #invoke_start = time.time()
     result_val = func(*tuple(func_args))
     #invoke_end = time.time()
@@ -356,7 +356,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #resolve_start = time.time()
-    #logging.info('resolve ref causal')
+    logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
     #get_start = time.time()
     result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
@@ -364,7 +364,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
         result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
     #get_end = time.time()
     #logging.info('causal get took %s' % (get_end - get_start))
-    #logging.info('causal GET done')
+    logging.info('causal GET done')
     #update_start = time.time()
     kv_pairs.update(result)
     #update_end = time.time()
