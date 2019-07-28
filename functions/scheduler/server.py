@@ -183,8 +183,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             status.ParseFromString(exec_status_socket.recv())
 
             key = (status.ip, status.tid)
-            logging.info('Received status update from executor %s:%d.' %
-                         (key[0], int(key[1])))
+            #logging.info('Received status update from executor %s:%d.' %
+            #             (key[0], int(key[1])))
 
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
@@ -337,8 +337,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                 fstats = stats.statistics.add()
                 fstats.fname = fname
                 fstats.call_count = call_frequency[fname]
-                logging.info('Reporting %d calls for function %s.' %
-                             (call_frequency[fname], fname))
+                #logging.info('Reporting %d calls for function %s.' %
+                #             (call_frequency[fname], fname))
 
                 call_frequency[fname] = 0
 
