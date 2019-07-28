@@ -349,9 +349,12 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
+    get_start = time.time()
     result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
     while not result:
         result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
+    get_end = time.time()
+    logging.info('causal get took %s' % (get_end - get_start))
     #logging.info('causal GET done')
 
     kv_pairs.update(result)

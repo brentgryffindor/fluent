@@ -208,10 +208,13 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             if fname in queue and trigger.id in queue[fname]:
                 schedule = queue[fname][trigger.id]
                 if len(received_triggers[key]) == len(schedule.triggers):
+                    exec_start = time.time()
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
                                       thread_id)
+                    exec_end = time.time()
+                    logging.info('function %s took %s to execute' % (fname, (exec_end - exec_start)))
                     del received_triggers[key]
                     del queue[fname][trigger.id]
 
