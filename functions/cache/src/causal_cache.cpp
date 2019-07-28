@@ -30,6 +30,25 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
   SocketCache pushers(context, ZMQ_PUSH);
 
+  string val1 = string(262144, '0');
+  string val2 = string(262144, '0');
+  string val3 = string(262144, '0');
+
+  auto test_start = std::chrono::system_clock::now();
+  string result;
+  for(int i = 0; i < val1.size(); i++) {
+    if (i % 3 == 0) {
+      result.append(std::to_string(val1.at(i)));
+    } else if (i % 3 == 1) {
+      result.append(std::to_string(val2.at(i)));
+    } else {
+      result.append(std::to_string(val3.at(i)));
+    }
+  }
+  auto test_end = std::chrono::system_clock::now();
+  auto func_time = std::chrono::duration_cast<std::chrono::milliseconds>(test_end - test_start).count();
+  log->info("test took {} ms", func_time);
+
   // keep track of keys that this causal cache is responsible for
   set<Key> key_set;
 
