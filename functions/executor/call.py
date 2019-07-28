@@ -343,7 +343,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 #logging.info('no deserialization of key %s' % key)
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
                 #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
-        deser_end = tiime.time()
+        deser_end = time.time()
         logging.info('deserialization took %s' % (deser_end - deser_start))
 
     # execute the function
