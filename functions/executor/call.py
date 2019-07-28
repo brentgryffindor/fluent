@@ -327,7 +327,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     #segment1_end = time.time()
     #logging.info('segment1 took %s' % (segment1_end - segment1_start))
 
-    if len(to_resolve) > 0:
+    '''if len(to_resolve) > 0:
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, dependencies, sink)
         #logging.info('Done resolving reference')
@@ -341,7 +341,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
-                func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
+                func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')'''
 
     # execute the function
     #for f_arg in func_args:
