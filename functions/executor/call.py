@@ -327,7 +327,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     #segment1_end = time.time()
     #logging.info('segment1 took %s' % (segment1_end - segment1_start))
 
-    if len(to_resolve) > 0:
+    '''if len(to_resolve) > 0:
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, dependencies, sink)
         #logging.info('Done resolving reference')
@@ -341,7 +341,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
-                func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
+                func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')'''
 
     # execute the function
     #for f_arg in func_args:
@@ -355,7 +355,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     return result_val
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
-    resolve_start = time.time()
+    #resolve_start = time.time()
     #logging.info('resolve ref causal')
     keys = [ref.key for ref in refs]
     #get_start = time.time()
@@ -367,9 +367,9 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #logging.info('causal GET done')
     #update_start = time.time()
     kv_pairs.update(result)
-    update_end = time.time()
+    #update_end = time.time()
     #logging.info('kv pair update took %s' % (update_end - update_start))
-    logging.info('resolve ref took %s' % (update_end - resolve_start))
+    #logging.info('resolve ref took %s' % (update_end - resolve_start))
     return NO_ERROR
 
 def _is_sink(fname, connections):
