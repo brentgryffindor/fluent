@@ -107,10 +107,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     if (pollitems[0].revents & ZMQ_POLLIN) {
       //std::cout << "received GET\n";
       //log->info("received GET");
+      auto get_start = std::chrono::system_clock::now();
       string serialized = kZmqUtil->recv_string(&get_puller);
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
                           pending_single_metadata, pushers, client, log);
+      auto get_end = std::chrono::system_clock::now();
+      auto get_time = std::chrono::duration_cast<std::chrono::milliseconds>(get_end - get_start).count();
+      log->info("get took {} ms", get_time);
       //log->info("done GET");
       //std::cout << "done GET\n";
     }
