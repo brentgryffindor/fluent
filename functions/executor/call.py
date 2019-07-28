@@ -275,6 +275,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
+        # for testing only
+        result = '0'
         result = serialize_val(result)
         if schedule.HasField('response_address'):
             #logging.info('direct respond')
