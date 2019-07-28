@@ -45,14 +45,14 @@ void scheduler_request_handler(
                        unmerged_store, in_preparation, causal_cut_store,
                        version_store, pending_cross_metadata, to_fetch_map,
                        cover_map, pushers, client, cct, log)) {
-    log->info("not covered");
+    //log->info("not covered");
     //std::cout << "not covered locally\n";
     pending_cross_metadata[request.client_id()].read_set_ = read_set;
     pending_cross_metadata[request.client_id()].to_cover_set_ = to_cover;
     pending_cross_metadata[request.client_id()].scheduler_response_address_ =
         request.scheduler_address();
   } else {
-    log->info("covered");
+    //log->info("covered");
     //std::cout << "covered locally\n";
     // all keys covered, first populate version store entry
     // in this case, it's not possible that keys DNE
