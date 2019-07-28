@@ -145,8 +145,9 @@ class IpcAnnaClient:
         #logging.info('sending GET')
         #send_start = time.time()
         if consistency == CROSS:
-            logging.info('cross! returning')
             kv_pairs = {}
+            for k in keys:
+                kv_pairs[k] = None
             return kv_pairs
         self.get_request_socket.send(request.SerializeToString())
 
