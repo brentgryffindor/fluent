@@ -91,19 +91,19 @@ class CausalCacheThread {
   unsigned tid() const { return tid_; }
 
   Address causal_cache_get_bind_address() const {
-    return "ipc:///requests/get";
+    return kBindBase + std::to_string(tid_ + 7550);
   }
 
   Address causal_cache_get_connect_address() const {
-    return "ipc:///requests/get";
+    return ip_base_ + std::to_string(tid_ + 7550);
   }
 
   Address causal_cache_put_bind_address() const {
-    return "ipc:///requests/put";
+    return kBindBase + std::to_string(tid_ + 7600);
   }
 
   Address causal_cache_put_connect_address() const {
-    return "ipc:///requests/put";
+    return ip_base_ + std::to_string(tid_ + 7600);
   }
 
   Address causal_cache_update_bind_address() const {
