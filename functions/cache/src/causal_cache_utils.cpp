@@ -394,18 +394,6 @@ void merge_into_causal_cut(
           }
           //std::cout << "finish populating version store\n";
           CausalSchedulerResponse response;
-          for (const Key& key : pending_cross_metadata[cid].read_set_) {
-            //log->info("ket to get is {}", key);
-            if (version_store.at(cid).find(key) !=
-                version_store.at(cid).end()) {
-              CausalTuple* tp = response.add_tuples();
-              tp->set_key(key);
-              tp->set_payload(
-                  serialize(*(version_store.at(cid).at(key))));
-            } else {
-              log->error("key {} not found in version store.", key);
-            }
-          }
           response.set_client_id(cid);
           response.set_succeed(true);
           // send response

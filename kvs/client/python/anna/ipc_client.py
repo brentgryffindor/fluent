@@ -43,12 +43,12 @@ class IpcAnnaClient:
         self.put_request_socket.connect('tcp://' + ip + ':' + str(7600))
 
         self.get_response_socket = self.context.socket(zmq.PULL)
-        self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        #self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         #self.get_response_socket.bind(self.get_response_address)
         self.get_response_socket.bind('tcp://*:' + str(thread_id + 7650))
 
         self.put_response_socket = self.context.socket(zmq.PULL)
-        self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        #self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         #self.put_response_socket.bind(self.put_response_address)
         self.put_response_socket.bind('tcp://*:' + str(thread_id + 7700))
 
@@ -145,9 +145,25 @@ class IpcAnnaClient:
         #logging.info('sending GET')
         send_start = time.time()
         self.get_request_socket.send(request.SerializeToString())
+        send_end = time.time()
+        receive_start = time.time()
+        msg = self.get_response_socket.recv()
+        receive_end = time.time()
+        logging.info('took %s to send to cache' % (send_end - send_start))
+        logging.info('took %s to receive from cache' % (receive_end - receive_start))
+        resp = CausalGetResponse()
+        resp.ParseFromString(msg)
 
+        kv_pairs = {}
+        for tp in resp.tuples:
+            val = CrossCausalValue()
+            val.ParseFromString(tp.payload)
 
-        try:
+            # for now, we just take the first value in the setlattice
+            kv_pairs[tp.key] = (val.vector_clock, val.values[0])
+        return kv_pairs
+
+        '''try:
             msg = self.get_response_socket.recv()
             send_end = time.time()
             logging.info('took %s to receive response from cache' % (send_end - send_start))
@@ -177,7 +193,7 @@ class IpcAnnaClient:
             #logging.info('returning from causal GET')
             #parse_end = time.time()
             #logging.info('parsing took %s' % (parse_end - parse_start))
-            return kv_pairs
+            return kv_pairs'''
 
     def put(self, key, value):
         request = KeyRequest()

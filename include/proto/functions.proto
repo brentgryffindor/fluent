@@ -193,15 +193,12 @@ message CausalPutResponse {
 }
 
 message CausalSchedulerRequest {
-  required ConsistencyType consistency = 1;
-  required string client_id = 2;
-  required string scheduler_address = 3;
-  repeated string keys = 4;
-  optional bool gc = 5;
+  required string client_id = 1;
+  required string scheduler_address = 2;
+  repeated string keys = 3;
 }
 
 message CausalSchedulerResponse {
-  repeated CausalTuple tuples = 1;
-  required string client_id = 2;
-  required bool succeed = 3;
+  required string client_id = 1;
+  required bool succeed = 2;
 }

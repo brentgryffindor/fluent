@@ -111,8 +111,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     #logging.info('sending request to cache with ip %s' % cache_ip)
     ip = utils._get_cache_version_query_address(cache_ip)
     version_query_request = CausalSchedulerRequest()
-    version_query_request.consistency = CROSS
-    version_query_request.gc = False
     version_query_request.client_id = schedule.client_id
     version_query_request.scheduler_address = utils._get_scheduler_versioned_key_collection_address(scheduler_ip)
     version_query_request.keys.extend(list(full_key_set))
