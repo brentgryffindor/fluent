@@ -22,7 +22,7 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 from include import server_utils as sutils
-from . import user_library
+#from . import user_library
 from . import utils
 
 
@@ -31,7 +31,7 @@ def _process_args(arg_list):
 
 
 def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
-    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
+    #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
 
@@ -47,7 +47,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
         try:
             if consistency == NORMAL:
                 #logging.info('entering single func normal')
-                result = _exec_func_normal(kvs, f, fargs, user_lib)
+                result = _exec_func_normal(kvs, f, fargs)
                 #logging.info('function executed')
             else:
                 #logging.info('entering single func causal')
@@ -61,7 +61,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
             result = serialize_val(('ERROR: ' + str(e),
                                    sutils.error.SerializeToString()))
 
-    user_lib.close()
+    #user_lib.close()
     if consistency == NORMAL:
         #logging.info('Normal PUT')
         succeed = kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
@@ -112,20 +112,19 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
-    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
+    #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule, user_lib)
+                                  triggers, function, schedule)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
                                   triggers, function, schedule)
 
-    user_lib.close()
+    #user_lib.close()
 
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
-                              user_lib):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
     #logging.info('exec dag normal')
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
@@ -135,7 +134,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
         fargs += list(trigger.arguments.args)
 
     fargs = _process_args(fargs)
-    result = _exec_func_normal(kvs, function, fargs, user_lib)
+    result = _exec_func_normal(kvs, function, fargs)
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -177,14 +176,14 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
                 kvs.put(schedule.id, lattice)
 
 
-def _exec_func_normal(kvs, func, args, user_lib):
+def _exec_func_normal(kvs, func, args):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
 
     if refs:
         refs = _resolve_ref_normal(refs, kvs)
     end = time.time()
 
-    func_args = (user_lib,)
+    func_args = ()
     for arg in args:
         if isinstance(arg, FluentReference):
             func_args += (refs[arg.key],)
