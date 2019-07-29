@@ -275,7 +275,10 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
 
             dest_ip = schedule.locations[conn.sink]
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
+            send_start = time.time()
             sckt.send(new_trigger.SerializeToString())
+            send_end = time.time()
+            logging.info('took %s to send trigger' % (send_end - send_start))
 
     if is_sink:
         # for testing only
