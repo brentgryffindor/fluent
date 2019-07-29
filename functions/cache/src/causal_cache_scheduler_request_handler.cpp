@@ -62,6 +62,18 @@ void scheduler_request_handler(
     }
     // then respond to scheduler
     CausalSchedulerResponse response;
+    for (const Key& key : request.keys()) {
+      //log->info("ket to get is {}", key);
+      if (version_store.at(request.client_id()).find(key) !=
+          version_store.at(request.client_id()).end()) {
+        CausalTuple* tp = response.add_tuples();
+        tp->set_key(key);
+        tp->set_payload(
+            serialize(*(version_store.at(request.client_id()).at(key))));
+      } else {
+        log->error("key {} not found in version store.", key);
+      }
+    }
     response.set_client_id(request.client_id());
     response.set_succeed(true);
     // send response
