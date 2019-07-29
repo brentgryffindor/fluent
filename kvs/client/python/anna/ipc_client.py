@@ -120,11 +120,6 @@ class IpcAnnaClient:
 
     def causal_get(self, keys, consistency, client_id, dependencies, sink):
         #logging.info('Entering causal GET')
-        if consistency == CROSS:
-            kv_pairs = {}
-            for k in keys:
-                kv_pairs[k] = None
-            return kv_pairs
         if type(keys) != list:
             keys = list(keys)
 
@@ -149,6 +144,11 @@ class IpcAnnaClient:
 
         #logging.info('sending GET')
         #send_start = time.time()
+        if consistency == CROSS:
+            kv_pairs = {}
+            for k in keys:
+                kv_pairs[k] = None
+            return kv_pairs
         self.get_request_socket.send(request.SerializeToString())
 
 
