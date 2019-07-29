@@ -143,20 +143,23 @@ class IpcAnnaClient:
         request.response_address = self.get_response_address
 
         #logging.info('sending GET')
-        #send_start = time.time()
-        if consistency == CROSS:
+        send_start = time.time()
+        '''if consistency == CROSS:
             kv_pairs = {}
             for k in keys:
                 kv_pairs[k] = None
-            return kv_pairs
+            return kv_pairs'''
         self.get_request_socket.send(request.SerializeToString())
-        #send_end = time.time()
+        send_end = time.time()
         #receive_start = time.time()
         msg = self.get_response_socket.recv()
         #send_end = time.time()
-        #receive_end = time.time()
+        receive_end = time.time()
         #logging.info('took %s to send to cache' % (send_end - send_start))
         #logging.info('took %s to receive from cache' % (receive_end - receive_start))
+        logging.info('send start %s' % send_start)
+        logging.info('send end %s' % send_end)
+        logging.info('receive end %s' % receive_end)
         resp = CausalGetResponse()
         resp.ParseFromString(msg)
 
