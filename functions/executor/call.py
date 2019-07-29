@@ -17,6 +17,9 @@ import sys
 import time
 import zmq
 
+import cProfile, pstats
+from io import StringIO
+
 from anna.lattices import *
 from include.functions_pb2 import *
 from include.shared import *
@@ -328,8 +331,16 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     #logging.info('segment1 took %s' % (segment1_end - segment1_start))
 
     if len(to_resolve) > 0:
+        pr = cProfile.Profile()
+        pr.enable()
         error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, dependencies, sink)
+        pr.disable()
+        s = StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        logging.info(s.getvalue())
         #logging.info('Done resolving reference')
 
         if error == KEY_DNE:
