@@ -52,9 +52,6 @@ class IpcAnnaClient:
         #self.put_response_socket.bind(self.put_response_address)
         self.put_response_socket.bind('tcp://*:' + str(thread_id + 7700))
 
-        self.poller = zmq.Poller()
-        self.poller.register(self.get_response_socket, zmq.POLLIN)
-
     def get(self, keys):
         if type(keys) != list:
             keys = [keys]
@@ -147,19 +144,21 @@ class IpcAnnaClient:
 
         #logging.info('sending GET')
         #send_start = time.time()
-        self.get_request_socket.send(request.SerializeToString())
-        '''if consistency == CROSS:
+        if consistency == CROSS:
             kv_pairs = {}
             for k in keys:
                 kv_pairs[k] = None
-            return kv_pairs'''
+            return kv_pairs
+        self.get_request_socket.send(request.SerializeToString())
         #send_end = time.time()
         #receive_start = time.time()
-
-        socks = dict(self.poller.poll())
-
+        msg = self.get_response_socket.recv()
+        #send_end = time.time()
+        #receive_end = time.time()
+        #logging.info('took %s to send to cache' % (send_end - send_start))
+        #logging.info('took %s to receive from cache' % (receive_end - receive_start))
         resp = CausalGetResponse()
-        resp.ParseFromString(self.get_response_socket.recv())
+        resp.ParseFromString(msg)
 
         kv_pairs = {}
         for tp in resp.tuples:
