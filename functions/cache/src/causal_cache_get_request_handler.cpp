@@ -65,10 +65,32 @@ void get_request_handler(
   } else if (request.consistency() == ConsistencyType::CROSS) {
     //log->info("Receive GET in cross mode");
     //std::cout << "Receive GET in cross mode\n";
-    if (request.has_gc() && request.gc()) {
-      //log->info("gc version store entry {}", request.client_id());
-      //std::cout << "gc version store entry " + request.client_id() + "\n";
-      version_store.erase(request.client_id());
+    if (version_store.find(request.client_id()) != version_store.end()) {
+      CausalGetResponse response;
+      for (const Key& key : request.keys()) {
+        //log->info("ket to get is {}", key);
+        if (version_store.at(request.client_id()).find(key) !=
+            version_store.at(request.client_id()).end()) {
+          CausalTuple* tp = response.add_tuples();
+          tp->set_key(key);
+          tp->set_payload(
+              serialize(*(version_store.at(request.client_id()).at(key))));
+        } else {
+          log->error("key {} not found in version store.", key);
+        }
+      }
+      // send response
+      string resp_string;
+      response.SerializeToString(&resp_string);
+      kZmqUtil->send_string(resp_string,
+                            &pushers[request.response_address()]);
+      if (request.has_gc() && request.gc()) {
+        //log->info("gc version store entry {}", request.client_id());
+        //std::cout << "gc version store entry " + request.client_id() + "\n";
+        version_store.erase(request.client_id());
+      }
+    } else {
+      log->error("Error: version store for client id {} doesn't exist", request.client_id());
     }
   } else {
     log->error("Found non-causal consistency level.");
