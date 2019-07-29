@@ -154,7 +154,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             for fname in dag[0].functions:
                 call_frequency[fname] += 1
 
-            #send_time = time.time()
+            send_time = time.time()
             rid = call_dag(call, pusher_cache, dags, func_locations,
                            key_ip_map, running_counts, backoff, ip, pending_versioned_key_collection_response)
 
@@ -267,8 +267,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                 # TODO: handle dne
                 logging.error('Key DNE error.')
             else:
-                #receive_time = time.time()
-                #logging.info('cache took %s to respond' % (receive_time - send_time))
+                receive_time = time.time()
+                logging.info('cache took %s to respond' % (receive_time - send_time))
                 if response.client_id in pending_versioned_key_collection_response:
                     # send triggers to source executors
                     schedule = pending_versioned_key_collection_response[response.client_id]

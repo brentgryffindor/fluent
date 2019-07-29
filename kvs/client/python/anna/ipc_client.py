@@ -25,9 +25,6 @@ from .lattices import *
 import zmq
 import time
 
-import cProfile, pstats
-from io import StringIO
-
 class IpcAnnaClient:
     def __init__(self, thread_id = 0, ip = None):
         self.context = zmq.Context(1)
@@ -123,8 +120,6 @@ class IpcAnnaClient:
 
     def causal_get(self, keys, consistency, client_id, dependencies, sink):
         #logging.info('Entering causal GET')
-        pr = cProfile.Profile()
-        pr.enable()
         if type(keys) != list:
             keys = list(keys)
 
@@ -148,26 +143,20 @@ class IpcAnnaClient:
         request.response_address = self.get_response_address
 
         #logging.info('sending GET')
-        #send_start = time.time()
+        send_start = time.time()
         self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
-            #send_end = time.time()
-            #logging.info('took %s to receive response from cache' % (send_end - send_start))
+            send_end = time.time()
+            logging.info('took %s to receive response from cache' % (send_end - send_start))
             #logging.info('received response')
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
             else:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
-            pr.disable()
-            s = StringIO()
-            sortby = 'cumulative'
-            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-            ps.print_stats()
-            logging.info(s.getvalue())
             return None
         else:
             #logging.info('parsing response')
@@ -188,12 +177,6 @@ class IpcAnnaClient:
             #logging.info('returning from causal GET')
             #parse_end = time.time()
             #logging.info('parsing took %s' % (parse_end - parse_start))
-            pr.disable()
-            s = StringIO()
-            sortby = 'cumulative'
-            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-            ps.print_stats()
-            logging.info(s.getvalue())
             return kv_pairs
 
     def put(self, key, value):
