@@ -368,7 +368,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #logging.info('causal get took %s' % (get_end - get_start))
     #logging.info('causal GET done')
     #update_start = time.time()
-    #kv_pairs.update(result)
+    kv_pairs.update(result)
     #update_end = time.time()
     #logging.info('kv pair update took %s' % (update_end - update_start))
     #logging.info('resolve ref took %s' % (update_end - resolve_start))
