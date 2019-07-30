@@ -25,8 +25,8 @@ from .lattices import *
 import zmq
 
 class IpcAnnaClient:
-    def __init__(self, thread_id = 0):
-        self.context = zmq.Context(1)
+    def __init__(self, ctx, thread_id = 0):
+        self.context = ctx
 
         self.get_response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
         self.put_response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
@@ -38,11 +38,11 @@ class IpcAnnaClient:
         self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
-        self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        #self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.get_response_socket.bind(self.get_response_address)
 
         self.put_response_socket = self.context.socket(zmq.PULL)
-        self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        #self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.put_response_socket.bind(self.put_response_address)
 
     def get(self, keys):

@@ -80,7 +80,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(dag_conservative_exec_socket, zmq.POLLIN)
     poller.register(dag_schedule_gc_socket, zmq.POLLIN)
 
-    client = IpcAnnaClient(thread_id)
+    client = IpcAnnaClient(ctx, thread_id)
 
     status = ThreadStatus()
     status.ip = ip
