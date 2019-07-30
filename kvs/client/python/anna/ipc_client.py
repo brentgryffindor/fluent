@@ -26,31 +26,25 @@ import zmq
 import time
 
 class IpcAnnaClient:
-    def __init__(self, ctx, thread_id = 0, ip = None):
-        self.context = ctx
+    def __init__(self, thread_id = 0):
+        self.context = zmq.Context(1)
 
-        #self.get_response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
-        self.get_response_address = 'tcp://' + ip + ':' + str(thread_id + 7650)
-        #self.put_response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
-        self.put_response_address = 'tcp://' + ip + ':' + str(thread_id + 7700)
+        self.get_response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
+        self.put_response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
 
         self.get_request_socket = self.context.socket(zmq.PUSH)
-        #self.get_request_socket.connect(GET_REQUEST_ADDR)
-        self.get_request_socket.connect('tcp://' + ip + ':' + str(7550))
+        self.get_request_socket.connect(GET_REQUEST_ADDR)
 
         self.put_request_socket = self.context.socket(zmq.PUSH)
-        #self.put_request_socket.connect(PUT_REQUEST_ADDR)
-        self.put_request_socket.connect('tcp://' + ip + ':' + str(7600))
+        self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
         #self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
-        #self.get_response_socket.bind(self.get_response_address)
-        self.get_response_socket.bind('tcp://*:' + str(thread_id + 7650))
+        self.get_response_socket.bind(self.get_response_address)
 
         self.put_response_socket = self.context.socket(zmq.PULL)
         #self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
-        #self.put_response_socket.bind(self.put_response_address)
-        self.put_response_socket.bind('tcp://*:' + str(thread_id + 7700))
+        self.put_response_socket.bind(self.put_response_address)
 
     def get(self, keys):
         if type(keys) != list:
