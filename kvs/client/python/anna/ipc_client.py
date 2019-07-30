@@ -26,8 +26,8 @@ import zmq
 import time
 
 class IpcAnnaClient:
-    def __init__(self, thread_id = 0):
-        self.context = zmq.Context(1)
+    def __init__(self, ctx, thread_id = 0):
+        self.context = ctx
 
         self.get_response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
         self.put_response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
