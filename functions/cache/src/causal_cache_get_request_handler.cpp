@@ -73,8 +73,9 @@ void get_request_handler(
             version_store.at(request.client_id()).end()) {
           CausalTuple* tp = response.add_tuples();
           tp->set_key(key);
-          tp->set_payload(
-              serialize(*(version_store.at(request.client_id()).at(key))));
+          //tp->set_payload(
+          //    serialize(*(version_store.at(request.client_id()).at(key))));
+          tp->set_payload(serialize(CrossCausalLattice<SetLattice<string>>()));
         } else {
           log->error("key {} not found in version store.", key);
         }
