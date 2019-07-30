@@ -158,11 +158,10 @@ class IpcAnnaClient:
         resp.ParseFromString(msg)
 
         kv_pairs = {}
-        if consistency == CROSS:
+        if consistency == SINGLE:
             for tp in resp.tuples:
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
-
                 # for now, we just take the first value in the setlattice
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])
         return kv_pairs
