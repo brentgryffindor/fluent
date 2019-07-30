@@ -164,6 +164,9 @@ class IpcAnnaClient:
                 val.ParseFromString(tp.payload)
                 # for now, we just take the first value in the setlattice
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])
+        else:
+            for tp in resp.tuples:
+                kv_pairs[tp.key] = None
         return kv_pairs
 
         '''try:
