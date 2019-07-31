@@ -67,19 +67,24 @@ void get_request_handler(
     //std::cout << "Receive GET in cross mode\n";
     if (version_store.find(request.client_id()) != version_store.end()) {
       CausalGetResponse response;
+      auto serialize_start = std::chrono::system_clock::now();
       for (const Key& key : request.keys()) {
         //log->info("ket to get is {}", key);
         if (version_store.at(request.client_id()).find(key) !=
             version_store.at(request.client_id()).end()) {
           CausalTuple* tp = response.add_tuples();
           tp->set_key(key);
-          //tp->set_payload(
-          //    serialize(*(version_store.at(request.client_id()).at(key))));
-          tp->set_payload(serialize(CrossCausalLattice<SetLattice<string>>()));
+          tp->set_payload(
+              serialize(*(version_store.at(request.client_id()).at(key))));
+          //tp->set_payload(serialize(CrossCausalLattice<SetLattice<string>>()));
         } else {
           log->error("key {} not found in version store.", key);
         }
       }
+      auto serialize_end = std::chrono::system_clock::now();
+      auto serialize_time = std::chrono::duration_cast<std::chrono::microseconds>(serialize_end - serialize_start).count();
+      log->info("serialization took {} micro seconds", serialize_time);
+
       // send response
       string resp_string;
       response.SerializeToString(&resp_string);

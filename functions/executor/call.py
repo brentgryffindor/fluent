@@ -338,12 +338,15 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             return None
 
         #logging.info('swapping args and deserializing')
+        deser_start = time.time()
         for key in kv_pairs:
             if deserialize[key]:
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
+        deser_end = time.time()
+        logging.info('deser took %s' % (deser_end - deser_start))
 
     # execute the function
     #for f_arg in func_args:
@@ -368,7 +371,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
     #logging.info('causal get took %s' % (get_end - get_start))
     #logging.info('causal GET done')
     #update_start = time.time()
-    #kv_pairs.update(result)
+    kv_pairs.update(result)
     #update_end = time.time()
     #logging.info('kv pair update took %s' % (update_end - update_start))
     #logging.info('resolve ref took %s' % (update_end - resolve_start))
