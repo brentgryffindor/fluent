@@ -66,8 +66,8 @@ def run(flconn, kvs, mode, sckt):
 
         ### CREATE DAG ###
 
-        functions = ['strmnp1', 'strmnp2', 'strmnp3']
-        connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
+        functions = ['strmnp1']
+        connections = []
         success, error = flconn.register_dag(dag_name, functions, connections)
 
         if not success:
@@ -82,8 +82,8 @@ def run(flconn, kvs, mode, sckt):
         logging.info('Warming up keys')
         ### CREATE DATA###
         warm_begin = time.time()
-        val = '0'.zfill(256)
-        for k in range(17300, 19450):
+        val = '0'.zfill(1048576)
+        for k in range(1, 1000):
             if k % 100 == 0:
                 print('warmup for key %s done' % k)
             k = str(k).zfill(5)
@@ -157,7 +157,7 @@ def run(flconn, kvs, mode, sckt):
         logging.info('Running DAG')
         ### RUN DAG ###
         time_array = []
-        for k in range(2475, 2775):
+        for k in range(1, 101):
             arg1 = str(7*k).zfill(5)
             arg2 = str(7*k+1).zfill(5)
             arg3 = str(7*k+2).zfill(5)
@@ -170,9 +170,7 @@ def run(flconn, kvs, mode, sckt):
             refs2 = (FluentReference(arg4, True, CROSSCAUSAL), FluentReference(arg5, True, CROSSCAUSAL),)
             refs3 = (FluentReference(arg6, True, CROSSCAUSAL), FluentReference(arg7, True, CROSSCAUSAL),)
 
-            arg_map = { 'strmnp1' : refs1 ,
-                        'strmnp2' : refs2 ,
-                        'strmnp3' : refs3 }
+            arg_map = { 'strmnp1' : refs1 }
 
             result_key = 'result' + str(k)
             start = time.time()
