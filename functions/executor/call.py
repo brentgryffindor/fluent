@@ -328,7 +328,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         func_args += (arg,)
     #segment1_end = time.time()
     #logging.info('segment1 took %s' % (segment1_end - segment1_start))
-    keys = set(ref.key for ref in refs)
+    keys = set(ref.key for ref in to_resolve)
 
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(keys, kvs, kv_pairs,
