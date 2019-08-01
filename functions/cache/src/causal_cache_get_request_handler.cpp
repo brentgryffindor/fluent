@@ -63,6 +63,15 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
+    // convert the cached keys into a map
+    map<Key, VectorClock> cached_versions;
+    for (const auto& vk : request.cached_keys()) {
+      VectorClock vc;
+      for (const auto& key_version_pair : vk.vector_clock()) {
+        vc.insert(key_version_pair.first, key_version_pair.second);
+      }
+      cached_versions[vk.key()] = vc;
+    }
     //log->info("Receive GET in cross mode");
     //std::cout << "Receive GET in cross mode\n";
     if (version_store.find(request.client_id()) != version_store.end()) {
@@ -72,11 +81,14 @@ void get_request_handler(
         //log->info("ket to get is {}", key);
         if (version_store.at(request.client_id()).find(key) !=
             version_store.at(request.client_id()).end()) {
-          CausalTuple* tp = response.add_tuples();
-          tp->set_key(key);
-          tp->set_payload(
-              serialize(*(version_store.at(request.client_id()).at(key))));
-          //tp->set_payload(serialize(CrossCausalLattice<SetLattice<string>>()));
+          // first check if the cached version is the same as what we want to return
+          if (cached_versions.find(key) == cached_versions.end() || cached_versions.at(key).reveal() != version_store.at(request.client_id()).at(key)->reveal().vector_clock.reveal()) {
+            log->info("key {} not cached by executor, sending...", key);
+            CausalTuple* tp = response.add_tuples();
+            tp->set_key(key);
+            tp->set_payload(
+                serialize(*(version_store.at(request.client_id()).at(key))));
+          }
         } else {
           log->error("key {} not found in version store.", key);
         }

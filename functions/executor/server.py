@@ -58,6 +58,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     self_depart_socket.bind(sutils.BIND_ADDR_TEMPLATE %
                             (sutils.SELF_DEPART_PORT + thread_id))
 
+    cache_socket = ctx.socket(zmq.PULL)
+    cache_socket.bind('ipc:///requests/cache_' + str(thread_id))
+
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
     poller = zmq.Poller()
@@ -67,6 +70,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(dag_queue_socket, zmq.POLLIN)
     poller.register(dag_exec_socket, zmq.POLLIN)
     poller.register(self_depart_socket, zmq.POLLIN)
+    poller.register(cache_socket, zmq.POLLIN)
 
     client = IpcAnnaClient(ctx, thread_id)
 
@@ -108,6 +112,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                        'dag_exec': 0.0,
                        'dag_conservative_exec': 0.0,}
     total_occupancy = 0.0
+
+    # map from key to tuple(vectorclock, deserialized payload)
+    cache = {}
 
     while True:
         socks = dict(poller.poll(timeout=1000))
@@ -176,7 +183,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id)
+                                  thread_id, cache)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -212,7 +219,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id)
+                                      thread_id, cache)
                     #exec_end = time.time()
                     #logging.info('function %s took %s to execute' % (fname, (exec_end - exec_start)))
                     del received_triggers[key]
@@ -242,6 +249,15 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             departing = True
 
+        if cache_socket in socks and socks[cache_socket] == zmq.POLLIN:
+            resp = CausalGetResponse()
+            resp.ParseFromString(cache_socket.recv())
+            # populate cache
+            for tp in resp.tuples:
+                logging.info('caching key %s' % tp.key)
+                val = CrossCausalValue()
+                val.ParseFromString(tp.payload)
+                cache[tp.key] = (val.vector_clock, val.values[0])
 
         # periodically report function occupancy
         report_end = time.time()

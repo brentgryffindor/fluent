@@ -111,7 +111,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
     return  func(*tuple(func_args))
 
 
-def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
+def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid, cache):
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
@@ -119,7 +119,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
-                                  triggers, function, schedule)
+                                  triggers, function, schedule, cache)
 
     #user_lib.close()
 
@@ -214,7 +214,7 @@ def _resolve_ref_normal(refs, kvs):
     return kv_pairs
 
 
-def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
+def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, cache):
     #logging.info('exec dag causal')
     fname = schedule.target_function
 
@@ -239,7 +239,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     kv_pairs = {}
     #exec_begin = time.time()
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
-                               schedule, dependencies, _is_sink(fname, schedule.dag.connections))
+                               schedule, dependencies, _is_sink(fname, schedule.dag.connections), cache)
     #exec_end = time.time()
     #logging.info('_exec_func_causal took %s' % (exec_end - exec_begin))
     #logging.info('finish executing function')
@@ -310,7 +310,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                                dependencies, result, schedule.client_id)
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
-                      schedule, dependencies, sink):
+                      schedule, dependencies, sink, cache):
     #logging.info('exec func causal')
     #entry_start = time.time()
     func_args = []
@@ -328,10 +328,11 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         func_args += (arg,)
     #segment1_end = time.time()
     #logging.info('segment1 took %s' % (segment1_end - segment1_start))
+    keys = set(ref.key for ref in refs)
 
     if len(to_resolve) > 0:
-        error = _resolve_ref_causal(to_resolve, kvs, kv_pairs,
-                            schedule, dependencies, sink)
+        error = _resolve_ref_causal(keys, kvs, kv_pairs,
+                            schedule, dependencies, sink, cache)
         #logging.info('Done resolving reference')
 
         if error == KEY_DNE:
@@ -340,11 +341,16 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         #logging.info('swapping args and deserializing')
         deser_start = time.time()
         for key in kv_pairs:
+            logging.info('cache miss for key %s' % key)
             if deserialize[key]:
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
+            keys.remove(key)
+        for key in keys:
+            logging.info('cache hit for key %s' % key)
+            func_args[key_index_map[key]] = cache[key][1]
         deser_end = time.time()
         logging.info('deser took %s' % (deser_end - deser_start))
 
@@ -359,14 +365,13 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     #logging.info('_exec_func_causal inner took %s' % (invoke_end - entry_start))
     return result_val
 
-def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, dependencies, sink):
+def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, dependencies, sink, cache):
     #resolve_start = time.time()
     #logging.info('resolve ref causal')
-    keys = [ref.key for ref in refs]
     #get_start = time.time()
-    result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
+    result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink, cache)
     while not result:
-        result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink)
+        result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink, cache)
     #get_end = time.time()
     #logging.info('causal get took %s' % (get_end - get_start))
     #logging.info('causal GET done')

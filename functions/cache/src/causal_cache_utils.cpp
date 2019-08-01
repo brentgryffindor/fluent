@@ -328,10 +328,15 @@ void merge_into_causal_cut(
     const StoreType& unmerged_store) {
   //std::cout << "enter merge into causal cut\n";
   bool key_dne = false;
+
+  // initiate message to be sent to all executors for caching
+  CausalGetResponse cache_response;
+
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
     if (vector_clock_comparison(
             VectorClock(), pair.second->reveal().vector_clock) == kCausalLess) {
+      auto tp = cache_response.add_tuples();
       // only merge when the key exists
       if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
         // key doesn't exist in causal cut store
@@ -347,10 +352,20 @@ void merge_into_causal_cut(
               causal_merge(causal_cut_store[pair.first], pair.second);
         }
       }
+      tp->set_key(pair.first);
+      tp->set_payload(serialize(*causal_cut_store[pair.first]));
     } else {
       key_dne = true;
     }
   }
+
+  // send
+  string resp_string;
+  cache_response.SerializeToString(&resp_string);
+  for (unsigned tid = 0; tid < 3; tid++) {
+    kZmqUtil->send_string(resp_string, &pushers[cct.causal_cache_executor_connect_address(tid)]);
+  }
+
   //std::cout << "notifying scheduler\n";
   // notify scheduler
   for (const string& cid : in_preparation[key].first) {

@@ -112,10 +112,10 @@ class IpcAnnaClient:
                                      str(tp.lattice_type))
             return kv_pairs
 
-    def causal_get(self, keys, consistency, client_id, dependencies, sink):
+    def causal_get(self, keys, consistency, client_id, dependencies, sink, cache = {}):
         #logging.info('Entering causal GET')
-        if type(keys) != list:
-            keys = list(keys)
+        if type(keys) != set:
+            keys = set(keys)
 
         request = CausalGetRequest()
 
@@ -130,6 +130,14 @@ class IpcAnnaClient:
         request.client_id = client_id
         request.keys.extend(keys)
         request.gc = sink
+
+        # populate cached keys
+        for key in keys:
+            if key in cache:
+                vk = VersionedKey()
+                vk.key = key
+                vk.vector_clock.update(cache[key][0])
+                request.cached_keys.extend([vk])
 
         #for k in request.keys:
         #    logging.info('key to GET is %s' % k)

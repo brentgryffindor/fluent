@@ -176,6 +176,7 @@ message CausalGetRequest {
   repeated string keys = 3;
   optional string response_address = 4;
   optional bool gc = 5;
+  repeated VersionedKey cached_keys = 6;
 }
 
 message CausalGetResponse {
