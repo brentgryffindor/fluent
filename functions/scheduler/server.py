@@ -138,22 +138,22 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if (func_create_socket in socks and
                 socks[func_create_socket] == zmq.POLLIN):
-            logging.info('Received function create request')
+            #logging.info('Received function create request')
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            logging.info('Received function call request')
+            #logging.info('Received function call request')
             call_function(func_call_socket, pusher_cache, executors,
                           key_ip_map, running_counts, backoff)
 
         if (dag_create_socket in socks and socks[dag_create_socket]
                 == zmq.POLLIN):
-            logging.info('Received dag create request')
+            #logging.info('Received dag create request')
             create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
                        ip, pin_accept_socket, func_locations, call_frequency)
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
-            logging.info('Received dag call request')
+            #logging.info('Received dag call request')
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
 
@@ -197,8 +197,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             status.ParseFromString(exec_status_socket.recv())
 
             key = (status.ip, status.tid)
-            logging.info('Received status update from executor %s:%d.' %
-                         (key[0], int(key[1])))
+            #logging.info('Received status update from executor %s:%d.' %
+            #             (key[0], int(key[1])))
 
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
@@ -282,12 +282,12 @@ def scheduler(ip, mgmt_ip, route_addr):
                 logging.error('Key DNE error.')
             else:
                 if response.client_id in pending_versioned_key_collection_response:
-                    for fn in pending_versioned_key_collection_response[response.client_id]:
-                        logging.info('function %s remains in map' % fn)
-                    logging.info('function %s in resopnse' % response.function_name)
+                    #for fn in pending_versioned_key_collection_response[response.client_id]:
+                    #    logging.info('function %s remains in map' % fn)
+                    #logging.info('function %s in resopnse' % response.function_name)
                     pending_versioned_key_collection_response[response.client_id].remove(response.function_name)
                     # update per_func_versioned_key_chain
-                    logging.info('populating per func versioned key chain')
+                    #logging.info('populating per func versioned key chain')
                     versioned_key_map[response.client_id].per_func_versioned_key_chain[response.function_name] = {}
                     for head_key in response.version_chain:
                         versioned_key_map[response.client_id].per_func_versioned_key_chain[response.function_name][head_key] = {}
@@ -319,7 +319,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                     if len(pending_versioned_key_collection_response[response.client_id]) == 0:
                         # trigger conservative protocol
                         # TODO: refactor to a function
-                        logging.info('start conservative protocol')
+                        #logging.info('start conservative protocol')
                         dag_name = versioned_key_map[response.client_id].dag_name
                         # a map from function name to accumulated version lowerbound
                         prior_per_func_causal_lowerbound_map = {}
@@ -333,12 +333,12 @@ def scheduler(ip, mgmt_ip, route_addr):
                         finished_functions = set()
                         if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
                             # the protocol aborted, so we need to do conservative protocol
-                            logging.info('optimistic protocol will abort')
+                            #logging.info('optimistic protocol will abort')
                             per_cache_message_map = {}
                             pending_conservative_response[response.client_id] = (versioned_key_map[response.client_id].schedule, [])
                             scheduler_response_address = utils._get_scheduler_key_shipping_response_address(ip)
                             for fname in versioned_key_map[response.client_id].func_location:
-                                logging.info('checking function %s' % fname)
+                                #logging.info('checking function %s' % fname)
                                 cache_ip = versioned_key_map[response.client_id].func_location[fname][0]
                                 cache_address = utils._get_cache_scheduler_key_shipping_request_address(cache_ip)
                                 if cache_address not in per_cache_message_map:
@@ -352,7 +352,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 per_function_readset.keys.extend(versioned_key_map[response.client_id].per_func_read_set[fname])
                                 per_cache_message_map[cache_address].per_function_readsets.extend([per_function_readset])
                                 # compute if it needs to fetch keys from other caches
-                                logging.info('computing remote fetch')
+                                #logging.info('computing remote fetch')
                                 for key in per_function_readset.keys:
                                     target_vc = versioned_key_map[response.client_id].global_causal_cut[key]
                                     vc = {}
@@ -360,11 +360,11 @@ def scheduler(ip, mgmt_ip, route_addr):
                                         vc = versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key][key]
                                     if sutils._compare_vector_clock(vc, target_vc) != sutils.CausalComp.GreaterOrEqual:
                                         # need to fetch from other caches
-                                        logging.info('need to fetch from remote')
+                                        #logging.info('need to fetch from remote')
                                         for tp in versioned_key_map[response.client_id].global_causal_frontier[key]:
                                             if sutils._compare_vector_clock(vc, tp[0]) != sutils.CausalComp.GreaterOrEqual:
                                                 # can merge to make it bigger
-                                                logging.info('fetch %s from function %s' % (key, tp[1]))
+                                                #logging.info('fetch %s from function %s' % (key, tp[1]))
                                                 vc = sutils._merge_vector_clock(vc, tp[0])
                                                 # populate message to fetch this version
                                                 function_key_pair = FunctionKeyPair()
@@ -380,12 +380,12 @@ def scheduler(ip, mgmt_ip, route_addr):
                                                 if sutils._compare_vector_clock(vc, target_vc) == sutils.CausalComp.GreaterOrEqual:
                                                     break
                             # send message to caches
-                            logging.info('sending key shipping request to cache')
+                            #logging.info('sending key shipping request to cache')
                             for cache_addr in per_cache_message_map:
                                 sckt = pusher_cache.get(cache_addr)
                                 sckt.send(per_cache_message_map[cache_addr].SerializeToString())
                         # GC
-                        logging.info('GC pending versioned key collection map and versioned key map')
+                        #logging.info('GC pending versioned key collection map and versioned key map')
                         del pending_versioned_key_collection_response[response.client_id]
                         del versioned_key_map[response.client_id]
 
@@ -450,8 +450,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                 fstats = stats.statistics.add()
                 fstats.fname = fname
                 fstats.call_count = call_frequency[fname]
-                logging.info('Reporting %d calls for function %s.' %
-                             (call_frequency[fname], fname))
+                #logging.info('Reporting %d calls for function %s.' %
+                #             (call_frequency[fname], fname))
 
                 call_frequency[fname] = 0
 
@@ -523,7 +523,7 @@ def _construct_causal_frontier(prior_causal_lowerbound_list):
 
 def _remove_from_local_readset(key, causal_frontier, read_set, remove_candidate, version_store):
     if key not in causal_frontier:
-        logging.info('key %s not in causal frontier, aborting' % key)
+        #logging.info('key %s not in causal frontier, aborting' % key)
         return False
     vc = {}
     for tp in causal_frontier[key]:
@@ -588,7 +588,7 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
 
 
 def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, total_num_functions, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
-    logging.info('entering simulation')
+    #logging.info('entering simulation')
     while len(finished_functions) < total_num_functions:
         for fname in function_trigger_map:
             if not fname in finished_functions:
@@ -606,7 +606,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
 
                     if len(function_trigger_map[fname]) > 1 and _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
                         # abort
-                        logging.info('abort due to parallel flow checking failure')
+                        #logging.info('abort due to parallel flow checking failure')
                         return True
                     # turn prior read list into a map
                     prior_read_map = {}
@@ -617,7 +617,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     prior_per_func_read_map[fname] = prior_read_list
                     if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname]):
                         # abort
-                        logging.info('abort due to optimistic protocol failure')
+                        #logging.info('abort due to optimistic protocol failure')
                         return True
                     finished_functions.add(fname)
     return False

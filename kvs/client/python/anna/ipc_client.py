@@ -113,7 +113,7 @@ class IpcAnnaClient:
 
     def causal_get(self, keys, full_read_set,
                    prior_version_tuples, prior_read_map, consistency, client_id, fname, dependencies, conservative, cache = {}):
-        logging.info('Entering causal GET')
+        #logging.info('Entering causal GET')
         if type(keys) != set:
             keys = set(keys)
 
@@ -140,8 +140,8 @@ class IpcAnnaClient:
                 vk.vector_clock.update(cache[key][0])
                 request.cached_keys.extend([vk])
 
-        for k in request.keys:
-            logging.info('key to GET is %s' % k)
+        #for k in request.keys:
+        #    logging.info('key to GET is %s' % k)
 
         if not conservative:
             request.prior_version_tuples.extend(prior_version_tuples)
@@ -150,13 +150,13 @@ class IpcAnnaClient:
 
         request.response_address = self.get_response_address
 
-        logging.info('sending GET')
+        #logging.info('sending GET')
         self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
-            logging.info('received response')
+            #logging.info('received response')
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
@@ -164,23 +164,23 @@ class IpcAnnaClient:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
             return None
         else:
-            logging.info('parsing response')
+            #logging.info('parsing response')
             resp = CausalGetResponse()
             resp.ParseFromString(msg)
-            logging.info('parsed')
+            #logging.info('parsed')
 
             if resp.error == KEY_DNE:
-                logging.info('key dne')
+                #logging.info('key dne')
                 return resp.error
             elif resp.error == ABORT:
-                logging.info('abort')
+                #logging.info('abort')
                 return resp.error
             else:
-                logging.info('GET successful')
+                #logging.info('GET successful')
                 kv_pairs = {}
                 versioned_key_read = []
                 for tp in resp.tuples:
-                    logging.info('key is %s', tp.key)
+                    #logging.info('key is %s', tp.key)
                     val = CrossCausalValue()
                     val.ParseFromString(tp.payload)
 
@@ -188,13 +188,13 @@ class IpcAnnaClient:
                     kv_pairs[tp.key] = (val.vector_clock, val.values[0])
                     # construct VersionedKey for keys read
                     if not conservative:
-                        logging.info('creating versioned key for read set')
+                        #logging.info('creating versioned key for read set')
                         vk = VersionedKey()
                         vk.key = tp.key
                         vk.vector_clock.update(val.vector_clock)
                         versioned_key_read.append(vk)
-                        logging.info('finished creation')
-                logging.info('returning from causal GET')
+                        #logging.info('finished creation')
+                #logging.info('returning from causal GET')
                 return (resp.prior_version_tuples, versioned_key_read, kv_pairs)
 
     def put(self, key, value):

@@ -164,7 +164,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             total_occupancy += elapsed
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
-            logging.info('Received function execution request')
+            #logging.info('Received function execution request')
             work_start = time.time()
             exec_function(exec_socket, client, status, ip, thread_id)
 
@@ -182,8 +182,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             schedule.ParseFromString(dag_queue_socket.recv())
             fname = schedule.target_function
 
-            logging.info('Received a schedule for DAG %s (%s), function %s.' %
-                         (schedule.dag.name, schedule.id, fname))
+            #logging.info('Received a schedule for DAG %s (%s), function %s.' %
+            #             (schedule.dag.name, schedule.id, fname))
 
             if fname not in queue:
                 queue[fname] = {}
@@ -219,8 +219,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_exec_socket.recv())
 
             fname = trigger.target_function
-            logging.info('Received a trigger for schedule %s, function %s.' %
-                         (trigger.id, fname))
+            #logging.info('Received a trigger for schedule %s, function %s.' %
+            #             (trigger.id, fname))
 
             key = (trigger.id, fname)
             if key not in received_triggers:
@@ -270,8 +270,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_conservative_exec_socket.recv())
 
             fname = trigger.target_function
-            logging.info('Received a conservative trigger for schedule %s, function %s.' %
-                         (trigger.id, fname))
+            #logging.info('Received a conservative trigger for schedule %s, function %s.' %
+            #             (trigger.id, fname))
 
             key = (trigger.id, fname)
             if key not in received_conservative_triggers:
@@ -305,7 +305,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             resp.ParseFromString(cache_socket.recv())
             # populate cache
             for tp in resp.tuples:
-                logging.info('caching key %s' % tp.key)
+                #logging.info('caching key %s' % tp.key)
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
                 cache[tp.key] = (val.vector_clock, val.values[0])

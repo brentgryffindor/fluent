@@ -46,13 +46,13 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
     else:
         try:
             if consistency == NORMAL:
-                logging.info('entering single func normal')
+                #logging.info('entering single func normal')
                 result = _exec_func_normal(kvs, f, fargs)
-                logging.info('function executed')
+                #logging.info('function executed')
             else:
-                logging.info('entering single func causal')
+                #logging.info('entering single func causal')
                 result = _exec_single_func_causal(kvs, call.name, f, fargs)
-                logging.info('function executed')
+                #logging.info('function executed')
             result = serialize_val(result)
         except Exception as e:
             logging.exception('Unexpected error %s while executing function.' %
@@ -63,13 +63,13 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
 
     #user_lib.close()
     if consistency == NORMAL:
-        logging.info('Normal PUT')
+        #logging.info('Normal PUT')
         succeed = kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
     else:
-        logging.info('Causal PUT')
+        #logging.info('Causal PUT')
         succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
 
-    logging.info('PUT done')
+    #logging.info('PUT done')
 
     if not succeed:
         logging.info('Put key %s unsuccessful' % call.resp_id)
@@ -90,7 +90,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
     if len(to_resolve) > 0:
         keys = [ref.key for ref in to_resolve]
-        logging.info('enter causal get')
+        #logging.info('enter causal get')
         result = kvs.causal_get(keys, keys,
                                 [], [],
                                 CROSS, '0', fname, {}, False)
@@ -100,7 +100,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
                                 [], [],
                                 CROSS, '0', fname, {}, False)
 
-        logging.info('causal get done')
+        #logging.info('causal get done')
         kv_pairs = result[2]
 
         for key in kv_pairs:
@@ -111,13 +111,13 @@ def _exec_single_func_causal(kvs, fname, func, args):
                 func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
-    logging.info('executing function')
+    #logging.info('executing function')
     return  func(*tuple(func_args))
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                       tid, cache, conservative=False):
-    logging.info('conservative flag is %s' % conservative)
+    #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
@@ -131,7 +131,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
-    logging.info('exec dag normal')
+    #logging.info('exec dag normal')
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
@@ -221,13 +221,13 @@ def _resolve_ref_normal(refs, kvs):
 
 
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache):
-    logging.info('exec dag causal')
+    #logging.info('exec dag causal')
     fname = schedule.target_function
     # first check if we need to abort
     for trname in schedule.triggers:
         trigger = triggers[trname]
         if trigger.HasField('abort') and trigger.abort:
-            logging.info('abort')
+            #logging.info('abort')
             _abort_dag(fname, schedule, pusher_cache)
             return
 
@@ -257,7 +257,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 dependencies[dep.key] = dep.vector_clock
 
     if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
-        logging.info('abort due to parallel flow check failure')
+        #logging.info('abort due to parallel flow check failure')
         _abort_dag(fname, schedule, pusher_cache)
         return
 
@@ -267,7 +267,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     abort = [False]
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache)
-    logging.info('finish executing function')
+    #logging.info('finish executing function')
 
     if abort[0]:
         _abort_dag(fname, schedule, pusher_cache)
@@ -314,12 +314,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     if is_sink:
         result = serialize_val(result)
         if schedule.HasField('response_address'):
-            logging.info('direct respond')
+            #logging.info('direct response')
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result)
         else:
-            logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
-                    (schedule.dag.name, schedule.id, schedule.output_key))
+            #logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
+            #        (schedule.dag.name, schedule.id, schedule.output_key))
 
             vector_clock = {}
             if schedule.output_key in dependencies:
@@ -342,7 +342,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:
             #logging.info('GCing version store and schedule')
-            logging.info('GCing schedule only for benchmark')
+            #logging.info('GCing schedule only for benchmark')
             observed_cache_address = set()
             # disable GC for benchmark
             '''for pvt in prior_version_tuples:
@@ -357,13 +357,13 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 gc_req.function_name = fname
                 gc_req.schedule_id = schedule.id
                 gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
-                logging.info('schedule GC address is %s' % gc_addr)
+                #logging.info('schedule GC address is %s' % gc_addr)
                 sckt = pusher_cache.get(gc_addr)
                 sckt.send(gc_req.SerializeToString())
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
                       schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache):
-    logging.info('exec func causal')
+    #logging.info('exec func causal')
     func_args = []
     to_resolve = []
     deserialize = {}
@@ -382,59 +382,59 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(keys, kvs, kv_pairs,
                             schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache)
-        logging.info('Done resolving reference')
+        #logging.info('Done resolving reference')
 
         if error == KEY_DNE or error == ABORT:
             abort[0] = True
             return None
 
-        logging.info('swapping args and deserializing')
+        #logging.info('swapping args and deserializing')
         for key in kv_pairs:
-            logging.info('cache miss for key %s' % key)
+            #logging.info('cache miss for key %s' % key)
             if deserialize[key]:
-                logging.info('deserializing key %s' % key)
+                #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
-                logging.info('value is %s' % deserialize_val(kv_pairs[key][1]))
+                #logging.info('value is %s' % deserialize_val(kv_pairs[key][1]))
             else:
-                logging.info('no deserialization of key %s' % key)
+                #logging.info('no deserialization of key %s' % key)
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
-                logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
+                #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
             keys.remove(key)
         for key in keys:
-            logging.info('cache hit for key %s' % key)
+            #logging.info('cache hit for key %s' % key)
             func_args[key_index_map[key]] = cache[key][1]
 
     # execute the function
-    for f_arg in func_args:
-        logging.info('argument is %s' % f_arg)
-    logging.info('executing function')
+    #for f_arg in func_args:
+    #    logging.info('argument is %s' % f_arg)
+    #logging.info('executing function')
     return func(*tuple(func_args))
 
 def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache):
-    logging.info('resolve ref causal')
+    #logging.info('resolve ref causal')
     full_read_set = schedule.full_read_set
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,
                             schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache)
     while result is None:
-        logging.info('result is None!')
+        #logging.info('result is None!')
         result = kvs.causal_get(keys, full_read_set,
                                 prior_version_tuples, prior_read_map,
                                 schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache)
-    logging.info('causal GET done')
+    #logging.info('causal GET done')
 
     if result == KEY_DNE or result == ABORT:
-        logging.info('dne or abort')
+        #logging.info('dne or abort')
         return result
 
     if not conservative:
         prior_version_tuples.extend(result[0])
         prior_read_map.extend(result[1])
         # debug print
-        for prior_version_tuple in prior_version_tuples:
-            logging.info('function name is %s' % prior_version_tuple.function_name)
-            logging.info('key is %s' % prior_version_tuple.versioned_key.key)
+        #for prior_version_tuple in prior_version_tuples:
+        #    logging.info('function name is %s' % prior_version_tuple.function_name)
+        #    logging.info('key is %s' % prior_version_tuple.versioned_key.key)
 
     kv_pairs.update(result[2])
     return NO_ERROR

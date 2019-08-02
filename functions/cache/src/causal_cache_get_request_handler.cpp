@@ -32,16 +32,16 @@ void get_request_handler(
   CausalGetRequest request;
   request.ParseFromString(serialized);
 
-  std::cout << "response address is " + request.response_address() + "\n";
+  //std::cout << "response address is " + request.response_address() + "\n";
 
   if (request.consistency() == ConsistencyType::SINGLE) {
-    log->info("Receive GET in single mode");
+    //log->info("Receive GET in single mode");
     bool covered_locally = true;
     set<Key> read_set;
     set<Key> to_cover;
     // check if the keys are covered locally
     for (const Key& key : request.keys()) {
-      log->info("Key is {}", key);
+      //log->info("Key is {}", key);
       read_set.insert(key);
       key_set.insert(key);
 
@@ -49,7 +49,7 @@ void get_request_handler(
         covered_locally = false;
         to_cover.insert(key);
         single_callback_map[key].insert(request.response_address());
-        log->info("firing get request for key {} in single routine", key);
+        //log->info("firing get request for key {} in single routine", key);
         client->get_async(key);
       }
     }
@@ -73,8 +73,8 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
-    log->info("Receive GET in cross mode");
-    std::cout << "Receive GET in cross mode\n";
+    //log->info("Receive GET in cross mode");
+    //std::cout << "Receive GET in cross mode\n";
     // convert the cached keys into a map
     map<Key, VectorClock> cached_versions;
     for (const auto& vk : request.cached_keys()) {
@@ -89,8 +89,8 @@ void get_request_handler(
     auto cid_function_pair =
         std::make_pair(request.client_id(), request.function_name());
     if (request.conservative()) {
-      log->info("GET for conservative protocol");
-      std::cout << "GET for conservative protocol\n";
+      //log->info("GET for conservative protocol");
+      //std::cout << "GET for conservative protocol\n";
       // fetch from conservative store
       if (conservative_store.find(cid_function_pair) !=
           conservative_store.end()) {
@@ -101,7 +101,7 @@ void get_request_handler(
               conservative_store[cid_function_pair].end()) {
             // first check if the cached version is the same as what we want to return
             if (cached_versions.find(key) == cached_versions.end() || cached_versions.at(key).reveal() != conservative_store.at(cid_function_pair).at(key)->reveal().vector_clock.reveal()) {
-              log->info("key {} not cached by executor, sending...", key);
+              //log->info("key {} not cached by executor, sending...", key);
               CausalTuple* tp = response.add_tuples();
               tp->set_key(key);
               tp->set_payload(serialize(*(conservative_store[cid_function_pair][key])));
@@ -123,13 +123,13 @@ void get_request_handler(
             "no matching cid function pair found in conservative store.");
       }
     } else {
-      log->info("GET for optimistic protocol");
-      std::cout << "GET for optimistic protocol\n";
+      //log->info("GET for optimistic protocol");
+      //std::cout << "GET for optimistic protocol\n";
       if (version_store.find(cid_function_pair) != version_store.end()) {
-        log->info("version store already present");
-        std::cout << "version store already present\n";
+        //log->info("version store already present");
+        //std::cout << "version store already present\n";
         if (version_store[cid_function_pair].first) {
-          log->info("DNE");
+          //log->info("DNE");
           // some keys DNE
           CausalGetResponse response;
           response.set_error(ErrorType::KEY_DNE);
@@ -139,22 +139,22 @@ void get_request_handler(
           kZmqUtil->send_string(resp_string,
                                 &pushers[request.response_address()]);
         } else {
-          log->info("printing prior version tuples");
+          //log->info("printing prior version tuples");
           // debug: print what's in the prior_version_tuples
-          for (const auto& prior_version_tuple : request.prior_version_tuples()) {
+          /*for (const auto& prior_version_tuple : request.prior_version_tuples()) {
             log->info("cache addr is {}", prior_version_tuple.cache_address());
             log->info("function name is {}", prior_version_tuple.function_name());
             log->info("key is {}", prior_version_tuple.versioned_key().key());
             for (const auto& vec_pair : prior_version_tuple.versioned_key().vector_clock()) {
               log->info("cid {} version num {}", vec_pair.first, vec_pair.second);
             }
-          }
+          }*/
           CausalFrontierType causal_frontier =
               construct_causal_frontier(request);
           // construct a read set
           set<Key> read_set;
           for (const Key& key : request.keys()) {
-            std::cout << "requested key is " + key + "\n";
+            //std::cout << "requested key is " + key + "\n";
             read_set.insert(key);
           }
           // it's not possible to read different versions of the same key in
@@ -202,7 +202,7 @@ void get_request_handler(
         // scheduler request hasn't arrived yet
         set<Key> read_set;
         for (const string& key : request.keys()) {
-          log->info("inserting {} to read set", key);
+          //log->info("inserting {} to read set", key);
           read_set.insert(key);
         }
         set<Key> to_cover;
@@ -212,7 +212,7 @@ void get_request_handler(
                              version_store, pending_cross_metadata,
                              to_fetch_map, cover_map, pushers, client, cct,
                              causal_frontier, log)) {
-          log->info("not covered");
+          //log->info("not covered");
           pending_cross_metadata[cid_function_pair].read_set_ = read_set;
           pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
           pending_cross_metadata[cid_function_pair].executor_response_address_ =
@@ -237,7 +237,7 @@ void get_request_handler(
           // store cached versions
           pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
         } else {
-          log->info("covered");
+          //log->info("covered");
           // all keys covered, first populate version store entry
           // in this case, it's not possible that keys DNE
           version_store[cid_function_pair].first = false;

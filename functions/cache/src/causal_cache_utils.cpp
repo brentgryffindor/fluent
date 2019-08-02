@@ -108,7 +108,7 @@ void recursive_dependency_check(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     KvsAsyncClientInterface* client, logger log) {
-  log->info("enter recursive dependency check, head key {}", head_key);
+  //log->info("enter recursive dependency check, head key {}", head_key);
   for (const auto& pair : lattice->reveal().dependency.reveal()) {
     Key dep_key = pair.first;
     // first, check if the dependency is already satisfied in the causal cut
@@ -152,7 +152,7 @@ void recursive_dependency_check(
         to_fetch_map[head_key].insert(dep_key);
         cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
             .insert(head_key);
-        log->info("firing get request for key {} in recursive dependency check", dep_key);
+        //log->info("firing get request for key {} in recursive dependency check", dep_key);
         client->get_async(dep_key);
       }
     }
@@ -320,7 +320,7 @@ void process_response(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct) {
-  std::cout << "enter process response\n";
+  //std::cout << "enter process response\n";
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
     // key doesn't exist in unmerged map
@@ -338,7 +338,7 @@ void process_response(
           if (vector_clock_comparison(
                   VectorClock(), unmerged_store[key]->reveal().vector_clock) ==
               kCausalGreaterOrEqual) {
-            log->info("Key DNE error!");
+            //log->info("Key DNE error!");
             CausalGetResponse response;
             response.set_error(ErrorType::KEY_DNE);
             // send response
@@ -350,7 +350,7 @@ void process_response(
           } else {
             pending_single_metadata[addr].to_cover_set_.erase(key);
             if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
-              log->info("Responding to {}", addr);
+              //log->info("Responding to {}", addr);
               CausalGetResponse response;
               response.set_error(ErrorType::NO_ERROR);
               for (const Key& key : pending_single_metadata[addr].read_set_) {
@@ -449,7 +449,7 @@ void process_response(
       cover_map.erase(key);
     } else {
       // not fully covered, so we re-issue the read request
-      log->info("firing get request for key {} in process_response", key);
+      //log->info("firing get request for key {} in process_response", key);
       client->get_async(key);
     }
   }
@@ -461,7 +461,7 @@ void process_response(
       kCausalGreaterOrEqual) {
     unmerged_store.erase(key);
   }
-  std::cout << "exit process response\n";
+  //std::cout << "exit process response\n";
 }
 
 void populate_causal_frontier(const Key& key, const VectorClock& vc,
@@ -502,12 +502,12 @@ bool remove_from_local_readset(const Key& key,
   // (via remote read) 2: the consistency of other local reads need to be
   // satisfied, otherwise try to not read them from local as well
   // ---
-  log->info("entering remove from local read set");
-  std::cout << "entering remove from local read set\n";
+  //log->info("entering remove from local read set");
+  //std::cout << "entering remove from local read set\n";
   if (causal_frontier.find(key) == causal_frontier.end()) {
     // abort
-    log->info("no upstream data available, abort");
-    std::cout << "no upstream data available, abort\n";
+    //log->info("no upstream data available, abort");
+    //std::cout << "no upstream data available, abort\n";
     return false;
   }
   VectorClock vc;
@@ -543,8 +543,8 @@ bool remove_from_local_readset(const Key& key,
                                             .vector_clock) !=
                 kCausalGreaterOrEqual) {
           // consider removing the "other_key" from read set
-          log->info("considering key {} for removal", other_key);
-          std::cout << "considering key " + other_key + " for removal\n";
+          //log->info("considering key {} for removal", other_key);
+          //std::cout << "considering key " + other_key + " for removal\n";
           remove_candidate.insert(other_key);
           if (!remove_from_local_readset(other_key, causal_frontier, read_set,
                                          remove_candidate, version_store,
@@ -588,14 +588,14 @@ void optimistic_protocol(
   // ---
   // first, check from upstream to downstream to get minimum versions we must
   // read
-  log->info("Entering optimistic protocol");
-  std::cout << "Entering optimistic protocol\n";
+  //log->info("Entering optimistic protocol");
+  //std::cout << "Entering optimistic protocol\n";
   for (const Key& key : read_set) {
-    log->info("up -> down, checking key {}", key);
+    //log->info("up -> down, checking key {}", key);
     if (causal_frontier.find(key) != causal_frontier.end()) {
       // figure out what key/addr need remote read assuming the local key is
       // read
-      log->info("found {} in causal frontier", key);
+      //log->info("found {} in causal frontier", key);
       VectorClock vc;
       if (version_store.at(cid_function_pair).second.find(key) !=
           version_store.at(cid_function_pair).second.end()) {
@@ -607,14 +607,14 @@ void optimistic_protocol(
                  ->reveal()
                  .vector_clock;
         // debug
-        for (const auto& vec_pair : vc.reveal()) {
+        /*for (const auto& vec_pair : vc.reveal()) {
           log->info("vector clock of {} has cid {} v_num {}", key, vec_pair.first, vec_pair.second.reveal());
-        }
+        }*/
       }
       for (auto& vc_payload_pair : causal_frontier[key]) {
         if (vector_clock_comparison(vc, vc_payload_pair.first) !=
             kCausalGreaterOrEqual) {
-          log->info("setting remote read flag of key {} to be true", key);
+          //log->info("setting remote read flag of key {} to be true", key);
           // set remote read flag to true
           vc_payload_pair.second.first = true;
           vc.merge(vc_payload_pair.first);
@@ -625,15 +625,15 @@ void optimistic_protocol(
   // then for each local read, check version store to see if its chain
   // is inconsistent with a previous read. If so we try to find a version from
   // prior chain to read (recursively). If not possible then we need to abort
-  log->info("checking from down->up");
-  std::cout << "checking from down->up\n";
+  //log->info("checking from down->up");
+  //std::cout << "checking from down->up\n";
   set<Key> remove_candidate;
   for (const Key& key : read_set) {
     if (remove_candidate.find(key) == remove_candidate.end()) {
       if (version_store.at(cid_function_pair).second.find(key) !=
           version_store.at(cid_function_pair).second.end()) {
-        log->info("version store has key {}", key);
-        std::cout << "version store has key " + key + "\n";
+        //log->info("version store has key {}", key);
+        //std::cout << "version store has key " + key + "\n";
         // we may not reach this branch if the executor request reaches before
         // the scheduler request
         for (const auto& pair :
@@ -643,8 +643,8 @@ void optimistic_protocol(
                                       pair.second->reveal().vector_clock) !=
                   kCausalGreaterOrEqual) {
             // consider removing this key from local readset
-            log->info("considering key {} for removal", key);
-            std::cout << "considering key " + key + " for removal\n";
+            //log->info("considering key {} for removal", key);
+            //std::cout << "considering key " + key + " for removal\n";
             remove_candidate.insert(key);
             if (!remove_from_local_readset(key, causal_frontier, read_set,
                                            remove_candidate, version_store,
@@ -671,7 +671,7 @@ void optimistic_protocol(
     for (const auto& vc_payload_pair : pair.second) {
       if (vc_payload_pair.second.first) {
         // remote read
-        log->info("remote read key {}", pair.first);
+        //log->info("remote read key {}", pair.first);
         const VersionedKeyAddressMetadata& metadata =
             vc_payload_pair.second.second;
         if (addr_request_map.find(metadata.cache_address_) ==
@@ -703,12 +703,12 @@ void optimistic_protocol(
     kZmqUtil->send_string(req_string, &pushers[pair.first]);
   }
   if (addr_request_map.size() != 0) {
-    log->info("has remote read");
+    //log->info("has remote read");
     // remote read sent, merge local read to pending map
     // debug
-    log->info("printing version store keys");
+    //log->info("printing version store keys");
     for (const auto& pair : version_store.at(cid_function_pair).second) {
-      log->info("key is {}", pair.first);
+      //log->info("key is {}", pair.first);
       if (remove_candidate.find(pair.first) == remove_candidate.end()) {
         pending_cross_metadata[cid_function_pair].result_[pair.first] =
             pair.second.at(pair.first);
@@ -719,7 +719,7 @@ void optimistic_protocol(
     pending_cross_metadata[cid_function_pair].remove_set_ = remove_candidate;
     pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
   } else {
-    log->info("all local read");
+    //log->info("all local read");
     // all local read
     // respond to executor
     CausalGetResponse response;
@@ -727,10 +727,10 @@ void optimistic_protocol(
     response.set_error(ErrorType::NO_ERROR);
 
     for (const Key& key : read_set) {
-      log->info("local read key {}", key);
+      //log->info("local read key {}", key);
       // first check if the cached version is the same as what we want to return
       if (cached_versions.find(key) == cached_versions.end() || cached_versions.at(key).reveal() != version_store.at(cid_function_pair).second.at(key).at(key)->reveal().vector_clock.reveal()) {
-        log->info("key {} not cached by executor, sending...", key);
+        //log->info("key {} not cached by executor, sending...", key);
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
         tp->set_payload(
@@ -769,7 +769,7 @@ void merge_into_causal_cut(
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct, logger log,
     const StoreType& unmerged_store) {
-  std::cout << "merging key " + key + "to causal cut\n";
+  //std::cout << "merging key " + key + "to causal cut\n";
   bool key_dne = false;
 
   // initiate message to be sent to all executors for caching
@@ -802,25 +802,25 @@ void merge_into_causal_cut(
       key_dne = true;
     }
   }
-  std::cout << "before send\n";
+  //std::cout << "before send\n";
   // send
   string resp_string;
   cache_response.SerializeToString(&resp_string);
-  std::cout << "after serialization\n";
+  //std::cout << "after serialization\n";
   for (unsigned tid = 0; tid < 3; tid++) {
-    std::cout << "tid is " + std::to_string(tid) + "\n";
-    std::cout << "destination address is " + cct.causal_cache_executor_connect_address(tid) + "\n";
+    //std::cout << "tid is " + std::to_string(tid) + "\n";
+    //std::cout << "destination address is " + cct.causal_cache_executor_connect_address(tid) + "\n";
     kZmqUtil->send_string(resp_string, &pushers[cct.causal_cache_executor_connect_address(tid)]);
   }
-  std::cout << "after send\n";
+  //std::cout << "after send\n";
 
   // notify executor and scheduler
   for (const auto& cid_function_pair : in_preparation[key].first) {
     if (pending_cross_metadata.find(cid_function_pair) !=
         pending_cross_metadata.end()) {
       if (key_dne) {
-        std::cout << "key dne\n";
-        log->info("key dne for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
+        //std::cout << "key dne\n";
+        //log->info("key dne for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
         version_store[cid_function_pair].first = true;
         if (pending_cross_metadata[cid_function_pair]
                 .executor_response_address_ != "") {
@@ -852,8 +852,8 @@ void merge_into_causal_cut(
         pending_cross_metadata[cid_function_pair].to_cover_set_.erase(key);
         if (pending_cross_metadata[cid_function_pair].to_cover_set_.size() ==
             0) {
-          std::cout << "all key covered\n";
-          log->info("all key covered for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
+          //std::cout << "all key covered\n";
+          //log->info("all key covered for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
           // all keys covered, first populate version store entry
           // set DNE to false
           version_store[cid_function_pair].first = false;
@@ -904,7 +904,7 @@ void merge_into_causal_cut(
   }
   // erase the chain in in_preparation
   in_preparation.erase(key);
-  std::cout << "exit merge causal cut\n";
+  //std::cout << "exit merge causal cut\n";
 }
 
 bool covered_locally(
@@ -920,7 +920,7 @@ bool covered_locally(
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct, CausalFrontierType& causal_frontier,
     logger log) {
-  log->info("covered locally called");
+  //log->info("covered locally called");
   bool covered = true;
 
   for (const string& key : read_set) {
@@ -974,7 +974,7 @@ bool covered_locally(
           in_preparation[key].first.insert(cid_function_pair);
           covered = false;
           to_cover.insert(key);
-          log->info("firing get request for key {} in covered locally", key);
+          //log->info("firing get request for key {} in covered locally", key);
           client->get_async(key);
         }
       }

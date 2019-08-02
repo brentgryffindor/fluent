@@ -33,18 +33,18 @@ void scheduler_request_handler(
   // populating the version store
 
   // debug
-  log->info("client id is {}", request.client_id());
-  log->info("function name is {}", request.function_name());
+  //log->info("client id is {}", request.client_id());
+  //log->info("function name is {}", request.function_name());
   auto cid_function_pair =
       std::make_pair(request.client_id(), request.function_name());
   if (version_store.find(cid_function_pair) != version_store.end()) {
     // the entry already exists in version store
-    log->info("version store already present");
+    //log->info("version store already present");
     CausalSchedulerResponse response;
     response.set_client_id(request.client_id());
     response.set_function_name(request.function_name());
     if (version_store[cid_function_pair].first) {
-      log->info("DNE");
+      //log->info("DNE");
       // some keys DNE
       response.set_succeed(false);
       // send response

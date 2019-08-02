@@ -128,7 +128,7 @@ void versioned_key_response_handler(
         // first check if the cached version is the same as what we want to return
         if (pending_cross_metadata[cid_function_pair].cached_versions_.find(pair.first) == pending_cross_metadata[cid_function_pair].cached_versions_.end() 
             || pending_cross_metadata[cid_function_pair].cached_versions_.at(pair.first).reveal() != pair.second->reveal().vector_clock.reveal()) {
-          log->info("key {} not cached by executor, sending...", pair.first);
+          //log->info("key {} not cached by executor, sending...", pair.first);
           CausalTuple* tp = response.add_tuples();
           tp->set_key(pair.first);
           tp->set_payload(serialize(*(pair.second)));

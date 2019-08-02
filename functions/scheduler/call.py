@@ -42,7 +42,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
 
-    logging.info('executor thread is %s', utils._get_exec_address(ip, tid))
+    #logging.info('executor thread is %s', utils._get_exec_address(ip, tid))
 
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
@@ -69,20 +69,20 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         schedule.response_address = call.response_address
 
     # debug
-    logging.info('check if call has output key')
+    #logging.info('check if call has output key')
     if call.HasField('output_key'):
-        logging.info('has output key %s' % call.output_key)
+        #logging.info('has output key %s' % call.output_key)
         schedule.output_key = call.output_key
-    else:
-        logging.info('no output_key!')
+    #else:
+    #    logging.info('no output_key!')
 
     # debug
-    logging.info('check if call has client id')
+    #logging.info('check if call has client id')
     if call.HasField('client_id'):
-        logging.info('has client id')
+        #logging.info('has client id')
         schedule.client_id = call.client_id
-    else:
-        logging.info('no client id!')
+    #else:
+    #    logging.info('no client id!')
 
     if schedule.consistency == CROSS:
         # define read set and full read set
@@ -146,12 +146,12 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
     # if we are in causal mode, start the conservative protocol by querying the caches for key versions
     if schedule.consistency == CROSS:
-        logging.info('send scheduler version query')
+        #logging.info('send scheduler version query')
         # debug
-        logging.info('client id is %s' % schedule.client_id)
+        #logging.info('client id is %s' % schedule.client_id)
         for func in schedule.locations:
             if func in read_set:
-                logging.info('function name is %s' % func)
+                #logging.info('function name is %s' % func)
                 loc = schedule.locations[func].split(':')
                 ip = utils._get_cache_version_query_address(loc[0])
                 version_query_request = CausalSchedulerRequest()
@@ -170,7 +170,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                     pending_versioned_key_collection_response[schedule.client_id] = set((func,))
                 else:
                     pending_versioned_key_collection_response[schedule.client_id].add(func)
-        logging.info('done scheduler version query')
+        #logging.info('done scheduler version query')
 
     if schedule.HasField('output_key'):
         return schedule.output_key

@@ -26,10 +26,10 @@ EXECUTOR_DEPART_PORT = 7005
 
 def _retrieve_function(name, kvs, consistency=CROSS):
     kvs_name = server_utils._get_func_kvs_name(name)
-    logging.info('function name is %s', kvs_name)
+    #logging.info('function name is %s', kvs_name)
 
     if consistency == NORMAL:
-        logging.info('Normal mode')
+        #logging.info('Normal mode')
         result = kvs.get(kvs_name)
         if result:
             latt = result[kvs_name]
@@ -37,7 +37,7 @@ def _retrieve_function(name, kvs, consistency=CROSS):
         else:
             return None
     else:
-        logging.info('Causal mode')
+        #logging.info('Causal mode')
         result = kvs.causal_get([kvs_name], set(), [], [], SINGLE, '0', '', {}, False)
         if not result == KEY_DNE and not result == ABORT:
             return serializer.function_ser.load(result[2][kvs_name][1])

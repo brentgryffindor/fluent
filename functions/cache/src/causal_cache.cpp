@@ -233,41 +233,41 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::cout << "received GET\n";
-      log->info("received GET");
+      //std::cout << "received GET\n";
+      //log->info("received GET");
       string serialized = kZmqUtil->recv_string(&get_puller);
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
                           pending_single_metadata, pending_cross_metadata,
                           to_fetch_map, cover_map, pushers, client, log, cct,
                           conservative_store);
-      log->info("done GET");
-      std::cout << "done GET\n";
+      //log->info("done GET");
+      //std::cout << "done GET\n";
     }
 
     // handle a PUT request
     if (pollitems[1].revents & ZMQ_POLLIN) {
-      std::cout << "received PUT\n";
-      log->info("received PUT");
+      //std::cout << "received PUT\n";
+      //log->info("received PUT");
       string serialized = kZmqUtil->recv_string(&put_puller);
       put_request_handler(serialized, unmerged_store, causal_cut_store,
                           version_store, request_id_to_address_map, client,
                           log);
-      log->info("done PUT");
-      std::cout << "done PUT\n";
+      //log->info("done PUT");
+      //std::cout << "done PUT\n";
     }
 
     // handle updates received from the KVS
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      std::cout << "received KVS update\n";
-      log->info("received KVS update");
+      //std::cout << "received KVS update\n";
+      //log->info("received KVS update");
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
       updates.ParseFromString(serialized);
 
       for (const KeyTuple& tuple : updates.tuples()) {
         Key key = tuple.key();
-        log->info("key is {}", key);
+        //log->info("key is {}", key);
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
         if (key_set.find(key) == key_set.end()) {
@@ -282,14 +282,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                          pending_single_metadata, pending_cross_metadata,
                          to_fetch_map, cover_map, pushers, client, log, cct);
       }
-      log->info("done KVS update");
-      std::cout << "done KVS update\n";
+      //log->info("done KVS update");
+      //std::cout << "done KVS update\n";
     }
 
     // handle version GC request
     if (pollitems[3].revents & ZMQ_POLLIN) {
-      std::cout << "received version GC request\n";
-      log->info("received version GC request");
+      //std::cout << "received version GC request\n";
+      //log->info("received version GC request");
       // assume this string is the client id
       string cid = kZmqUtil->recv_string(&version_gc_puller);
       std::unordered_set<ClientIdFunctionPair, PairHash> remove_set;
@@ -301,91 +301,91 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       for (const auto& pair : remove_set) {
         version_store.erase(pair);
       }
-      log->info("done version GC request");
-      std::cout << "done version GC request\n";
+      //log->info("done version GC request");
+      //std::cout << "done version GC request\n";
     }
 
     // handle versioned key request
     if (pollitems[4].revents & ZMQ_POLLIN) {
-      std::cout << "received version key request\n";
-      log->info("received version key request");
+      //std::cout << "received version key request\n";
+      //log->info("received version key request");
       string serialized = kZmqUtil->recv_string(&versioned_key_request_puller);
       versioned_key_request_handler(serialized, version_store, pushers, log,
                                     kZmqUtil);
-      log->info("done version key request");
-      std::cout << "done version key request\n";
+      //log->info("done version key request");
+      //std::cout << "done version key request\n";
     }
 
     // handle versioned key response
     if (pollitems[5].revents & ZMQ_POLLIN) {
-      std::cout << "received version key response\n";
-      log->info("received version key response");
+      //std::cout << "received version key response\n";
+      //log->info("received version key response");
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(serialized, causal_cut_store,
                                      version_store, pending_cross_metadata, cct,
                                      pushers, kZmqUtil, log);
-      log->info("done version key response");
-      std::cout << "done version key response\n";
+      //log->info("done version key response");
+      //std::cout << "done version key response\n";
     }
 
     // handle scheduler key version query
     if (pollitems[6].revents & ZMQ_POLLIN) {
-      std::cout << "received scheduler key version query\n";
-      log->info("received scheduler key version query");
+      //std::cout << "received scheduler key version query\n";
+      //log->info("received scheduler key version query");
       string serialized = kZmqUtil->recv_string(&scheduler_request_puller);
       scheduler_request_handler(serialized, key_set, unmerged_store,
                                 in_preparation, causal_cut_store, version_store,
                                 pending_cross_metadata, to_fetch_map, cover_map,
                                 pushers, client, log, cct);
-      log->info("done scheduler key version query");
-      std::cout << "done scheduler key version query\n";
+      //log->info("done scheduler key version query");
+      //std::cout << "done scheduler key version query\n";
     }
 
     // handle scheduler key shipping request
     if (pollitems[7].revents & ZMQ_POLLIN) {
-      std::cout << "received scheduler key shipping request\n";
-      log->info("received scheduler key shipping request");
+      //std::cout << "received scheduler key shipping request\n";
+      //log->info("received scheduler key shipping request");
       string serialized =
           kZmqUtil->recv_string(&scheduler_key_shipping_request_puller);
       scheduler_key_shipping_request_handler(
           serialized, pending_key_shipping_map, conservative_store,
           version_store, cct, pushers);
-      log->info("done scheduler key shipping request");
-      std::cout << "done scheduler key shipping request\n";
+      //log->info("done scheduler key shipping request");
+      //std::cout << "done scheduler key shipping request\n";
     }
 
     // handle key shipping request
     if (pollitems[8].revents & ZMQ_POLLIN) {
-      std::cout << "received key shipping request\n";
-      log->info("received key shipping request");
+      //std::cout << "received key shipping request\n";
+      //log->info("received key shipping request");
       string serialized = kZmqUtil->recv_string(&key_shipping_request_puller);
       key_shipping_request_handler(serialized, version_store, cct, pushers, log);
-      log->info("done key shipping request");
-      std::cout << "done key shipping request\n";
+      //log->info("done key shipping request");
+      //std::cout << "done key shipping request\n";
     }
 
     // handle key shipping response
     if (pollitems[9].revents & ZMQ_POLLIN) {
-      std::cout << "received key shipping response\n";
-      log->info("received key shipping response");
+      //std::cout << "received key shipping response\n";
+      //log->info("received key shipping response");
       string serialized = kZmqUtil->recv_string(&key_shipping_response_puller);
       key_shipping_response_handler(serialized, pending_key_shipping_map,
                                     conservative_store, cct, pushers);
-      log->info("done key shipping response");
-      std::cout << "done key shipping response\n";
+      //log->info("done key shipping response");
+      //std::cout << "done key shipping response\n";
     }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
-      std::cout << "entering kvs response handler\n";
-      log->info("entering kvs response handler");
+      //std::cout << "entering kvs response handler\n";
+      //log->info("entering kvs response handler");
       kvs_response_handler(response, unmerged_store, in_preparation,
                            causal_cut_store, version_store, single_callback_map,
                            pending_single_metadata, pending_cross_metadata,
                            to_fetch_map, cover_map, pushers, client, log, cct,
                            request_id_to_address_map);
-      log->info("exit kvs response handler");
-      std::cout << "exit kvs response handler\n";
+      //log->info("exit kvs response handler");
+      //std::cout << "exit kvs response handler\n";
     }
 
     // collect and store internal statistics
@@ -421,14 +421,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // check if any key in unmerged_store is newer and migrate
     if (duration >= kMigrateThreshold) {
-      std::cout << "enter periodic migration\n";
-      log->info("enter periodic migration");
+      //std::cout << "enter periodic migration\n";
+      //log->info("enter periodic migration");
       periodic_migration_handler(unmerged_store, in_preparation,
                                  causal_cut_store, version_store,
                                  pending_cross_metadata, to_fetch_map,
                                  cover_map, pushers, client, cct, log);
-      log->info("exit periodic migration");
-      std::cout << "exit periodic migration\n";
+      //log->info("exit periodic migration");
+      //std::cout << "exit periodic migration\n";
       migrate_start = std::chrono::system_clock::now();
     }
 
