@@ -24,6 +24,8 @@ from .kvs_pb2 import *
 from .lattices import *
 import zmq
 
+import time
+
 class IpcAnnaClient:
     def __init__(self, ctx, thread_id = 0):
         self.context = ctx
@@ -149,13 +151,15 @@ class IpcAnnaClient:
             request.full_read_set.extend(full_read_set)
 
         request.response_address = self.get_response_address
-
+        send_start = time.time()
         #logging.info('sending GET')
         self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
+            receive_end = time.time()
+            logging.info('ipc took %s' % (receive_end - send_start))
             #logging.info('received response')
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
