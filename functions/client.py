@@ -23,6 +23,8 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 
+import time
+
 
 class FluentConnection():
     def __init__(self, func_addr, ip, tid=0):
@@ -171,10 +173,15 @@ class FluentConnection():
         if direct_response:
             dc.response_address = self.response_address
 
+        send_time = time.time()
         self.dag_call_sock.send(dc.SerializeToString())
 
         r = GenericResponse()
         r.ParseFromString(self.dag_call_sock.recv())
+        receive_time = time.time()
+        print('send time is %s' % send_time)
+        print('receive time is %s' % receive_time)
+        print('took %s to get response from scheduler' % (receive_time - send_time))
 
         if direct_response:
             try:
