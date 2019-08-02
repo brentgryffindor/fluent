@@ -319,6 +319,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #logging.info('direct response')
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result)
+            client_respond_time = time.time()
+            logging.info('client respond timestamp is %s' % client_respond_time)
         else:
             #logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
             #        (schedule.dag.name, schedule.id, schedule.output_key))
