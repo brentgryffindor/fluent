@@ -161,6 +161,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             dest_ip = schedule.locations[conn.sink]
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
+            trigger_send = time.time()
+            logging.info('trigger send time %s' % trigger_send)
 
     if is_sink:
         if schedule.HasField('output_key'):

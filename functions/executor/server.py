@@ -214,6 +214,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             total_occupancy += elapsed
 
         if dag_exec_socket in socks and socks[dag_exec_socket] == zmq.POLLIN:
+            trigger_receive = time.time()
+            logging.info('trigger receive time %s' % trigger_receive)
             work_start = time.time()
             trigger = DagTrigger()
             trigger.ParseFromString(dag_exec_socket.recv())
@@ -245,6 +247,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_counts[fname] += 1
 
             elapsed = time.time() - work_start
+            logging.info('took %s to execute func' % elapsed)
             event_occupancy['dag_exec'] += elapsed
             total_occupancy += elapsed
 
