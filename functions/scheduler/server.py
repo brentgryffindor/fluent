@@ -156,7 +156,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             #logging.info('Received dag call request')
             resp = GenericResponse()
             resp.success = True
-            resp.response_id = rid
+            resp.response_id = 'result'
             dag_call_socket.send(resp.SerializeToString())
 
             work_start = time.time()
@@ -327,6 +327,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 versioned_key_map[response.client_id].global_causal_frontier[vk.key].append((vk.vector_clock, response.function_name))
 
                     if len(pending_versioned_key_collection_response[response.client_id]) == 0:
+                        cache_response = time.time()
+                        logging.info('receive cache response for all funcs at %s' % cache_response)
                         # trigger conservative protocol
                         # TODO: refactor to a function
                         #logging.info('start conservative protocol')
