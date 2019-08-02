@@ -339,9 +339,9 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             return None
 
         #logging.info('swapping args and deserializing')
-        deser_start = time.time()
+        #deser_start = time.time()
         for key in kv_pairs:
-            logging.info('cache miss for key %s' % key)
+            #logging.info('cache miss for key %s' % key)
             if deserialize[key]:
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
@@ -349,10 +349,10 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
             keys.remove(key)
         for key in keys:
-            logging.info('cache hit for key %s' % key)
+            #logging.info('cache hit for key %s' % key)
             func_args[key_index_map[key]] = cache[key][1]
-        deser_end = time.time()
-        logging.info('deser took %s' % (deser_end - deser_start))
+        #deser_end = time.time()
+        #logging.info('deser took %s' % (deser_end - deser_start))
 
     # execute the function
     #for f_arg in func_args:

@@ -254,7 +254,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             resp.ParseFromString(cache_socket.recv())
             # populate cache
             for tp in resp.tuples:
-                logging.info('caching key %s' % tp.key)
+                #logging.info('caching key %s' % tp.key)
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
                 cache[tp.key] = (val.vector_clock, val.values[0])

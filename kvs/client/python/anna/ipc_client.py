@@ -145,7 +145,7 @@ class IpcAnnaClient:
         request.response_address = self.get_response_address
 
         #logging.info('sending GET')
-        send_start = time.time()
+        #send_start = time.time()
         '''if consistency == CROSS:
             kv_pairs = {}
             for k in keys:
@@ -156,13 +156,13 @@ class IpcAnnaClient:
         #receive_start = time.time()
         msg = self.get_response_socket.recv()
         #send_end = time.time()
-        receive_end = time.time()
+        #receive_end = time.time()
         #logging.info('took %s to send to cache' % (send_end - send_start))
-        logging.info('took %s to receive from cache' % (receive_end - send_start))
+        #logging.info('took %s to receive from cache' % (receive_end - send_start))
         #logging.info('send start %s' % send_start)
         #logging.info('send end %s' % send_end)
         #logging.info('receive end %s' % receive_end)
-        parse_start = time.time()
+        #parse_start = time.time()
         resp = CausalGetResponse()
         resp.ParseFromString(msg)
 
@@ -172,8 +172,8 @@ class IpcAnnaClient:
             val.ParseFromString(tp.payload)
             # for now, we just take the first value in the setlattice
             kv_pairs[tp.key] = (val.vector_clock, val.values[0])
-        parse_end = time.time()
-        logging.info('parsing took %s' % (parse_end - parse_start))
+        #parse_end = time.time()
+        #logging.info('parsing took %s' % (parse_end - parse_start))
         '''if consistency == SINGLE:
             for tp in resp.tuples:
                 val = CrossCausalValue()
