@@ -774,7 +774,8 @@ void merge_into_causal_cut(
 
   // initiate message to be sent to all executors for caching
   CausalGetResponse cache_response;
-
+  cache_response.set_error(ErrorType::NO_ERROR);
+  
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
     if (vector_clock_comparison(
