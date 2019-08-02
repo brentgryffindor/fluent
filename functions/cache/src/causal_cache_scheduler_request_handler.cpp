@@ -38,6 +38,12 @@ void scheduler_request_handler(
   auto scheduler_start = std::chrono::system_clock::now();
   auto cid_function_pair =
       std::make_pair(request.client_id(), request.function_name());
+
+  set<Key> read_set;
+  for (const string& key : request.keys()) {
+    read_set.insert(key);
+  }
+
   if (version_store.find(cid_function_pair) != version_store.end()) {
     // the entry already exists in version store
     log->info("version store already present");
@@ -53,7 +59,7 @@ void scheduler_request_handler(
       response.SerializeToString(&resp_string);
       kZmqUtil->send_string(resp_string, &pushers[request.scheduler_address()]);
     } else {
-      send_scheduler_response(response, cid_function_pair, version_store,
+      send_scheduler_response(response, read_set, cid_function_pair, version_store,
                               pushers, request.scheduler_address());
     }
   } else if (pending_cross_metadata.find(cid_function_pair) !=
@@ -68,10 +74,6 @@ void scheduler_request_handler(
   } else {
     // no entry at all
     // we first check if all requested keys are covered by the cache
-    set<Key> read_set;
-    for (const string& key : request.keys()) {
-      read_set.insert(key);
-    }
     set<Key> to_cover;
     CausalFrontierType causal_frontier;
 
@@ -110,7 +112,7 @@ void scheduler_request_handler(
       CausalSchedulerResponse response;
       response.set_client_id(request.client_id());
       response.set_function_name(request.function_name());
-      send_scheduler_response(response, cid_function_pair, version_store,
+      send_scheduler_response(response, read_set, cid_function_pair, version_store,
                               pushers, request.scheduler_address());
     }
   }

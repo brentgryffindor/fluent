@@ -888,7 +888,7 @@ void merge_into_causal_cut(
             CausalSchedulerResponse response;
             response.set_client_id(cid_function_pair.first);
             response.set_function_name(cid_function_pair.second);
-            send_scheduler_response(response, cid_function_pair, version_store,
+            send_scheduler_response(response, pending_cross_metadata[cid_function_pair].read_set_, cid_function_pair, version_store,
                                     pushers,
                                     pending_cross_metadata[cid_function_pair]
                                         .scheduler_response_address_);
@@ -986,13 +986,30 @@ bool covered_locally(
 // this assumes that the client id and executor address are already set
 // and the request succeeded
 void send_scheduler_response(CausalSchedulerResponse& response,
+                             const set<Key>& read_set,
                              const ClientIdFunctionPair& cid_function_pair,
                              const VersionStoreType& version_store,
                              SocketCache& pushers,
                              const Address& scheduler_address) {
   response.set_succeed(true);
   // populate versioned keys
-  for (const auto& head_key_chain_pair :
+  for (const Key& key : read_set) {
+    if (version_store.at(cid_function_pair).second.find(key) != version_store.at(cid_function_pair).second.end()) {
+      auto map_ptr = response.mutable_version_chain();
+      for (const auto& pair : version_store.at(cid_function_pair).second.at(key)) {
+        auto vk_ptr = (*map_ptr)[key].add_versioned_keys();
+        vk_ptr->set_key(pair.first);
+        // assemble vector clock
+        auto vc_ptr = vk_ptr->mutable_vector_clock();
+        for (const auto& client_version_pair :
+             pair.second->reveal().vector_clock.reveal()) {
+          (*vc_ptr)[client_version_pair.first] =
+              client_version_pair.second.reveal();
+        }
+      }
+    }
+  }
+  /*for (const auto& head_key_chain_pair :
        version_store.at(cid_function_pair).second) {
     auto map_ptr = response.mutable_version_chain();
     for (const auto& pair : head_key_chain_pair.second) {
@@ -1006,7 +1023,7 @@ void send_scheduler_response(CausalSchedulerResponse& response,
             client_version_pair.second.reveal();
       }
     }
-  }
+  }*/
 
   // send response
   string resp_string;

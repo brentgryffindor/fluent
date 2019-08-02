@@ -273,6 +273,7 @@ bool covered_locally(
     logger log);
 
 void send_scheduler_response(CausalSchedulerResponse& response,
+                             const set<Key>& read_set,
                              const ClientIdFunctionPair& cid_function_pair,
                              const VersionStoreType& version_store,
                              SocketCache& pushers,
