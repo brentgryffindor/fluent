@@ -145,7 +145,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         sckt.send(trigger.SerializeToString())
 
     # if we are in causal mode, start the conservative protocol by querying the caches for key versions
-    if schedule.consistency == CROSS:
+    '''if schedule.consistency == CROSS:
         #logging.info('send scheduler version query')
         # debug
         #logging.info('client id is %s' % schedule.client_id)
@@ -169,7 +169,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                 if schedule.client_id not in pending_versioned_key_collection_response:
                     pending_versioned_key_collection_response[schedule.client_id] = set((func,))
                 else:
-                    pending_versioned_key_collection_response[schedule.client_id].add(func)
+                    pending_versioned_key_collection_response[schedule.client_id].add(func)'''
         #logging.info('done scheduler version query')
 
     if schedule.HasField('output_key'):
