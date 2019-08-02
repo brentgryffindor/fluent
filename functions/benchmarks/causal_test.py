@@ -66,8 +66,8 @@ def run(flconn, kvs, mode, sckt):
 
         ### CREATE DAG ###
 
-        functions = ['strmnp1']
-        connections = []
+        functions = ['strmnp1', 'strmnp2', 'strmnp3']
+        connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
         success, error = flconn.register_dag(dag_name, functions, connections)
 
         if not success:
@@ -82,14 +82,22 @@ def run(flconn, kvs, mode, sckt):
         logging.info('Warming up keys')
         ### CREATE DATA###
         warm_begin = time.time()
-        val = '0'.zfill(1048576)
-        for k in range(1, 1000):
+        vals = []
+        vals.append('0'.zfill(1048576))
+        vals.append('0'.zfill(262144))
+        vals.append('0'.zfill(65536))
+        vals.append('0'.zfill(16384))
+        vals.append('0'.zfill(4096))
+        vals.append('0'.zfill(1024))
+        vals.append('0'.zfill(256))
+        for k in range(0, 2200):
             if k % 100 == 0:
                 print('warmup for key %s done' % k)
             k = str(k).zfill(5)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
-            ccv.values.extend([serialize_val(val)])
+            offset = int(k) % 7
+            ccv.values.extend([serialize_val(vals[offset])])
             kvs.put(k, ccv)
         warm_end = time.time()
         print('warmup took %s' % (warm_end - warm_begin))
@@ -157,7 +165,7 @@ def run(flconn, kvs, mode, sckt):
         logging.info('Running DAG')
         ### RUN DAG ###
         time_array = []
-        for k in range(1, 101):
+        for k in range(0, 300):
             arg1 = str(7*k).zfill(5)
             arg2 = str(7*k+1).zfill(5)
             arg3 = str(7*k+2).zfill(5)
@@ -170,7 +178,9 @@ def run(flconn, kvs, mode, sckt):
             refs2 = (FluentReference(arg4, True, CROSSCAUSAL), FluentReference(arg5, True, CROSSCAUSAL),)
             refs3 = (FluentReference(arg6, True, CROSSCAUSAL), FluentReference(arg7, True, CROSSCAUSAL),)
 
-            arg_map = { 'strmnp1' : refs1 }
+            arg_map = { 'strmnp1' : refs1 ,
+                        'strmnp2' : refs2 ,
+                        'strmnp3' : refs3 }
 
             result_key = 'result' + str(k)
             start = time.time()
