@@ -370,7 +370,8 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, dependencies, sink, cache
     #logging.info('resolve ref causal')
     #get_start = time.time()
     result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink, cache)
-    while not result:
+    while result is None:
+        logging.info('result is None!')
         result = kvs.causal_get(keys, schedule.consistency, schedule.client_id, dependencies, sink, cache)
     #get_end = time.time()
     #logging.info('causal get took %s' % (get_end - get_start))
