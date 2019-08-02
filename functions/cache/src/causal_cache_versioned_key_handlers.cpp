@@ -125,10 +125,14 @@ void versioned_key_response_handler(
 
       for (const auto& pair :
            pending_cross_metadata[cid_function_pair].result_) {
-        // first populate the requested tuple
-        CausalTuple* tp = response.add_tuples();
-        tp->set_key(pair.first);
-        tp->set_payload(serialize(*(pair.second)));
+        // first check if the cached version is the same as what we want to return
+        if (pending_cross_metadata[cid_function_pair].cached_versions_.find(pair.first) == pending_cross_metadata[cid_function_pair].cached_versions_.end() 
+            || pending_cross_metadata[cid_function_pair].cached_versions_.at(pair.first).reveal() != pair.second->reveal().vector_clock.reveal()) {
+          log->info("key {} not cached by executor, sending...", pair.first);
+          CausalTuple* tp = response.add_tuples();
+          tp->set_key(pair.first);
+          tp->set_payload(serialize(*(pair.second)));
+        }
       }
       for (const auto& pair : version_store.at(cid_function_pair).second) {
         // then populate prior_version_tuples

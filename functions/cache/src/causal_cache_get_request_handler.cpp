@@ -73,6 +73,15 @@ void get_request_handler(
   } else if (request.consistency() == ConsistencyType::CROSS) {
     log->info("Receive GET in cross mode");
     std::cout << "Receive GET in cross mode\n";
+    // convert the cached keys into a map
+    map<Key, VectorClock> cached_versions;
+    for (const auto& vk : request.cached_keys()) {
+      VectorClock vc;
+      for (const auto& key_version_pair : vk.vector_clock()) {
+        vc.insert(key_version_pair.first, key_version_pair.second);
+      }
+      cached_versions[vk.key()] = vc;
+    }
     // we first check if the version store is already populated by the scheduler
     // if so, means that all data should already be fetched or DNE
     auto cid_function_pair =
@@ -88,10 +97,13 @@ void get_request_handler(
         for (const Key& key : request.keys()) {
           if (conservative_store[cid_function_pair].find(key) !=
               conservative_store[cid_function_pair].end()) {
-            CausalTuple* tp = response.add_tuples();
-            tp->set_key(key);
-            tp->set_payload(
-                serialize(*(conservative_store[cid_function_pair][key])));
+            // first check if the cached version is the same as what we want to return
+            if (cached_versions.find(key) == cached_versions.end() || cached_versions.at(key).reveal() != conservative_store.at(cid_function_pair).at(key)->reveal().vector_clock.reveal()) {
+              log->info("key {} not cached by executor, sending...", key);
+              CausalTuple* tp = response.add_tuples();
+              tp->set_key(key);
+              tp->set_payload(serialize(*(conservative_store[cid_function_pair][key])));
+            }
           } else {
             log->error("key {} not found in conservative store.", key);
           }
@@ -157,7 +169,7 @@ void get_request_handler(
           }
           optimistic_protocol(cid_function_pair, read_set, version_store,
                               prior_read_map, pending_cross_metadata, pushers,
-                              cct, causal_frontier, request.response_address(), log);
+                              cct, causal_frontier, request.response_address(), log, cached_versions);
         }
       } else if (pending_cross_metadata.find(cid_function_pair) !=
                  pending_cross_metadata.end()) {
@@ -182,6 +194,8 @@ void get_request_handler(
         for (const Key& key : request.full_read_set()) {
           pending_cross_metadata[cid_function_pair].full_read_set_.insert(key);
         }
+        // store cached versions
+        pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
       } else {
         // scheduler request hasn't arrived yet
         set<Key> read_set;
@@ -218,6 +232,8 @@ void get_request_handler(
             pending_cross_metadata[cid_function_pair].full_read_set_.emplace(
                 std::move(key));
           }
+          // store cached versions
+          pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
         } else {
           log->info("covered");
           // all keys covered, first populate version store entry
@@ -251,7 +267,7 @@ void get_request_handler(
           }
           optimistic_protocol(cid_function_pair, read_set, version_store,
                               prior_read_map, pending_cross_metadata, pushers,
-                              cct, causal_frontier, request.response_address(), log);
+                              cct, causal_frontier, request.response_address(), log, cached_versions);
         }
       }
     }

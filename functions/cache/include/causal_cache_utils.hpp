@@ -110,6 +110,7 @@ struct PendingClientMetadata {
   StoreType result_;
   Address executor_response_address_;
   Address scheduler_response_address_;
+  map<Key, VectorClock> cached_versions_;
 
   bool operator==(const PendingClientMetadata& input) const {
     if (read_set_ == input.read_set_ && to_cover_set_ == input.to_cover_set_ &&
@@ -245,7 +246,7 @@ void optimistic_protocol(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    CausalFrontierType& causal_frontier, const Address& response_address, logger log);
+    CausalFrontierType& causal_frontier, const Address& response_address, logger log, const map<Key, VectorClock>& cached_versions);
 
 // merge a causal chain from in_preparation to causal cut store
 // also notify clients that are waiting for the head key of the chain

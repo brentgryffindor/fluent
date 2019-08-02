@@ -180,6 +180,7 @@ message CausalGetRequest {
   repeated VersionedKey prior_read_map = 7;
   repeated PriorVersionTuple prior_version_tuples = 8;
   optional string response_address = 9;
+  repeated VersionedKey cached_keys = 10;
 }
 
 message CausalGetResponse {

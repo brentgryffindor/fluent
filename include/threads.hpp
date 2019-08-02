@@ -106,6 +106,10 @@ class CausalCacheThread {
     return "ipc:///requests/put";
   }
 
+  Address causal_cache_executor_connect_address(unsigned tid) const {
+    return "ipc:///requests/cache_" + std::to_string(tid);
+  }
+
   Address causal_cache_update_bind_address() const {
     return kBindBase + std::to_string(tid_ + kCausalCacheUpdatePort);
   }

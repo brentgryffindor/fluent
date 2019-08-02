@@ -580,7 +580,7 @@ void optimistic_protocol(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    CausalFrontierType& causal_frontier, const Address& response_address, logger log) {
+    CausalFrontierType& causal_frontier, const Address& response_address, logger log, const map<Key, VectorClock>& cached_versions) {
   // all keys present, need to check causal consistency
   // and figure out if we need to read anything from remote
   // ---
@@ -715,6 +715,7 @@ void optimistic_protocol(
     pending_cross_metadata[cid_function_pair].executor_response_address_ =
         response_address;
     pending_cross_metadata[cid_function_pair].remove_set_ = remove_candidate;
+    pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
   } else {
     log->info("all local read");
     // all local read
@@ -723,15 +724,19 @@ void optimistic_protocol(
 
     response.set_error(ErrorType::NO_ERROR);
 
-    for (const auto& pair : version_store.at(cid_function_pair).second) {
-      log->info("local read key {}", pair.first);
-      // first populate the requested tuple
-      CausalTuple* tp = response.add_tuples();
-      tp->set_key(pair.first);
-      tp->set_payload(serialize(*(pair.second.at(pair.first))));
+    for (const Key& key : read_set) {
+      log->info("local read key {}", key);
+      // first check if the cached version is the same as what we want to return
+      if (cached_versions.find(key) == cached_versions.end() || cached_versions.at(key).reveal() != version_store.at(cid_function_pair).second.at(key).at(key)->reveal().vector_clock.reveal()) {
+        log->info("key {} not cached by executor, sending...", key);
+        CausalTuple* tp = response.add_tuples();
+        tp->set_key(key);
+        tp->set_payload(
+            serialize(*(version_store.at(cid_function_pair).second.at(key).at(key))));
+      }
       // then populate prior_version_tuples
-      if (remove_candidate.find(pair.first) == remove_candidate.end()) {
-        for (const auto& key_ptr_pair : pair.second) {
+      if (remove_candidate.find(key) == remove_candidate.end()) {
+        for (const auto& key_ptr_pair : version_store.at(cid_function_pair).second.at(key)) {
           PriorVersionTuple* tp = response.add_prior_version_tuples();
           tp->set_cache_address(
               cct.causal_cache_versioned_key_request_connect_address());
@@ -763,10 +768,15 @@ void merge_into_causal_cut(
     SocketCache& pushers, const CausalCacheThread& cct, logger log,
     const StoreType& unmerged_store) {
   bool key_dne = false;
+
+  // initiate message to be sent to all executors for caching
+  CausalGetResponse cache_response;
+
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
     if (vector_clock_comparison(
             VectorClock(), pair.second->reveal().vector_clock) == kCausalLess) {
+      auto tp = cache_response.add_tuples();
       // only merge when the key exists
       if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
         // key doesn't exist in causal cut store
@@ -782,10 +792,20 @@ void merge_into_causal_cut(
               causal_merge(causal_cut_store[pair.first], pair.second);
         }
       }
+      tp->set_key(pair.first);
+      tp->set_payload(serialize(*causal_cut_store[pair.first]));
     } else {
       key_dne = true;
     }
   }
+
+  // send
+  string resp_string;
+  cache_response.SerializeToString(&resp_string);
+  for (unsigned tid = 0; tid < 3; tid++) {
+    kZmqUtil->send_string(resp_string, &pushers[cct.causal_cache_executor_connect_address(tid)]);
+  }
+
   // notify executor and scheduler
   for (const auto& cid_function_pair : in_preparation[key].first) {
     if (pending_cross_metadata.find(cid_function_pair) !=
@@ -850,7 +870,8 @@ void merge_into_causal_cut(
                 pending_cross_metadata, pushers, cct,
                 pending_cross_metadata[cid_function_pair].causal_frontier_,
                 pending_cross_metadata[cid_function_pair]
-                    .executor_response_address_, log);
+                    .executor_response_address_, log,
+                pending_cross_metadata[cid_function_pair].cached_versions_);
           }
           if (pending_cross_metadata[cid_function_pair]
                   .scheduler_response_address_ != "") {

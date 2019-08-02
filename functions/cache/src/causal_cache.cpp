@@ -21,64 +21,107 @@ ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void warmup(VersionStoreType& version_store) {
-  SetLattice<string> value;
-  value.insert("00000");
-  // func 1
-  ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp1");
-  version_store[cid_function_pair].first = false;
-  // func 1 key a
-  CrossCausalPayload<SetLattice<string>> ccp_1_a;
-  ccp_1_a.vector_clock.insert("base", 1);
-  ccp_1_a.dependency.insert("d", VectorClock({{"base", 2}}));
-  ccp_1_a.value = value;
-  version_store[cid_function_pair].second["a"]["a"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_a);
-  CrossCausalPayload<SetLattice<string>> ccp_1_a_d;
-  ccp_1_a_d.vector_clock.insert("base", 2);
-  ccp_1_a_d.value = value;
-  version_store[cid_function_pair].second["a"]["d"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_a_d);
-  // func 1 key b
-  CrossCausalPayload<SetLattice<string>> ccp_1_b;
-  ccp_1_b.vector_clock.insert("base", 1);
-  ccp_1_b.value = value;
-  version_store[cid_function_pair].second["b"]["b"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_b);
-  // func 1 key c
-  CrossCausalPayload<SetLattice<string>> ccp_1_c;
-  ccp_1_c.vector_clock.insert("base", 1);
-  ccp_1_c.value = value;
-  version_store[cid_function_pair].second["c"]["c"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_c);
+  vector<SetLattice<string>> values;
+  // setup values vector
+  SetLattice<string> value1;
+  value1.insert(string(1048576, '0'));
+  values.push_back(value1);
+  SetLattice<string> value2;
+  value2.insert(string(262144, '0'));
+  values.push_back(value2);
+  SetLattice<string> value3;
+  value3.insert(string(65536, '0'));
+  values.push_back(value3);
+  SetLattice<string> value4;
+  value4.insert(string(16384, '0'));
+  values.push_back(value4);
+  SetLattice<string> value5;
+  value5.insert(string(4096, '0'));
+  values.push_back(value5);
+  SetLattice<string> value6;
+  value6.insert(string(1024, '0'));
+  values.push_back(value6);
+  SetLattice<string> value7;
+  value7.insert(string(256, '0'));
+  values.push_back(value7);
 
-  // func 2
-  cid_function_pair = std::make_pair("test_cid", "strmnp2");
-  version_store[cid_function_pair].first = false;
-  // func 2 key d
-  CrossCausalPayload<SetLattice<string>> ccp_2_d;
-  ccp_2_d.vector_clock.insert("base", 1);
-  ccp_2_d.value = value;
-  version_store[cid_function_pair].second["d"]["d"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_d);
-  // func 2 key e
-  CrossCausalPayload<SetLattice<string>> ccp_2_e;
-  ccp_2_e.vector_clock.insert("base", 1);
-  ccp_2_e.dependency.insert("f", VectorClock({{"base", 2}}));
-  ccp_2_e.value = value;
-  version_store[cid_function_pair].second["e"]["e"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_e);
-  CrossCausalPayload<SetLattice<string>> ccp_2_e_f;
-  ccp_2_e_f.vector_clock.insert("base", 2);
-  ccp_2_e_f.value = value;
-  version_store[cid_function_pair].second["e"]["f"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_e_f);
-
-  // func 3
-  cid_function_pair = std::make_pair("test_cid", "strmnp3");
-  version_store[cid_function_pair].first = false;
-  // func 3 key f
-  CrossCausalPayload<SetLattice<string>> ccp_3_f;
-  ccp_3_f.vector_clock.insert("base", 1);
-  ccp_3_f.value = value;
-  version_store[cid_function_pair].second["f"]["f"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_3_f);
-  // func 3 key g
-  CrossCausalPayload<SetLattice<string>> ccp_3_g;
-  ccp_3_g.vector_clock.insert("base", 1);
-  ccp_3_g.value = value;
-  version_store[cid_function_pair].second["g"]["g"] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_3_g);
+  // argument a
+  for (unsigned i = 0; i < 2200; i += 7) {
+    ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp1");
+    Key key = string(5 - std::to_string(i).length(), '0') + std::to_string(i);
+    CrossCausalPayload<SetLattice<string>> ccp_1_a;
+    ccp_1_a.vector_clock.insert("base", 1);
+    unsigned dep_index = i + 3;
+    Key dep_key = string(5 - std::to_string(dep_index).length(), '0') + std::to_string(dep_index);
+    ccp_1_a.dependency.insert(dep_key, VectorClock({{"base", 1}}));
+    ccp_1_a.value = values[i%7];
+    version_store[cid_function_pair].second[key][key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_a);
+    CrossCausalPayload<SetLattice<string>> ccp_1_a_d;
+    ccp_1_a_d.vector_clock.insert("base", 1);
+    ccp_1_a_d.value = values[dep_index % 7];
+    version_store[cid_function_pair].second[key][dep_key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_a_d);
+  }
+  // argument b
+  for (unsigned i = 1; i < 2200; i += 7) {
+    ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp1");
+    Key key = string(5 - std::to_string(i).length(), '0') + std::to_string(i);
+    CrossCausalPayload<SetLattice<string>> ccp_1_b;
+    ccp_1_b.vector_clock.insert("base", 1);
+    ccp_1_b.value = values[i%7];
+    version_store[cid_function_pair].second[key][key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_b);
+  }
+  // argument c
+  for (unsigned i = 2; i < 2200; i += 7) {
+    ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp1");
+    Key key = string(5 - std::to_string(i).length(), '0') + std::to_string(i);
+    CrossCausalPayload<SetLattice<string>> ccp_1_c;
+    ccp_1_c.vector_clock.insert("base", 1);
+    ccp_1_c.value = values[i%7];
+    version_store[cid_function_pair].second[key][key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_1_c);
+  }
+  // argument d
+  for (unsigned i = 3; i < 2200; i += 7) {
+    ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp2");
+    Key key = string(5 - std::to_string(i).length(), '0') + std::to_string(i);
+    CrossCausalPayload<SetLattice<string>> ccp_2_d;
+    ccp_2_d.vector_clock.insert("base", 1);
+    ccp_2_d.value = values[i%7];
+    version_store[cid_function_pair].second[key][key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_d);
+  }
+  // argument e
+  for (unsigned i = 4; i < 2200; i += 7) {
+    ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp2");
+    Key key = string(5 - std::to_string(i).length(), '0') + std::to_string(i);
+    CrossCausalPayload<SetLattice<string>> ccp_2_e;
+    ccp_2_e.vector_clock.insert("base", 1);
+    unsigned dep_index = i + 1;
+    Key dep_key = string(5 - std::to_string(dep_index).length(), '0') + std::to_string(dep_index);
+    ccp_2_e.dependency.insert(dep_key, VectorClock({{"base", 1}}));
+    ccp_2_e.value = values[i%7];
+    version_store[cid_function_pair].second[key][key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_e);
+    CrossCausalPayload<SetLattice<string>> ccp_2_e_f;
+    ccp_2_e_f.vector_clock.insert("base", 1);
+    ccp_2_e_f.value = values[dep_index % 7];
+    version_store[cid_function_pair].second[key][dep_key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_2_e_f);
+  }
+  // argument f
+  for (unsigned i = 5; i < 2200; i += 7) {
+    ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp3");
+    Key key = string(5 - std::to_string(i).length(), '0') + std::to_string(i);
+    CrossCausalPayload<SetLattice<string>> ccp_3_f;
+    ccp_3_f.vector_clock.insert("base", 1);
+    ccp_3_f.value = values[i%7];
+    version_store[cid_function_pair].second[key][key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_3_f);
+  }
+  // argument g
+  for (unsigned i = 6; i < 2200; i += 7) {
+    ClientIdFunctionPair cid_function_pair = std::make_pair("test_cid", "strmnp3");
+    Key key = string(5 - std::to_string(i).length(), '0') + std::to_string(i);
+    CrossCausalPayload<SetLattice<string>> ccp_3_g;
+    ccp_3_g.vector_clock.insert("base", 1);
+    ccp_3_g.value = values[i%7];
+    version_store[cid_function_pair].second[key][key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp_3_g);
+  }
 }
 
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
@@ -99,7 +142,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   StoreType causal_cut_store;
   VersionStoreType version_store;
 
-  // warm up for testing purpose only
+  // warm up for benchmark
   warmup(version_store);
 
   map<Key, set<Key>> to_fetch_map;

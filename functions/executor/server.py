@@ -68,6 +68,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     dag_schedule_gc_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_SCHEDULE_GC_PORT
                                                       + thread_id))
 
+    cache_socket = ctx.socket(zmq.PULL)
+    cache_socket.bind('ipc:///requests/cache_' + str(thread_id))
+
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
     poller = zmq.Poller()
@@ -79,6 +82,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(self_depart_socket, zmq.POLLIN)
     poller.register(dag_conservative_exec_socket, zmq.POLLIN)
     poller.register(dag_schedule_gc_socket, zmq.POLLIN)
+    poller.register(cache_socket, zmq.POLLIN)
 
     client = IpcAnnaClient(ctx, thread_id)
 
@@ -123,6 +127,16 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                        'dag_exec': 0.0,
                        'dag_conservative_exec': 0.0,}
     total_occupancy = 0.0
+
+    # map from key to tuple(vectorclock, deserialized payload)
+    cache = {}
+    logging.info('enter warmup')
+    for k in range(0, 2200):
+        warmup_key = str(k).zfill(5)
+        vc = {'base' : 1}
+        cache[warmup_key] = (vc, None)
+    logging.info('finish warmup')
+
 
     while True:
         socks = dict(poller.poll(timeout=1000))
@@ -187,7 +201,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id)
+                                  thread_id, cache)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -222,7 +236,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id)
+                                      thread_id, cache)
                     del received_triggers[key]
 
                     fend = time.time()
@@ -270,7 +284,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_conservative_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, True)
+                                      thread_id, cache, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
 
@@ -285,6 +299,16 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 del queue[gc_req.function_name][gc_req.schedule_id]
             else:
                 logging.error('Function %s schedule id %s not in queue. Cannot GC' % (gc_req.function_name, gc_req.schedule_id))
+
+        if cache_socket in socks and socks[cache_socket] == zmq.POLLIN:
+            resp = CausalGetResponse()
+            resp.ParseFromString(cache_socket.recv())
+            # populate cache
+            for tp in resp.tuples:
+                logging.info('caching key %s' % tp.key)
+                val = CrossCausalValue()
+                val.ParseFromString(tp.payload)
+                cache[tp.key] = (val.vector_clock, val.values[0])
 
 
         # periodically report function occupancy
