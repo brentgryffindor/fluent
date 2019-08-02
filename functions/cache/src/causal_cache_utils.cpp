@@ -320,6 +320,7 @@ void process_response(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct) {
+  std::cout << "enter process response\n";
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
     // key doesn't exist in unmerged map
@@ -460,6 +461,7 @@ void process_response(
       kCausalGreaterOrEqual) {
     unmerged_store.erase(key);
   }
+  std::cout << "exit process response\n";
 }
 
 void populate_causal_frontier(const Key& key, const VectorClock& vc,
@@ -767,6 +769,7 @@ void merge_into_causal_cut(
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct, logger log,
     const StoreType& unmerged_store) {
+  std::cout << "merging key " + key + "to causal cut\n";
   bool key_dne = false;
 
   // initiate message to be sent to all executors for caching
@@ -798,19 +801,21 @@ void merge_into_causal_cut(
       key_dne = true;
     }
   }
-
+  std::cout << "before send\n";
   // send
   string resp_string;
   cache_response.SerializeToString(&resp_string);
   for (unsigned tid = 0; tid < 3; tid++) {
     kZmqUtil->send_string(resp_string, &pushers[cct.causal_cache_executor_connect_address(tid)]);
   }
+  std::cout << "after send\n";
 
   // notify executor and scheduler
   for (const auto& cid_function_pair : in_preparation[key].first) {
     if (pending_cross_metadata.find(cid_function_pair) !=
         pending_cross_metadata.end()) {
       if (key_dne) {
+        std::cout << "key dne\n";
         log->info("key dne for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
         version_store[cid_function_pair].first = true;
         if (pending_cross_metadata[cid_function_pair]
@@ -843,6 +848,7 @@ void merge_into_causal_cut(
         pending_cross_metadata[cid_function_pair].to_cover_set_.erase(key);
         if (pending_cross_metadata[cid_function_pair].to_cover_set_.size() ==
             0) {
+          std::cout << "all key covered\n";
           log->info("all key covered for cid function pair {} {}", cid_function_pair.first, cid_function_pair.second);
           // all keys covered, first populate version store entry
           // set DNE to false
@@ -894,6 +900,7 @@ void merge_into_causal_cut(
   }
   // erase the chain in in_preparation
   in_preparation.erase(key);
+  std::cout << "exit merge causal cut\n";
 }
 
 bool covered_locally(

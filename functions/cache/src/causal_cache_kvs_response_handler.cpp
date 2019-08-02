@@ -29,9 +29,11 @@ void kvs_response_handler(
     const CausalCacheThread& cct,
     map<string, Address>& request_id_to_address_map) {
   Key key = response.tuples(0).key();
+  std::cout << "response for key " + key + "\n";
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
     log->info("Request for key {} timeout", key);
+    std::cout << "timeout\n";
     if (response.type() == RequestType::GET) {
       client->get_async(key);
     } else {

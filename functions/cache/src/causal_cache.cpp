@@ -143,7 +143,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   VersionStoreType version_store;
 
   // warm up for benchmark
+  log->info("warmup begin");
   warmup(version_store);
+  log->info("warmup end");
 
   map<Key, set<Key>> to_fetch_map;
   map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>
