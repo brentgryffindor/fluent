@@ -154,6 +154,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
             #logging.info('Received dag call request')
+            work_start = time.time()
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
 
@@ -171,6 +172,8 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             rid = call_dag(call, pusher_cache, dags, func_locations,
                            key_ip_map, running_counts, backoff, ip, pending_versioned_key_collection_response, versioned_key_map)
+            work_end = time.time()
+            logging.info('time is %s' % (work_end - work_start))
 
             resp = GenericResponse()
             resp.success = True
