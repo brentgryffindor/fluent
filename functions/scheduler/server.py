@@ -154,14 +154,14 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
             #logging.info('Received dag call request')
+            work_start = time.time()
+            call = DagCall()
+            call.ParseFromString(dag_call_socket.recv())
+
             resp = GenericResponse()
             resp.success = True
             resp.response_id = 'result'
             dag_call_socket.send(resp.SerializeToString())
-
-            work_start = time.time()
-            call = DagCall()
-            call.ParseFromString(dag_call_socket.recv())
 
             if call.name not in dags:
                 resp = GenericResponse()
