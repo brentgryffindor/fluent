@@ -148,10 +148,12 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if (dag_create_socket in socks and socks[dag_create_socket]
                 == zmq.POLLIN):
+            logging.info('Received dag create request')
             create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
                        ip, pin_accept_socket, func_locations, call_frequency)
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
+            logging.info('Received dag call request')
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
 
