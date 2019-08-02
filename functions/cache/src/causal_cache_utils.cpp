@@ -805,7 +805,10 @@ void merge_into_causal_cut(
   // send
   string resp_string;
   cache_response.SerializeToString(&resp_string);
+  std::cout << "after serialization\n";
   for (unsigned tid = 0; tid < 3; tid++) {
+    std::cout << "tid is " + std::to_string(tid) + "\n";
+    std::cout << "destination address is " + cct.causal_cache_executor_connect_address(tid) + "\n";
     kZmqUtil->send_string(resp_string, &pushers[cct.causal_cache_executor_connect_address(tid)]);
   }
   std::cout << "after send\n";

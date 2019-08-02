@@ -32,6 +32,8 @@ void get_request_handler(
   CausalGetRequest request;
   request.ParseFromString(serialized);
 
+  std::cout << "response address is " + request.response_address() + "\n";
+
   if (request.consistency() == ConsistencyType::SINGLE) {
     log->info("Receive GET in single mode");
     bool covered_locally = true;
