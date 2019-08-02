@@ -312,26 +312,32 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
-                (schedule.dag.name, schedule.id, schedule.output_key))
-
-        vector_clock = {}
-        if schedule.output_key in dependencies:
-            if schedule.client_id in dependencies[schedule.output_key]:
-                dependencies[schedule.output_key][schedule.client_id] += 1
-            else:
-                dependencies[schedule.output_key][schedule.client_id] = 1
-            vector_clock.update(dependencies[schedule.output_key])
-            del dependencies[schedule.output_key]
+        result = serialize_val(result)
+        if schedule.HasField('response_address'):
+            logging.info('direct respond')
+            sckt = pusher_cache.get(schedule.response_address)
+            sckt.send(result)
         else:
-            vector_clock = {schedule.client_id : 1}
+            logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
+                    (schedule.dag.name, schedule.id, schedule.output_key))
 
-        succeed = kvs.causal_put(schedule.output_key,
-                                 vector_clock, dependencies,
-                                 serialize_val(result), schedule.client_id)
-        while not succeed:
-            kvs.causal_put(schedule.output_key, vector_clock,
-                           dependencies, serialize_val(result), schedule.client_id)
+            vector_clock = {}
+            if schedule.output_key in dependencies:
+                if schedule.client_id in dependencies[schedule.output_key]:
+                    dependencies[schedule.output_key][schedule.client_id] += 1
+                else:
+                    dependencies[schedule.output_key][schedule.client_id] = 1
+                vector_clock.update(dependencies[schedule.output_key])
+                del dependencies[schedule.output_key]
+            else:
+                vector_clock = {schedule.client_id : 1}
+
+            succeed = kvs.causal_put(schedule.output_key,
+                                     vector_clock, dependencies,
+                                     result, schedule.client_id)
+            while not succeed:
+                kvs.causal_put(schedule.output_key, vector_clock,
+                               dependencies, result, schedule.client_id)
 
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:
