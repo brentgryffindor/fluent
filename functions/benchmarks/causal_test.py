@@ -183,7 +183,7 @@ def run(flconn, kvs, mode, sckt):
         print('Result is: %s' % res)
         logging.info('Result is: %s' % res)'''
         time_array = []
-        for k in range(0, 1):
+        for k in range(0, 300):
             arg1 = str(7*k).zfill(5)
             arg2 = str(7*k+1).zfill(5)
             arg3 = str(7*k+2).zfill(5)
