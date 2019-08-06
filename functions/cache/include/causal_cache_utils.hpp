@@ -34,6 +34,17 @@ using ClientIdFunctionPair = pair<string, string>;
 using StoreType =
     map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>;
 
+const unsigned kNotArrived = 0;
+const unsigned kRemoteRead = 1;
+const unsigned kFinish = 2;
+const unsigned kAbort = 3;
+const unsigned kNoAction = 4;
+
+struct ProtocolMetadata {
+  unsigned progress_ = kNotArrived;
+  unsigned msg_ = kNotArrived;
+};
+
 struct VersionedKeyAddressMetadata {
   VersionedKeyAddressMetadata(Address cache_address, string function_name) :
       cache_address_(std::move(cache_address)),
@@ -220,7 +231,8 @@ void process_response(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
-    const CausalCacheThread& cct);
+    const CausalCacheThread& cct,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 // construct the causal frontier from previous causal caches
 // this is later used to decide what keys should be read remotely
@@ -246,7 +258,8 @@ void optimistic_protocol(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    CausalFrontierType& causal_frontier, const Address& response_address, logger log, const map<Key, VectorClock>& cached_versions);
+    CausalFrontierType& causal_frontier, const Address& response_address, logger log, const map<Key, VectorClock>& cached_versions,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 // merge a causal chain from in_preparation to causal cut store
 // also notify clients that are waiting for the head key of the chain
@@ -256,7 +269,8 @@ void merge_into_causal_cut(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct, logger log,
-    const StoreType& unmerged_store);
+    const StoreType& unmerged_store,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 bool covered_locally(
     const ClientIdFunctionPair& cid_function_pair, const set<Key>& read_set,
@@ -270,7 +284,7 @@ bool covered_locally(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct, CausalFrontierType& causal_frontier,
-    logger log);
+    logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 void send_scheduler_response(CausalSchedulerResponse& response,
                              const set<Key>& read_set,
@@ -278,5 +292,10 @@ void send_scheduler_response(CausalSchedulerResponse& response,
                              const VersionStoreType& version_store,
                              SocketCache& pushers,
                              const Address& scheduler_address);
+
+// to be used for responding to executor in versioned key response handler
+void send_executor_response(const ClientIdFunctionPair& cid_function_pair, 
+                            std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+                            const VersionStoreType& version_store, SocketCache& pushers, const CausalCacheThread& cct, logger log);
 
 #endif  // FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_UTILS_HPP_

@@ -64,8 +64,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                                                       + thread_id))
 
 
-    dag_schedule_gc_socket = ctx.socket(zmq.PULL)
-    dag_schedule_gc_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_SCHEDULE_GC_PORT
+    dag_gc_socket = ctx.socket(zmq.PULL)
+    dag_gc_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_SCHEDULE_GC_PORT
                                                       + thread_id))
 
     cache_socket = ctx.socket(zmq.PULL)
@@ -81,7 +81,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(dag_exec_socket, zmq.POLLIN)
     poller.register(self_depart_socket, zmq.POLLIN)
     poller.register(dag_conservative_exec_socket, zmq.POLLIN)
-    poller.register(dag_schedule_gc_socket, zmq.POLLIN)
+    poller.register(dag_gc_socket, zmq.POLLIN)
     poller.register(cache_socket, zmq.POLLIN)
 
     client = IpcAnnaClient(ctx, thread_id)
@@ -130,6 +130,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
     # map from key to tuple(vectorclock, deserialized payload)
     cache = {}
+
+    # map<fname, map<cid, tp(result, map<key, vc>)>>
+    function_result_cache = {}
+
     logging.info('enter warmup')
     for k in range(0, 2200):
         warmup_key = str(k).zfill(5)
@@ -201,7 +205,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache)
+                                  thread_id, cache, function_result_cache)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -238,7 +242,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache)
+                                      thread_id, cache, function_result_cache)
                     del received_triggers[key]
 
                     fend = time.time()
@@ -287,7 +291,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_conservative_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, True)
+                                      thread_id, cache, function_result_cache, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
 
@@ -295,13 +299,17 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             event_occupancy['dag_conservative_exec'] += elapsed
             total_occupancy += elapsed
 
-        if dag_schedule_gc_socket in socks and socks[dag_schedule_gc_socket] == zmq.POLLIN:
+        if dag_gc_socket in socks and socks[dag_gc_socket] == zmq.POLLIN:
             gc_req = ScheduleGCRequest()
-            gc_req.ParseFromString(dag_schedule_gc_socket.recv())
+            gc_req.ParseFromString(dag_gc_socket.recv())
             if gc_req.function_name in queue and gc_req.schedule_id in queue[gc_req.function_name]:
                 del queue[gc_req.function_name][gc_req.schedule_id]
             else:
                 logging.error('Function %s schedule id %s not in queue. Cannot GC' % (gc_req.function_name, gc_req.schedule_id))
+            if gc_req.function_name in function_result_cache and gc_req.client_id in function_result_cache[gc_req.function_name]:
+                del function_result_cache[gc_req.function_name][gc_req.client_id]
+                if len(function_result_cache[gc_req.function_name]) == 0:
+                    del function_result_cache[gc_req.function_name]
 
         if cache_socket in socks and socks[cache_socket] == zmq.POLLIN:
             resp = CausalGetResponse()

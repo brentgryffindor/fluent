@@ -71,7 +71,7 @@ void versioned_key_response_handler(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil, logger log) {
+    ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   VersionedKeyResponse response;
   response.ParseFromString(serialized);
 
@@ -115,55 +115,22 @@ void versioned_key_response_handler(
         }
       }
     }
-    // if no more remote read, return to executor and GC
     if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() ==
         0) {
-      // respond to executor
-      CausalGetResponse response;
-
-      response.set_error(ErrorType::NO_ERROR);
-
-      for (const auto& pair :
-           pending_cross_metadata[cid_function_pair].result_) {
-        // first check if the cached version is the same as what we want to return
-        if (pending_cross_metadata[cid_function_pair].cached_versions_.find(pair.first) == pending_cross_metadata[cid_function_pair].cached_versions_.end() 
-            || pending_cross_metadata[cid_function_pair].cached_versions_.at(pair.first).reveal() != pair.second->reveal().vector_clock.reveal()) {
-          //log->info("key {} not cached by executor, sending...", pair.first);
-          CausalTuple* tp = response.add_tuples();
-          tp->set_key(pair.first);
-          tp->set_payload(serialize(*(pair.second)));
-        }
+      // if no more remote read, first check protocol metadata
+      if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
+        log->error("cid function pair entry not in protocol metadata map.");
+      } else if (protocol_matadata_map[cid_function_pair].progress_ == kRemoteRead && protocol_matadata_map[cid_function_pair].msg_ == kNotArrived) {
+        // scheduler msg hasn't arrived yet
+        send_executor_response(cid_function_pair, pending_cross_metadata, version_store, pushers, cct, log);
+        // update protocol metadata
+        protocol_matadata_map[cid_function_pair].progress_ = kFinish;
+      } else if (protocol_matadata_map[cid_function_pair].progress_ != kNotArrived && protocol_matadata_map[cid_function_pair].msg_ != kNotArrived) {
+        // both progress and msg present, we respond and GC
+        send_executor_response(cid_function_pair, pending_cross_metadata, version_store, pushers, cct, log);
+        // update protocol metadata
+        protocol_matadata_map.erase(cid_function_pair);
       }
-      for (const auto& pair : version_store.at(cid_function_pair).second) {
-        // then populate prior_version_tuples
-        if (pending_cross_metadata[cid_function_pair].remove_set_.find(
-                pair.first) ==
-            pending_cross_metadata[cid_function_pair].remove_set_.end()) {
-          for (const auto& key_ptr_pair : pair.second) {
-            PriorVersionTuple* tp = response.add_prior_version_tuples();
-            tp->set_cache_address(
-                cct.causal_cache_versioned_key_request_connect_address());
-            tp->set_function_name(cid_function_pair.second);
-            auto vk = tp->mutable_versioned_key();
-            vk->set_key(key_ptr_pair.first);
-            auto ptr = vk->mutable_vector_clock();
-            for (const auto& client_version_pair :
-                 key_ptr_pair.second->reveal().vector_clock.reveal()) {
-              (*ptr)[client_version_pair.first] =
-                  client_version_pair.second.reveal();
-            }
-          }
-        }
-      }
-
-      // send response
-      string resp_string;
-      response.SerializeToString(&resp_string);
-      kZmqUtil->send_string(resp_string,
-                            &pushers[pending_cross_metadata[cid_function_pair]
-                                         .executor_response_address_]);
-      // GC
-      pending_cross_metadata.erase(cid_function_pair);
     }
   }
 }

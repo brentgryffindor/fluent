@@ -343,7 +343,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                             function_trigger_map[fname] = _find_upstream(fname, dags[dag_name][0])
 
                         finished_functions = set()
-                        if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
+                        if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map, pusher_cache):
                             # the protocol aborted, so we need to do conservative protocol
                             #logging.info('optimistic protocol will abort')
                             per_cache_message_map = {}
@@ -505,17 +505,18 @@ def _find_upstream(fname, dag):
 
 def _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
     for versioned_key_read in prior_read_list:
-        for causal_lowerbound in prior_causal_lowerbound_list:
-            if versioned_key_read.key == causal_lowerbound.key and sutils._compare_vector_clock(versioned_key_read.vector_clock, causal_lowerbound.vector_clock) != sutils.CausalComp.GreaterOrEqual:
+        for causal_lowerbound_fname_tp in prior_causal_lowerbound_list:
+            if versioned_key_read.key == causal_lowerbound_fname_tp[0].key and sutils._compare_vector_clock(versioned_key_read.vector_clock, causal_lowerbound_fname_tp[0].vector_clock) != sutils.CausalComp.GreaterOrEqual:
                 return True
     return False
 
 
 def _construct_causal_frontier(prior_causal_lowerbound_list):
     causal_frontier = {}
-    for versioned_key in prior_causal_lowerbound_list:
+    for causal_lowerbound_fname_tp in prior_causal_lowerbound_list:
+        versioned_key = causal_lowerbound_fname_tp[0]
         if versioned_key.key not in causal_frontier:
-            causal_frontier[versioned_key.key] = [[versioned_key.vector_clock, False]]
+            causal_frontier[versioned_key.key] = [[versioned_key.vector_clock, False, causal_lowerbound_fname_tp[1]]]
         else:
             to_remove = []
             dominated = False
@@ -529,7 +530,7 @@ def _construct_causal_frontier(prior_causal_lowerbound_list):
                 continue
             for tp in to_remove:
                 causal_frontier.remove(tp)
-            causal_frontier[versioned_key.key].append([versioned_key.vector_clock, False])
+            causal_frontier[versioned_key.key].append([versioned_key.vector_clock, False, causal_lowerbound_fname_tp[1]])
     return causal_frontier
 
 
@@ -555,8 +556,10 @@ def _remove_from_local_readset(key, causal_frontier, read_set, remove_candidate,
     return True
 
 
-def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, causal_lowerbound_list, prior_read_list):
+def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, causal_lowerbound_list, read_list, readset_remove_map):
     for key in versioned_key_map[cid].per_func_read_set[fname]:
+        # initialize remove flag to false
+        readset_remove_map[key] = False
         if key in causal_frontier:
             vc = {}
             if key in versioned_key_map[cid].per_func_versioned_key_chain[fname]:
@@ -577,6 +580,9 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
                             # abort
                             return True
                         break
+    # update remove set
+    for key in remove_candidate:
+        readset_remove_map[key] = True
     # gather readset versions and prior causal lowerbound
     for key in versioned_key_map[cid].per_func_read_set[fname]:
         vk = VersionedKey()
@@ -588,19 +594,21 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
                 dep_vk = VersionedKey()
                 dep_vk.key = dep_key
                 dep_vk.vector_clock.update(versioned_key_map[cid].per_func_versioned_key_chain[fname][key][dep_key])
-                causal_lowerbound_list.append(dep_vk)
+                causal_lowerbound_list.append((dep_vk, fname))
         if key in causal_frontier:
             for tp in causal_frontier[key]:
                 if tp[1]:
                     vc = sutils._merge_vector_clock(vc, tp[0])
         vk.vector_clock.update(vc)
-        prior_read_list.append(vk)
+        read_list.append(vk)
     # no abort
     return False
 
 
-def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, total_num_functions, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map):
+def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, total_num_functions, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map, pusher_cache):
     #logging.info('entering simulation')
+    causal_frontier_map = {}
+    fname_readset_remove_map = {}
     while len(finished_functions) < total_num_functions:
         for fname in function_trigger_map:
             if not fname in finished_functions:
@@ -609,6 +617,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     if trigger_function not in finished_functions:
                         finished = False
                 if finished:
+                    fname_readset_remove_map[fname] = {}
                     # aggregate the prior_causal_lowerbound_list and prior_read_list respectively
                     prior_causal_lowerbound_list = []
                     prior_read_list = []
@@ -625,13 +634,41 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     for versioned_key in prior_read_list:
                         prior_read_map[versioned_key.key] = versioned_key.vector_clock
                     causal_frontier = _construct_causal_frontier(prior_causal_lowerbound_list)
-                    prior_per_func_causal_lowerbound_map[fname] = prior_causal_lowerbound_list
-                    prior_per_func_read_map[fname] = prior_read_list
-                    if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname]):
+                    # (cgwu) is this a bug? seems like we shouldn't initiate it to all prior values...
+                    #prior_per_func_causal_lowerbound_map[fname] = prior_causal_lowerbound_list
+                    #prior_per_func_read_map[fname] = prior_read_list
+                    prior_per_func_causal_lowerbound_map[fname] = list()
+                    prior_per_func_read_map[fname] = list()
+                    if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname], fname_readset_remove_map[fname]):
                         # abort
                         #logging.info('abort due to optimistic protocol failure')
                         return True
                     finished_functions.add(fname)
+                    causal_frontier_map[fname] = causal_frontier
+    # we don't abort, so check remote read and send request to cache
+    # note that even if no remote read is required, we still send the message as a Ping for GC purpose
+    for fname in causal_frontier_map:
+        remote_read_request = SchedulerRemoteReadRequest()
+        remote_read_request.client_id = cid
+        remote_read_request.function_name = fname
+        for key in fname_readset_remove_map[fname]:
+            remote_read_request.read_map[key] = fname_readset_remove_map[fname][key]
+        for key in causal_frontier_map[fname]:
+            for causal_lowerbound_fname_tp in causal_frontier_map[fname][key]:
+                if causal_lowerbound_fname_tp[1]:
+                    # read this version from remote
+                    remote_read_tuple = SchedulerRemoteReadTuple()
+                    loc = versioned_key_map[cid].schedule.locations[causal_lowerbound_fname_tp[2]].split(':')
+                    remote_read_tuple.cache_address = utils._get_cache_versioned_key_request_connect_address(loc[0])
+                    remote_read_tuple.function_name = causal_lowerbound_fname_tp[2]
+                    remote_read_tuple.versioned_key = VersionedKey()
+                    remote_read_tuple.versioned_key.key = key
+                    remote_read_tuple.versioned_key.vector_clock.update(causal_lowerbound_fname_tp[0])
+                    remote_read_request.tuples.extend([remote_read_tuple])
+        # send to cache
+        loc = versioned_key_map[cid].schedule.locations[fname].split(':')
+        sckt = pusher_cache.get(utils._get_cache_scheduler_remote_read_address(loc[0]))
+        sckt.send(remote_read_request.SerializeToString())
     return False
 
 

@@ -165,6 +165,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   // and the scheduler response address, used in conservative protocol
   map<string, pair<set<Address>, Address>> pending_key_shipping_map;
 
+  std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash> protocol_matadata_map;
+
   std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>
       conservative_store;
 
@@ -209,6 +211,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   key_shipping_response_puller.bind(
       cct.causal_cache_key_shipping_response_bind_address());
 
+  zmq::socket_t scheduler_remote_read_puller(*context, ZMQ_PULL);
+  scheduler_remote_read_puller.bind(
+      cct.causal_cache_scheduler_remote_read_bind_address());
+
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(get_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(put_puller), 0, ZMQ_POLLIN, 0},
@@ -221,6 +227,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
        0},
       {static_cast<void*>(key_shipping_request_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(key_shipping_response_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(scheduler_remote_read_puller), 0, ZMQ_POLLIN, 0},
   };
 
   auto report_start = std::chrono::system_clock::now();
@@ -242,7 +249,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                           causal_cut_store, version_store, single_callback_map,
                           pending_single_metadata, pending_cross_metadata,
                           to_fetch_map, cover_map, pushers, client, log, cct,
-                          conservative_store);
+                          conservative_store, protocol_matadata_map);
       auto get_end = std::chrono::system_clock::now();
       auto get_time = std::chrono::duration_cast<std::chrono::microseconds>(get_end - get_start).count();
       log->info("get took {} micro seconds", get_time);
@@ -285,7 +292,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         process_response(key, lattice, unmerged_store, in_preparation,
                          causal_cut_store, version_store, single_callback_map,
                          pending_single_metadata, pending_cross_metadata,
-                         to_fetch_map, cover_map, pushers, client, log, cct);
+                         to_fetch_map, cover_map, pushers, client, log, cct, protocol_matadata_map);
       }
       //log->info("done KVS update");
       //std::cout << "done KVS update\n";
@@ -328,7 +335,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(serialized, causal_cut_store,
                                      version_store, pending_cross_metadata, cct,
-                                     pushers, kZmqUtil, log);
+                                     pushers, kZmqUtil, log, protocol_matadata_map);
       //log->info("done version key response");
       //std::cout << "done version key response\n";
     }
@@ -341,7 +348,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       scheduler_request_handler(serialized, key_set, unmerged_store,
                                 in_preparation, causal_cut_store, version_store,
                                 pending_cross_metadata, to_fetch_map, cover_map,
-                                pushers, client, log, cct);
+                                pushers, client, log, cct, protocol_matadata_map);
       //log->info("done scheduler key version query");
       //std::cout << "done scheduler key version query\n";
     }
@@ -354,7 +361,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           kZmqUtil->recv_string(&scheduler_key_shipping_request_puller);
       scheduler_key_shipping_request_handler(
           serialized, pending_key_shipping_map, conservative_store,
-          version_store, cct, pushers);
+          version_store, cct, pushers, protocol_matadata_map);
       //log->info("done scheduler key shipping request");
       //std::cout << "done scheduler key shipping request\n";
     }
@@ -380,6 +387,13 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       //std::cout << "done key shipping response\n";
     }
 
+    // handle scheduler remote read
+    if (pollitems[9].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&scheduler_remote_read_puller);
+      scheduler_remote_read_handler(serialized, version_store, pending_cross_metadata, 
+                                    pushers, log, cct, protocol_matadata_map);
+    }
+
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
       //std::cout << "entering kvs response handler\n";
@@ -388,7 +402,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                            causal_cut_store, version_store, single_callback_map,
                            pending_single_metadata, pending_cross_metadata,
                            to_fetch_map, cover_map, pushers, client, log, cct,
-                           request_id_to_address_map);
+                           request_id_to_address_map, protocol_matadata_map);
       //log->info("exit kvs response handler");
       //std::cout << "exit kvs response handler\n";
     }
@@ -431,7 +445,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       periodic_migration_handler(unmerged_store, in_preparation,
                                  causal_cut_store, version_store,
                                  pending_cross_metadata, to_fetch_map,
-                                 cover_map, pushers, client, cct, log);
+                                 cover_map, pushers, client, cct, log, protocol_matadata_map);
       //log->info("exit periodic migration");
       //std::cout << "exit periodic migration\n";
       migrate_start = std::chrono::system_clock::now();

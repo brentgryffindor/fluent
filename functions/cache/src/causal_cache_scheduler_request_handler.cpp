@@ -24,7 +24,8 @@ void scheduler_request_handler(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
-    const CausalCacheThread& cct) {
+    const CausalCacheThread& cct,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   CausalSchedulerRequest request;
   request.ParseFromString(serialized);
 
@@ -81,7 +82,7 @@ void scheduler_request_handler(
                          unmerged_store, in_preparation, causal_cut_store,
                          version_store, pending_cross_metadata, to_fetch_map,
                          cover_map, pushers, client, cct, causal_frontier,
-                         log)) {
+                         log, protocol_matadata_map)) {
       pending_cross_metadata[cid_function_pair].read_set_ = read_set;
       pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
       pending_cross_metadata[cid_function_pair].scheduler_response_address_ =

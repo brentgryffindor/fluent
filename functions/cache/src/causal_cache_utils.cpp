@@ -319,7 +319,8 @@ void process_response(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
-    const CausalCacheThread& cct) {
+    const CausalCacheThread& cct,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   //std::cout << "enter process response\n";
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
@@ -390,7 +391,7 @@ void process_response(
       // this key has no dependency
       merge_into_causal_cut(key, causal_cut_store, in_preparation,
                             version_store, pending_cross_metadata, pushers, cct,
-                            log, unmerged_store);
+                            log, unmerged_store, protocol_matadata_map);
       to_fetch_map.erase(key);
     }
   }
@@ -440,7 +441,7 @@ void process_response(
           // all dependency is met
           merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
                                 version_store, pending_cross_metadata, pushers,
-                                cct, log, unmerged_store);
+                                cct, log, unmerged_store, protocol_matadata_map);
           to_fetch_map.erase(head_key);
         }
       }
@@ -582,7 +583,8 @@ void optimistic_protocol(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    CausalFrontierType& causal_frontier, const Address& response_address, logger log, const map<Key, VectorClock>& cached_versions) {
+    CausalFrontierType& causal_frontier, const Address& response_address, logger log, const map<Key, VectorClock>& cached_versions,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   // all keys present, need to check causal consistency
   // and figure out if we need to read anything from remote
   // ---
@@ -656,6 +658,7 @@ void optimistic_protocol(
               string resp_string;
               response.SerializeToString(&resp_string);
               kZmqUtil->send_string(resp_string, &pushers[response_address]);
+              protocol_matadata_map[cid_function_pair].progress_ = kFinish;
               return;
             }
             break;
@@ -718,6 +721,7 @@ void optimistic_protocol(
         response_address;
     pending_cross_metadata[cid_function_pair].remove_set_ = remove_candidate;
     pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
+    protocol_matadata_map[cid_function_pair].progress_ = kRemoteRead;
   } else {
     //log->info("all local read");
     // all local read
@@ -759,6 +763,7 @@ void optimistic_protocol(
     string resp_string;
     response.SerializeToString(&resp_string);
     kZmqUtil->send_string(resp_string, &pushers[response_address]);
+    protocol_matadata_map[cid_function_pair].progress_ = kFinish;
   }
 }
 
@@ -768,7 +773,8 @@ void merge_into_causal_cut(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct, logger log,
-    const StoreType& unmerged_store) {
+    const StoreType& unmerged_store,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   //std::cout << "merging key " + key + "to causal cut\n";
   bool key_dne = false;
 
@@ -881,7 +887,8 @@ void merge_into_causal_cut(
                 pending_cross_metadata[cid_function_pair].causal_frontier_,
                 pending_cross_metadata[cid_function_pair]
                     .executor_response_address_, log,
-                pending_cross_metadata[cid_function_pair].cached_versions_);
+                pending_cross_metadata[cid_function_pair].cached_versions_,
+                protocol_matadata_map);
           }
           if (pending_cross_metadata[cid_function_pair]
                   .scheduler_response_address_ != "") {
@@ -919,7 +926,7 @@ bool covered_locally(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct, CausalFrontierType& causal_frontier,
-    logger log) {
+    logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   //log->info("covered locally called");
   bool covered = true;
 
@@ -947,7 +954,7 @@ bool covered_locally(
             // all dependency met
             merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                   version_store, pending_cross_metadata,
-                                  pushers, cct, log, unmerged_store);
+                                  pushers, cct, log, unmerged_store, protocol_matadata_map);
             to_fetch_map.erase(key);
           } else {
             in_preparation[key].first.insert(cid_function_pair);
@@ -963,7 +970,7 @@ bool covered_locally(
             // all dependency met
             merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                   version_store, pending_cross_metadata,
-                                  pushers, cct, log, unmerged_store);
+                                  pushers, cct, log, unmerged_store, protocol_matadata_map);
             to_fetch_map.erase(key);
           } else {
             in_preparation[key].first.insert(cid_function_pair);
@@ -1029,4 +1036,56 @@ void send_scheduler_response(CausalSchedulerResponse& response,
   string resp_string;
   response.SerializeToString(&resp_string);
   kZmqUtil->send_string(resp_string, &pushers[scheduler_address]);
+}
+
+// to be used for responding to executor in versioned key response handler
+void send_executor_response(const ClientIdFunctionPair& cid_function_pair, 
+                            std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>& pending_cross_metadata,
+                            const VersionStoreType& version_store, SocketCache& pushers, const CausalCacheThread& cct, logger log) {
+  // respond to executor
+  CausalGetResponse response;
+
+  response.set_error(ErrorType::NO_ERROR);
+
+  for (const auto& pair :
+       pending_cross_metadata[cid_function_pair].result_) {
+    // first check if the cached version is the same as what we want to return
+    if (pending_cross_metadata[cid_function_pair].cached_versions_.find(pair.first) == pending_cross_metadata[cid_function_pair].cached_versions_.end() 
+        || pending_cross_metadata[cid_function_pair].cached_versions_.at(pair.first).reveal() != pair.second->reveal().vector_clock.reveal()) {
+      //log->info("key {} not cached by executor, sending...", pair.first);
+      CausalTuple* tp = response.add_tuples();
+      tp->set_key(pair.first);
+      tp->set_payload(serialize(*(pair.second)));
+    }
+  }
+  for (const auto& pair : version_store.at(cid_function_pair).second) {
+    // then populate prior_version_tuples
+    if (pending_cross_metadata[cid_function_pair].remove_set_.find(
+            pair.first) ==
+        pending_cross_metadata[cid_function_pair].remove_set_.end()) {
+      for (const auto& key_ptr_pair : pair.second) {
+        PriorVersionTuple* tp = response.add_prior_version_tuples();
+        tp->set_cache_address(
+            cct.causal_cache_versioned_key_request_connect_address());
+        tp->set_function_name(cid_function_pair.second);
+        auto vk = tp->mutable_versioned_key();
+        vk->set_key(key_ptr_pair.first);
+        auto ptr = vk->mutable_vector_clock();
+        for (const auto& client_version_pair :
+             key_ptr_pair.second->reveal().vector_clock.reveal()) {
+          (*ptr)[client_version_pair.first] =
+              client_version_pair.second.reveal();
+        }
+      }
+    }
+  }
+
+  // send response
+  string resp_string;
+  response.SerializeToString(&resp_string);
+  kZmqUtil->send_string(resp_string,
+                        &pushers[pending_cross_metadata[cid_function_pair]
+                                     .executor_response_address_]);
+  // GC
+  pending_cross_metadata.erase(cid_function_pair);
 }

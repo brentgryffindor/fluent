@@ -116,7 +116,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, conservative=False):
+                      tid, cache, function_result_cache, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
@@ -125,7 +125,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
-                                  triggers, function, schedule, conservative, cache)
+                                  triggers, function, schedule, conservative, cache, function_result_cache)
 
     #user_lib.close()
 
@@ -220,7 +220,7 @@ def _resolve_ref_normal(refs, kvs):
     return kv_pairs
 
 
-def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache):
+def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache, function_result_cache):
     #logging.info('exec dag causal')
     fname = schedule.target_function
     # first check if we need to abort
@@ -265,20 +265,14 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
     kv_pairs = {}
     abort = [False]
+    cached = [False]
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
-                               schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache)
+                               schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache, function_result_cache, cached)
     #logging.info('finish executing function')
 
     if abort[0]:
         _abort_dag(fname, schedule, pusher_cache)
         return
-
-    for key in kv_pairs:
-        if key in dependencies:
-            dependencies[key] = sutils._merge_vector_clock(dependencies[key],
-                                                    kv_pairs[key][0])
-        else:
-            dependencies[key] = kv_pairs[key][0]
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -357,16 +351,22 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                     sckt = pusher_cache.get(gc_addr)
                     sckt.send_string(schedule.client_id)'''
             for fname in schedule.locations:
-                gc_req = ScheduleGCRequest()
+                gc_req = ExecutorGCRequest()
                 gc_req.function_name = fname
                 gc_req.schedule_id = schedule.id
+                gc_req.client_id = schedule.client_id
                 gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
                 #logging.info('schedule GC address is %s' % gc_addr)
                 sckt = pusher_cache.get(gc_addr)
                 sckt.send(gc_req.SerializeToString())
+    # GC function cache
+    if conservative and schedule.target_function in function_result_cache and schedule.client_id in function_result_cache[schedule.target_function]:
+        del function_result_cache[schedule.target_function][schedule.client_id]
+        if len(function_result_cache[schedule.target_function]) == 0:
+            del function_result_cache[schedule.target_function]
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
-                      schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache):
+                      schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache, function_result_cache, cached):
     #logging.info('exec func causal')
     func_args = []
     to_resolve = []
@@ -382,11 +382,22 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         func_args += (arg,)
 
     keys = set(ref.key for ref in to_resolve)
+    key_vc_map = {}
 
     if len(to_resolve) > 0:
         error = _resolve_ref_causal(keys, kvs, kv_pairs,
-                            schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache)
+                            schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached)
         #logging.info('Done resolving reference')
+        # check if it is conservative protocol and cached
+        if conservative and cached[0]:
+            # update dependency before returning
+            for key in keys:
+                if key in dependencies:
+                    dependencies[key] = sutils._merge_vector_clock(dependencies[key],
+                                                            function_result_cache[schedule.target_function][schedule.client_id][0][key])
+                else:
+                    dependencies[key] = function_result_cache[schedule.target_function][schedule.client_id][0][key]
+            return function_result_cache[schedule.target_function][schedule.client_id][1]
 
         if error == KEY_DNE or error == ABORT:
             abort[0] = True
@@ -405,27 +416,49 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
                 #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
             keys.remove(key)
+            # update dependency
+            if key in dependencies:
+                dependencies[key] = sutils._merge_vector_clock(dependencies[key],
+                                                        kv_pairs[key][0])
+            else:
+                dependencies[key] = kv_pairs[key][0]
+            key_vc_map[key] = kv_pairs[key][0]
         for key in keys:
             #logging.info('cache hit for key %s' % key)
             func_args[key_index_map[key]] = cache[key][1]
+            # update dependency
+            if key in dependencies:
+                dependencies[key] = sutils._merge_vector_clock(dependencies[key],
+                                                        cache[key][0])
+            else:
+                dependencies[key] = cache[key][0]
+            key_vc_map[key] = cache[key][0]
 
     # execute the function
     #for f_arg in func_args:
     #    logging.info('argument is %s' % f_arg)
     #logging.info('executing function')
-    return func(*tuple(func_args))
+    result = func(*tuple(func_args))
+    # if optimistic protocol, cache result
+    if not conservative:
+        if schedule.target_function not in function_result_cache:
+            function_result_cache[schedule.target_function] = {}
+        # perform result caching
+        function_result_cache[schedule.target_function][schedule.client_id] = (key_vc_map, result)
 
-def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache):
+    return result
+
+def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached):
     #logging.info('resolve ref causal')
     full_read_set = schedule.full_read_set
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,
-                            schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache)
+                            schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache, function_result_cache, cached)
     while result is None:
         #logging.info('result is None!')
         result = kvs.causal_get(keys, full_read_set,
                                 prior_version_tuples, prior_read_map,
-                                schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache)
+                                schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache, function_result_cache, cached)
     #logging.info('causal GET done')
 
     if result == KEY_DNE or result == ABORT:
@@ -440,7 +473,7 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
         #    logging.info('function name is %s' % prior_version_tuple.function_name)
         #    logging.info('key is %s' % prior_version_tuple.versioned_key.key)
 
-    kv_pairs.update(result[2])
+    kv_pairs = result[2]
     return NO_ERROR
 
 def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):

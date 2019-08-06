@@ -27,7 +27,8 @@ void kvs_response_handler(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
-    map<string, Address>& request_id_to_address_map) {
+    map<string, Address>& request_id_to_address_map,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   Key key = response.tuples(0).key();
   //std::cout << "response for key " + key + "\n";
   // first, check if the request failed
@@ -62,7 +63,7 @@ void kvs_response_handler(
       process_response(key, lattice, unmerged_store, in_preparation,
                        causal_cut_store, version_store, single_callback_map,
                        pending_single_metadata, pending_cross_metadata,
-                       to_fetch_map, cover_map, pushers, client, log, cct);
+                       to_fetch_map, cover_map, pushers, client, log, cct, protocol_matadata_map);
     } else {
       if (request_id_to_address_map.find(response.response_id()) ==
           request_id_to_address_map.end()) {

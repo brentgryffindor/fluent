@@ -114,7 +114,7 @@ class IpcAnnaClient:
             return kv_pairs
 
     def causal_get(self, keys, full_read_set,
-                   prior_version_tuples, prior_read_map, consistency, client_id, fname, dependencies, conservative, cache = {}):
+                   prior_version_tuples, prior_read_map, consistency, client_id, fname, dependencies, conservative, cache = {}, function_result_cache = {}, cached=[False]):
         #logging.info('Entering causal GET')
         if type(keys) != set:
             keys = set(keys)
@@ -141,6 +141,15 @@ class IpcAnnaClient:
                 vk.key = key
                 vk.vector_clock.update(cache[key][0])
                 request.cached_keys.extend([vk])
+
+        # if conservative, populate from function result cache
+        if conservative and fname in function_result_cache and client_id in function_result_cache[fname]:
+            key_vc_map = function_result_cache[fname][client_id][0]
+            for key in key_vc_map:
+                vk = VersionedKey()
+                vk.key = key
+                vk.vector_clock.update(key_vc_map[key])
+                request.function_cached_keys.extend([vk])
 
         #for k in request.keys:
         #    logging.info('key to GET is %s' % k)
@@ -199,6 +208,9 @@ class IpcAnnaClient:
                         versioned_key_read.append(vk)
                         #logging.info('finished creation')
                 #logging.info('returning from causal GET')
+                # set cached
+                if conservative and resp.HasField('cached') and resp.cached:
+                    cached[0] = True
                 return (resp.prior_version_tuples, versioned_key_read, kv_pairs)
 
     def put(self, key, value):

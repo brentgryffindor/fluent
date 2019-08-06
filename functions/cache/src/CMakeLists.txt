@@ -34,6 +34,7 @@ SET(FUNC_CAUSAL_CACHE_SOURCE
 	causal_cache_scheduler_key_shipping_request_handler.cpp
 	causal_cache_key_shipping_request_handler.cpp
 	causal_cache_key_shipping_response_handler.cpp
+	causal_cache_scheduler_remote_read_handler.cpp
   )
 
 ADD_EXECUTABLE(flfunc-async-cache ${FUNC_CAUSAL_CACHE_SOURCE})

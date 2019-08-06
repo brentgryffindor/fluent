@@ -31,7 +31,8 @@ void get_request_handler(
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
     std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
-        conservative_store);
+        conservative_store,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          StoreType& causal_cut_store,
@@ -50,7 +51,7 @@ void versioned_key_response_handler(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil, logger log);
+    ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 void kvs_response_handler(
     const KeyResponse& response, StoreType& unmerged_store,
@@ -65,7 +66,8 @@ void kvs_response_handler(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
-    map<string, Address>& request_id_to_address_map);
+    map<string, Address>& request_id_to_address_map,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 void periodic_migration_handler(
     const StoreType& unmerged_store, InPreparationType& in_preparation,
@@ -76,7 +78,8 @@ void periodic_migration_handler(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
-    const CausalCacheThread& cct, logger log);
+    const CausalCacheThread& cct, logger log,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 void scheduler_request_handler(
     const string& serialized, set<Key>& key_set, StoreType& unmerged_store,
@@ -88,7 +91,8 @@ void scheduler_request_handler(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
-    const CausalCacheThread& cct);
+    const CausalCacheThread& cct,
+    std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 void scheduler_key_shipping_request_handler(
     const string& serialized,
@@ -96,7 +100,7 @@ void scheduler_key_shipping_request_handler(
     std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
         conservative_store,
     const VersionStoreType& version_store, const CausalCacheThread& cct,
-    SocketCache& pushers);
+    SocketCache& pushers, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 void key_shipping_request_handler(const string& serialized,
                                   const VersionStoreType& version_store,
@@ -109,5 +113,12 @@ void key_shipping_response_handler(
     std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
         conservative_store,
     const CausalCacheThread& cct, SocketCache& pushers);
+
+void scheduler_remote_read_handler(
+    const string& serialized, VersionStoreType& version_store,
+    std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
+        pending_cross_metadata,
+    SocketCache& pushers, logger log,
+    const CausalCacheThread& cct, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
 
 #endif  // FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_HANDLERS_HPP_

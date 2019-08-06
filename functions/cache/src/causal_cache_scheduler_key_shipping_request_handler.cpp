@@ -20,7 +20,7 @@ void scheduler_key_shipping_request_handler(
     std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
         conservative_store,
     const VersionStoreType& version_store, const CausalCacheThread& cct,
-    SocketCache& pushers) {
+    SocketCache& pushers, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
   SchedulerKeyShippingRequest request;
   request.ParseFromString(serialized);
   pending_key_shipping_map[request.client_id()].second =
@@ -34,6 +34,15 @@ void scheduler_key_shipping_request_handler(
           version_store.at(cid_function_pair).second.end()) {
         conservative_store[cid_function_pair][key] =
             version_store.at(cid_function_pair).second.at(key).at(key);
+      }
+      // also, receiving this request means that the optimistic protocol will abort, so we update the protocol metadata
+      if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end() || protocol_matadata_map[cid_function_pair].progress_ == kRemoteRead) {
+        // optimistic protocol for this cid_fname pair hasn't reached this cache yet or remote read
+        protocol_matadata_map[cid_function_pair].msg_ = kAbort;
+      } else {
+        // progress is finish
+        // gc happen here
+        protocol_matadata_map.erase(cid_function_pair);
       }
     }
   }
@@ -61,5 +70,20 @@ void scheduler_key_shipping_request_handler(
     key_shipping_request.SerializeToString(&req_string);
     kZmqUtil->send_string(
         req_string, &pushers[per_cache_function_key_pair.cache_address()]);
+  }
+  // check if no remote read
+  if (pending_key_shipping_map[request.client_id()].first.size() == 0) {
+    SchedulerKeyShippingResponse scheduler_response;
+    scheduler_response.set_client_id(request.client_id());
+    scheduler_response.set_cache_address(
+        cct.causal_cache_scheduler_key_shipping_request_connect_address());
+    // send response
+    string resp_string;
+    scheduler_response.SerializeToString(&resp_string);
+    kZmqUtil->send_string(
+        resp_string,
+        &pushers[pending_key_shipping_map[request.client_id()].second]);
+    // GC
+    pending_key_shipping_map.erase(request.client_id());
   }
 }

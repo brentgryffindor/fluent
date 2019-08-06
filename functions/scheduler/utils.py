@@ -76,10 +76,14 @@ def _get_queue_address(ip, tid):
 def _get_cache_version_query_address(ip):
     return 'tcp://' + ip + ':' + str(CACHE_VERSION_QUERY_PORT)
 
+def _get_cache_versioned_key_request_connect_address(ip):
+    return 'tcp://' + ip + ':' + str(CACHE_VERSIONED_KEY_REQUEST_PORT)
 
 def _get_cache_scheduler_key_shipping_request_address(ip):
     return 'tcp://' + ip + ':' + str(CACHE_SCHEDULER_KEY_SHIPPING_REQUEST_PORT)
 
+def _get_cache_scheduler_remote_read_address(ip):
+    return 'tcp://' + ip + ':' + str(CACHE_SCHEDULER_REMOTE_READ_PORT)
 
 def _get_cache_key_shipping_request_address(ip):
     return 'tcp://' + ip + ':' + str(CACHE_KEY_SHIPPING_REQUEST_PORT)
