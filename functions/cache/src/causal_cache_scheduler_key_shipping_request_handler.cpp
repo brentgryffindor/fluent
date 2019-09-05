@@ -27,23 +27,23 @@ void scheduler_key_shipping_request_handler(
       request.response_address();
   // first populate conservative store from local data in versioned store
   for (const auto& per_function_readset : request.per_function_readsets()) {
+    auto cid_function_pair = std::make_pair(
+        request.client_id(), per_function_readset.function_name());
     for (const Key& key : per_function_readset.keys()) {
-      auto cid_function_pair = std::make_pair(
-          request.client_id(), per_function_readset.function_name());
       if (version_store.at(cid_function_pair).second.find(key) !=
           version_store.at(cid_function_pair).second.end()) {
         conservative_store[cid_function_pair][key] =
             version_store.at(cid_function_pair).second.at(key).at(key);
       }
-      // also, receiving this request means that the optimistic protocol will abort, so we update the protocol metadata
-      if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end() || protocol_matadata_map[cid_function_pair].progress_ == kRemoteRead) {
-        // optimistic protocol for this cid_fname pair hasn't reached this cache yet or remote read
-        protocol_matadata_map[cid_function_pair].msg_ = kAbort;
-      } else {
-        // progress is finish
-        // gc happen here
-        protocol_matadata_map.erase(cid_function_pair);
-      }
+    }
+    // also, receiving this request means that the optimistic protocol will abort, so we update the protocol metadata
+    if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end() || protocol_matadata_map[cid_function_pair].progress_ == kRemoteRead) {
+      // optimistic protocol for this cid_fname pair hasn't reached this cache yet or remote read
+      protocol_matadata_map[cid_function_pair].msg_ = kAbort;
+    } else {
+      // progress is finish
+      // gc happen here
+      protocol_matadata_map.erase(cid_function_pair);
     }
   }
   // then send msgs to fetch from remote

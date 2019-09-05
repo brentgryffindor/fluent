@@ -33,7 +33,7 @@ spec:
       hostIPC: true
       containers:
       - name: scheduler-container
-        image: fluentproject/executor
+        image: cgwu/executor
         imagePullPolicy: Always
         env:
         - name: ROUTE_ADDR

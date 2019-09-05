@@ -32,7 +32,7 @@ spec:
       hostNetwork: true
       containers:
       - name: routing-container
-        image: fluentproject/annakvs
+        image: cgwu/annakvs
         env: 
         - name: SERVER_TYPE
           value: r

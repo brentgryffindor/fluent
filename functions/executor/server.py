@@ -131,7 +131,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # map from key to tuple(vectorclock, deserialized payload)
     cache = {}
 
-    # map<fname, map<cid, tp(result, map<key, vc>)>>
+    # map<fname, map<cid, tp(map<key, vc>, result)>>
     function_result_cache = {}
 
     logging.info('enter warmup')

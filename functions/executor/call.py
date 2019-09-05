@@ -425,6 +425,13 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             key_vc_map[key] = kv_pairs[key][0]
         for key in keys:
             #logging.info('cache hit for key %s' % key)
+            # these are keys that are cached
+            # we first update the prior_read_map since cached keys are not returned by the cache
+            vk = VersionedKey()
+            vk.key = key
+            vk.vector_clock.update(cache[key][0])
+            prior_read_map.extend([vk])
+            
             func_args[key_index_map[key]] = cache[key][1]
             # update dependency
             if key in dependencies:

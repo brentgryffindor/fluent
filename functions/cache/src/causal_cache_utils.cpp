@@ -1058,12 +1058,12 @@ void send_executor_response(const ClientIdFunctionPair& cid_function_pair,
       tp->set_payload(serialize(*(pair.second)));
     }
   }
-  for (const auto& pair : version_store.at(cid_function_pair).second) {
+  for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
     // then populate prior_version_tuples
     if (pending_cross_metadata[cid_function_pair].remove_set_.find(
             pair.first) ==
         pending_cross_metadata[cid_function_pair].remove_set_.end()) {
-      for (const auto& key_ptr_pair : pair.second) {
+      for (const auto& key_ptr_pair : version_store.at(cid_function_pair).second.at(pair.first)) {
         PriorVersionTuple* tp = response.add_prior_version_tuples();
         tp->set_cache_address(
             cct.causal_cache_versioned_key_request_connect_address());

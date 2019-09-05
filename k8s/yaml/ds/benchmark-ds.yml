@@ -31,7 +31,7 @@ spec:
         role: benchmark
       containers:
       - name: benchmark-1
-        image: fluentproject/executor
+        image: cgwu/executor
         env: 
         - name: SYSTEM_FUNC
           value: benchmark

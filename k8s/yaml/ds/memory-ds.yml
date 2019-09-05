@@ -32,7 +32,7 @@ spec:
       hostNetwork: true
       containers:
       - name: memory-container
-        image: fluentproject/annakvs
+        image: cgwu/annakvs
         imagePullPolicy: Always
         env: 
         - name: SERVER_TYPE

@@ -635,10 +635,11 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                         prior_read_map[versioned_key.key] = versioned_key.vector_clock
                     causal_frontier = _construct_causal_frontier(prior_causal_lowerbound_list)
                     # (cgwu) is this a bug? seems like we shouldn't initiate it to all prior values...
-                    #prior_per_func_causal_lowerbound_map[fname] = prior_causal_lowerbound_list
-                    #prior_per_func_read_map[fname] = prior_read_list
-                    prior_per_func_causal_lowerbound_map[fname] = list()
-                    prior_per_func_read_map[fname] = list()
+                    # (update) probably not a bug because we need cummulative causal lowerbound and read map
+                    prior_per_func_causal_lowerbound_map[fname] = prior_causal_lowerbound_list
+                    prior_per_func_read_map[fname] = prior_read_list
+                    #prior_per_func_causal_lowerbound_map[fname] = list()
+                    #prior_per_func_read_map[fname] = list()
                     if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname], fname_readset_remove_map[fname]):
                         # abort
                         #logging.info('abort due to optimistic protocol failure')
