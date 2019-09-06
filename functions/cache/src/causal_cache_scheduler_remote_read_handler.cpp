@@ -67,6 +67,8 @@ void scheduler_remote_read_handler(
           pending_cross_metadata[cid_function_pair].remove_set_.insert(pair.first);
         }
       }
+      // update the executor thread id for possible later caching
+      pending_cross_metadata[cid_function_pair].executor_thread_id_ = request.thread_id();
       protocol_matadata_map[cid_function_pair].msg_ = kRemoteRead;
     }
   } else if (protocol_matadata_map[cid_function_pair].progress_ == kRemoteRead) {

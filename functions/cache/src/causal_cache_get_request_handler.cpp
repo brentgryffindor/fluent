@@ -385,8 +385,6 @@ void get_request_handler(
               tp->set_key(pair.first);
               tp->set_payload(serialize(*(pair.second)));
             }
-          }
-          for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
             // then populate prior_version_tuples
             if (pending_cross_metadata[cid_function_pair].remove_set_.find(
                     pair.first) ==

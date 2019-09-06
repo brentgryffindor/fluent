@@ -122,6 +122,9 @@ struct PendingClientMetadata {
   Address executor_response_address_;
   Address scheduler_response_address_;
   map<Key, VectorClock> cached_versions_;
+  // in case scheduler remote read done before executor request arrives
+  // we use executor thread id to pre-send values to executor thread for caching
+  unsigned executor_thread_id_;
 
   bool operator==(const PendingClientMetadata& input) const {
     if (read_set_ == input.read_set_ && to_cover_set_ == input.to_cover_set_ &&

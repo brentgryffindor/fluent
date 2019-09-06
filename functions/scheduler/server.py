@@ -648,10 +648,12 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     causal_frontier_map[fname] = causal_frontier
     # we don't abort, so check remote read and send request to cache
     # note that even if no remote read is required, we still send the message as a Ping for GC purpose
+    function_location_map = versioned_key_map[cid].schedule.locations
     for fname in causal_frontier_map:
         remote_read_request = SchedulerRemoteReadRequest()
         remote_read_request.client_id = cid
         remote_read_request.function_name = fname
+        remote_read_request.thread_id = int(function_location_map[fname].split(':')[1])
         for key in fname_readset_remove_map[fname]:
             remote_read_request.read_map[key] = fname_readset_remove_map[fname][key]
         for key in causal_frontier_map[fname]:
@@ -659,7 +661,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                 if causal_lowerbound_fname_tp[1]:
                     # read this version from remote
                     remote_read_tuple = SchedulerRemoteReadTuple()
-                    loc = versioned_key_map[cid].schedule.locations[causal_lowerbound_fname_tp[2]].split(':')
+                    loc = function_location_map[causal_lowerbound_fname_tp[2]].split(':')
                     remote_read_tuple.cache_address = utils._get_cache_versioned_key_request_connect_address(loc[0])
                     remote_read_tuple.function_name = causal_lowerbound_fname_tp[2]
                     remote_read_tuple.versioned_key = VersionedKey()
@@ -667,7 +669,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     remote_read_tuple.versioned_key.vector_clock.update(causal_lowerbound_fname_tp[0])
                     remote_read_request.tuples.extend([remote_read_tuple])
         # send to cache
-        loc = versioned_key_map[cid].schedule.locations[fname].split(':')
+        loc = function_location_map[fname].split(':')
         sckt = pusher_cache.get(utils._get_cache_scheduler_remote_read_address(loc[0]))
         sckt.send(remote_read_request.SerializeToString())
     return False

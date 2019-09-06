@@ -130,6 +130,23 @@ void versioned_key_response_handler(
         send_executor_response(cid_function_pair, pending_cross_metadata, version_store, pushers, cct, log);
         // update protocol metadata
         protocol_matadata_map.erase(cid_function_pair);
+      } else {
+        // if we reach here, it means that the executor request hasn't arrived but the scheduler msg arrived
+        // we pre-send the result to function executor for caching
+        // initiate message to be sent to the executor thread for caching
+        CausalGetResponse cache_response;
+        cache_response.set_error(ErrorType::NO_ERROR);
+        
+        // merge from in_preparation to causal_cut_store
+        for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
+          auto tp = cache_response.add_tuples();
+          tp->set_key(pair.first);
+          tp->set_payload(serialize(*pair.second));
+        }
+        // send
+        string resp_string;
+        cache_response.SerializeToString(&resp_string);
+        kZmqUtil->send_string(resp_string, &pushers[cct.causal_cache_executor_connect_address(pending_cross_metadata[cid_function_pair].executor_thread_id_)]);
       }
     }
   }

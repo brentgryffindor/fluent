@@ -296,4 +296,5 @@ message SchedulerRemoteReadRequest {
   required string function_name = 2;
   map<string, bool> read_map = 3;
   repeated SchedulerRemoteReadTuple tuples = 4;
+  required uint32 thread_id = 5;
 }
