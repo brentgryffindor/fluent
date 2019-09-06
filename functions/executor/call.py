@@ -239,6 +239,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
     dependencies = {}
 
+    cached = [True]
+
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
@@ -256,6 +258,10 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             else:
                 dependencies[dep.key] = dep.vector_clock
 
+        if conservative and trigger.HasField('invalidate') and trigger.invalidate:
+            # if any upstream function cache is invalidated, we have to invalidate this function cache as well
+            cached[0] = False
+
     if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
         #logging.info('abort due to parallel flow check failure')
         _abort_dag(fname, schedule, pusher_cache)
@@ -265,7 +271,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
     kv_pairs = {}
     abort = [False]
-    cached = [False]
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache, function_result_cache, cached)
     #logging.info('finish executing function')
@@ -297,6 +302,10 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 dep = new_trigger.dependencies.add()
                 dep.key = key
                 dep.vector_clock.update(dependencies[key])
+
+            # if function cache is invalidated at this stage, we must pass this info to invalidate downstream as well
+            if conservative and not cached[0]:
+                new_trigger.invalidate = True
 
             dest_ip = schedule.locations[conn.sink]
             if not conservative:

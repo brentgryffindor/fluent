@@ -143,6 +143,7 @@ message DagTrigger {
   repeated PriorVersionTuple prior_version_tuples = 6;
   repeated VersionedKey prior_read_map = 7;
   repeated VersionedKey dependencies = 8;
+  optional bool invalidate = 9; // used in conservative protocol to signal that the function cache need to be invalidated
 }
 
 message ExecutorStatistics {

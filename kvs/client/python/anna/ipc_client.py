@@ -143,7 +143,7 @@ class IpcAnnaClient:
                 request.cached_keys.extend([vk])
 
         # if conservative, populate from function result cache
-        if conservative and fname in function_result_cache and client_id in function_result_cache[fname]:
+        if conservative and cached[0] and fname in function_result_cache and client_id in function_result_cache[fname]:
             key_vc_map = function_result_cache[fname][client_id][0]
             for key in key_vc_map:
                 vk = VersionedKey()
@@ -209,8 +209,8 @@ class IpcAnnaClient:
                         #logging.info('finished creation')
                 #logging.info('returning from causal GET')
                 # set cached
-                if conservative and resp.HasField('cached') and resp.cached:
-                    cached[0] = True
+                if conservative and not resp.cached:
+                    cached[0] = False
                 return (resp.prior_version_tuples, versioned_key_read, kv_pairs)
 
     def put(self, key, value):

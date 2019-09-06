@@ -112,7 +112,7 @@ void get_request_handler(
           bool cached = true;
           for (const Key& key : request.keys()) {
             if (conservative_store[cid_function_pair].find(key) != conservative_store[cid_function_pair].end()) {
-              if (function_cached_versions.at(key).reveal() != conservative_store.at(cid_function_pair).at(key)->reveal().vector_clock.reveal()) {
+              if (function_cached_versions.find(key) == function_cached_versions.end() || function_cached_versions.at(key).reveal() != conservative_store.at(cid_function_pair).at(key)->reveal().vector_clock.reveal()) {
                 cached = false;
                 break;
               }
@@ -149,6 +149,7 @@ void get_request_handler(
           }
         }
         // send response
+        response.set_cached(false);
         string resp_string;
         response.SerializeToString(&resp_string);
         kZmqUtil->send_string(resp_string,
