@@ -183,17 +183,17 @@ class IpcAnnaClient:
             #logging.info('parsed')
 
             if resp.error == KEY_DNE:
-                #logging.info('key dne')
+                logging.info('key dne')
                 return resp.error
             elif resp.error == ABORT:
-                #logging.info('abort')
+                logging.info('abort')
                 return resp.error
             else:
-                #logging.info('GET successful')
+                logging.info('GET successful')
                 kv_pairs = {}
                 versioned_key_read = []
                 for tp in resp.tuples:
-                    #logging.info('key is %s', tp.key)
+                    logging.info('key is %s', tp.key)
                     val = CrossCausalValue()
                     val.ParseFromString(tp.payload)
 
