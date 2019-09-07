@@ -444,7 +444,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     }
 
     // handle scheduler remote read
-    if (pollitems[9].revents & ZMQ_POLLIN) {
+    if (pollitems[10].revents & ZMQ_POLLIN) {
       log->info("received scheduler remote read request");
       string serialized = kZmqUtil->recv_string(&scheduler_remote_read_puller);
       scheduler_remote_read_handler(serialized, version_store, pending_cross_metadata, 
