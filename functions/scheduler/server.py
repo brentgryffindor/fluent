@@ -642,12 +642,18 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     #prior_per_func_read_map[fname] = list()
                     if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname], fname_readset_remove_map[fname]):
                         # abort
-                        #logging.info('abort due to optimistic protocol failure')
+                        logging.info('abort due to optimistic protocol failure')
                         return True
                     finished_functions.add(fname)
                     causal_frontier_map[fname] = causal_frontier
     # we don't abort, so check remote read and send request to cache
     # note that even if no remote read is required, we still send the message as a Ping for GC purpose
+    logging.info('no abort, checking remote read')
+    # (FOR TESTING ONLY) sleep to delay remote read request
+    logging.info('sleeping...')
+    time.sleep(0.1)
+    logging.info('waking up...')
+
     function_location_map = versioned_key_map[cid].schedule.locations
     for fname in causal_frontier_map:
         remote_read_request = SchedulerRemoteReadRequest()

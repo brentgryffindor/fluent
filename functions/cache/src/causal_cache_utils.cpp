@@ -706,7 +706,7 @@ void optimistic_protocol(
     kZmqUtil->send_string(req_string, &pushers[pair.first]);
   }
   if (addr_request_map.size() != 0) {
-    //log->info("has remote read");
+    log->info("Executor: has remote read");
     // remote read sent, merge local read to pending map
     // debug
     //log->info("printing version store keys");
@@ -723,7 +723,7 @@ void optimistic_protocol(
     pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
     protocol_matadata_map[cid_function_pair].progress_ = kRemoteRead;
   } else {
-    //log->info("all local read");
+    log->info("Executor: all local read");
     // all local read
     // respond to executor
     CausalGetResponse response;

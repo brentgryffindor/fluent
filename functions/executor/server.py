@@ -134,12 +134,12 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # map<fname, map<cid, tp(map<key, vc>, result)>>
     function_result_cache = {}
 
-    logging.info('enter warmup')
-    for k in range(0, 2200):
-        warmup_key = str(k).zfill(5)
-        vc = {'base' : 1}
-        cache[warmup_key] = (vc, None)
-    logging.info('finish warmup')
+    #logging.info('enter warmup')
+    #for k in range(0, 2200):
+    #    warmup_key = str(k).zfill(5)
+    #    vc = {'base' : 1}
+    #    cache[warmup_key] = (vc, None)
+    #logging.info('finish warmup')
 
 
     while True:

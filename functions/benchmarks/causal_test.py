@@ -164,7 +164,7 @@ def run(flconn, kvs, mode, sckt):
         print('Running DAG')
         logging.info('Running DAG')
         ### RUN DAG ###
-        '''refs1 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
+        refs1 = (FluentReference('a', False, CROSSCAUSAL), FluentReference('b', False, CROSSCAUSAL), FluentReference('c', False, CROSSCAUSAL),)
         refs2 = (FluentReference('d', False, CROSSCAUSAL), FluentReference('e', False, CROSSCAUSAL),)
         refs3 = (FluentReference('f', False, CROSSCAUSAL), FluentReference('g', False, CROSSCAUSAL),)
 
@@ -181,8 +181,10 @@ def run(flconn, kvs, mode, sckt):
         res = deserialize_val(res.values[0])
 
         print('Result is: %s' % res)
-        logging.info('Result is: %s' % res)'''
-        time_array = []
+        #logging.info('Result is: %s' % res)
+
+        # for bench
+        '''time_array = []
         for k in range(0, 300):
             arg1 = str(7*k).zfill(5)
             arg2 = str(7*k+1).zfill(5)
@@ -215,4 +217,4 @@ def run(flconn, kvs, mode, sckt):
             time_array.append(end - start)
             print('Result is: %s' % res)
 
-        utils.print_latency_stats(time_array, 'baseline')
+        utils.print_latency_stats(time_array, 'baseline')'''

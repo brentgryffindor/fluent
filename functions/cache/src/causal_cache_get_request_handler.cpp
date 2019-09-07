@@ -36,7 +36,7 @@ void get_request_handler(
   //std::cout << "response address is " + request.response_address() + "\n";
 
   if (request.consistency() == ConsistencyType::SINGLE) {
-    //log->info("Receive GET in single mode");
+    log->info("Receive GET in single mode");
     bool covered_locally = true;
     set<Key> read_set;
     set<Key> to_cover;
@@ -74,7 +74,7 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
-    //log->info("Receive GET in cross mode");
+    log->info("Receive GET in cross mode");
     //std::cout << "Receive GET in cross mode\n";
     // convert the cached keys into a map
     map<Key, VectorClock> cached_versions;
@@ -88,9 +88,10 @@ void get_request_handler(
 
     auto cid_function_pair =
         std::make_pair(request.client_id(), request.function_name());
+    log->info("Executor: function name is {}", request.function_name());
     if (request.conservative()) {
       // first check if this request is in conservative mode
-      //log->info("GET for conservative protocol");
+      log->info("GET for conservative protocol");
       //std::cout << "GET for conservative protocol\n";
       // fetch from conservative store
       if (conservative_store.find(cid_function_pair) !=
@@ -165,6 +166,7 @@ void get_request_handler(
       // first check protocol metadata
       if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
         // scheduler msg hasn't arrived yet (no hint), so we proceed as usual
+        log->info("Executor: protocol metadata not present");
         // we first check if the version store is already populated by the scheduler
         // if so, means that all data should already be fetched or DNE
         //log->info("GET for optimistic protocol");
@@ -319,6 +321,7 @@ void get_request_handler(
         }
       } else if (protocol_matadata_map[cid_function_pair].msg_ == kNoAction) {
         // skip optimistic protocol and read from version store and return, also GC protocol metadata
+        log->info("Executor: protocol metadata says NoAction");
         CausalGetResponse response;
 
         response.set_error(ErrorType::NO_ERROR);
@@ -357,6 +360,7 @@ void get_request_handler(
         // GC protocol metadata
         protocol_matadata_map.erase(cid_function_pair);
       } else if (protocol_matadata_map[cid_function_pair].msg_ == kAbort) {
+        log->info("Executor: protocol metadata says Abort");
         // abort
         CausalGetResponse response;
         response.set_error(ErrorType::ABORT);
@@ -367,6 +371,7 @@ void get_request_handler(
         // GC protocol metadata
         protocol_matadata_map.erase(cid_function_pair);
       } else if (protocol_matadata_map[cid_function_pair].msg_ == kRemoteRead) {
+        log->info("Executor: protocol metadata says RemoteRead");
         // scheduler msg arrived and already sent remote read to other caches
         if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() == 0) {
           // if all remote read already done

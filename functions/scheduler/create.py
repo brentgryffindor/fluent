@@ -78,6 +78,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                     ip_func_map[loc] = set()
                 ip_func_map[loc].add(fn)
 
+        # this seems to force each executor thread to pin only one function?
         for thread in ip_func_map:
             candidates.discard(thread)
 
