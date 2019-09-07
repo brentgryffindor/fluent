@@ -91,17 +91,17 @@ def _exec_single_func_causal(kvs, fname, func, args):
     if len(to_resolve) > 0:
         keys = [ref.key for ref in to_resolve]
         #logging.info('enter causal get')
+        kv_pairs = {}
         result = kvs.causal_get(keys, keys,
                                 [], [],
-                                CROSS, '0', fname, {}, False)
+                                CROSS, '0', fname, {}, False, kv_pairs)
 
         while not result:
             result = kvs.causal_get(keys, keys,
                                 [], [],
-                                CROSS, '0', fname, {}, False)
+                                CROSS, '0', fname, {}, False, kv_pairs)
 
         #logging.info('causal get done')
-        kv_pairs = result[2]
 
         for key in kv_pairs:
             if deserialize[key]:
@@ -469,12 +469,12 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
     full_read_set = schedule.full_read_set
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,
-                            schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache, function_result_cache, cached)
+                            schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
     while result is None:
         #logging.info('result is None!')
         result = kvs.causal_get(keys, full_read_set,
                                 prior_version_tuples, prior_read_map,
-                                schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, cache, function_result_cache, cached)
+                                schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
     #logging.info('causal GET done')
 
     if result == KEY_DNE or result == ABORT:
@@ -489,7 +489,6 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
         #    logging.info('function name is %s' % prior_version_tuple.function_name)
         #    logging.info('key is %s' % prior_version_tuple.versioned_key.key)
 
-    kv_pairs.update(result[2])
     return NO_ERROR
 
 def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
