@@ -489,7 +489,7 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
         #    logging.info('function name is %s' % prior_version_tuple.function_name)
         #    logging.info('key is %s' % prior_version_tuple.versioned_key.key)
 
-    kv_pairs = result[2]
+    kv_pairs.update(result[2])
     return NO_ERROR
 
 def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
