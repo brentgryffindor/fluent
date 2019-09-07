@@ -731,14 +731,16 @@ void optimistic_protocol(
     response.set_error(ErrorType::NO_ERROR);
 
     for (const Key& key : read_set) {
-      //log->info("local read key {}", key);
+      log->info("local read key {}", key);
       // first check if the cached version is the same as what we want to return
       if (cached_versions.find(key) == cached_versions.end() || cached_versions.at(key).reveal() != version_store.at(cid_function_pair).second.at(key).at(key)->reveal().vector_clock.reveal()) {
-        //log->info("key {} not cached by executor, sending...", key);
+        log->info("key {} not cached by executor, sending...", key);
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
         tp->set_payload(
             serialize(*(version_store.at(cid_function_pair).second.at(key).at(key))));
+      } else {
+        log->info("key {} cached by executor, don't send", key);
       }
       // then populate prior_version_tuples
       if (remove_candidate.find(key) == remove_candidate.end()) {

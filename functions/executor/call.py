@@ -414,7 +414,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
         #logging.info('swapping args and deserializing')
         for key in kv_pairs:
-            #logging.info('cache miss for key %s' % key)
+            logging.info('cache miss for key %s' % key)
             if deserialize[key]:
                 #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
@@ -433,7 +433,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 dependencies[key] = kv_pairs[key][0]
             key_vc_map[key] = kv_pairs[key][0]
         for key in keys:
-            #logging.info('cache hit for key %s' % key)
+            logging.info('cache hit for key %s' % key)
             # these are keys that are cached
             # we first update the prior_read_map since cached keys are not returned by the cache
             vk = VersionedKey()

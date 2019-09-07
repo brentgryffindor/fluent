@@ -670,7 +670,6 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     loc = function_location_map[causal_lowerbound_fname_tp[2]].split(':')
                     remote_read_tuple.cache_address = utils._get_cache_versioned_key_request_connect_address(loc[0])
                     remote_read_tuple.function_name = causal_lowerbound_fname_tp[2]
-                    remote_read_tuple.versioned_key = VersionedKey()
                     remote_read_tuple.versioned_key.key = key
                     remote_read_tuple.versioned_key.vector_clock.update(causal_lowerbound_fname_tp[0])
                     remote_read_request.tuples.extend([remote_read_tuple])
