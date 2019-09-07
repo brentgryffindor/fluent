@@ -656,6 +656,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
 
     function_location_map = versioned_key_map[cid].schedule.locations
     for fname in causal_frontier_map:
+        logging.info('function name is %s' % fname)
         remote_read_request = SchedulerRemoteReadRequest()
         remote_read_request.client_id = cid
         remote_read_request.function_name = fname
@@ -674,7 +675,9 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     remote_read_tuple.versioned_key.vector_clock.update(causal_lowerbound_fname_tp[0])
                     remote_read_request.tuples.extend([remote_read_tuple])
         # send to cache
+        logging.info('sending to cache')
         loc = function_location_map[fname].split(':')
+        logging.info('cache location is %s' % utils._get_cache_scheduler_remote_read_address(loc[0]))
         sckt = pusher_cache.get(utils._get_cache_scheduler_remote_read_address(loc[0]))
         sckt.send(remote_read_request.SerializeToString())
     return False
