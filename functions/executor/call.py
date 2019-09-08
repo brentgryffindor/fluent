@@ -260,6 +260,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         if conservative and trigger.HasField('invalidate') and trigger.invalidate:
             # if any upstream function cache is invalidated, we have to invalidate this function cache as well
+            logging.info('invalidate function result cache due to upstream invalidation')
             cached[0] = False
 
     if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):

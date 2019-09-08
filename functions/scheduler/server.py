@@ -343,6 +343,11 @@ def scheduler(ip, mgmt_ip, route_addr):
                             function_trigger_map[fname] = _find_upstream(fname, dags[dag_name][0])
 
                         finished_functions = set()
+                        # (FOR TESTING ONLY) sleep to delay the scheduler
+                        logging.info('sleeping...')
+                        time.sleep(0.1)
+                        logging.info('waking up...')
+
                         if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map, pusher_cache):
                             # the protocol aborted, so we need to do conservative protocol
                             #logging.info('optimistic protocol will abort')
@@ -649,10 +654,6 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
     # we don't abort, so check remote read and send request to cache
     # note that even if no remote read is required, we still send the message as a Ping for GC purpose
     logging.info('no abort, checking remote read')
-    # (FOR TESTING ONLY) sleep to delay remote read request
-    #logging.info('sleeping...')
-    #time.sleep(0.1)
-    #logging.info('waking up...')
 
     function_location_map = versioned_key_map[cid].schedule.locations
     for fname in causal_frontier_map:
