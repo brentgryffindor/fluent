@@ -308,10 +308,12 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             else:
                 logging.error('Function %s schedule id %s not in queue. Cannot GC' % (gc_req.function_name, gc_req.schedule_id))
             if gc_req.function_name in function_result_cache and gc_req.client_id in function_result_cache[gc_req.function_name]:
-                logging.info('gc function result cache for cid %s function %s' % (gc_req.client_id, gc_req.function_name))
+                logging.info('gc function result cache for function %s cid %s' % (gc_req.function_name, gc_req.client_id))
                 del function_result_cache[gc_req.function_name][gc_req.client_id]
                 if len(function_result_cache[gc_req.function_name]) == 0:
                     del function_result_cache[gc_req.function_name]
+            else:
+                logging.error('Function %s cid %s not in cache', % (gc_req.function_name, gc_req.client_id))
 
         if cache_socket in socks and socks[cache_socket] == zmq.POLLIN:
             resp = CausalGetResponse()
