@@ -313,7 +313,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 if len(function_result_cache[gc_req.function_name]) == 0:
                     del function_result_cache[gc_req.function_name]
             else:
-                logging.error('Function %s cid %s not in cache', % (gc_req.function_name, gc_req.client_id))
+                logging.error('Function %s cid %s not in cache' % (gc_req.function_name, gc_req.client_id))
 
         if cache_socket in socks and socks[cache_socket] == zmq.POLLIN:
             resp = CausalGetResponse()
