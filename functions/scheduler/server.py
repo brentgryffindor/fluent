@@ -650,9 +650,9 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
     # note that even if no remote read is required, we still send the message as a Ping for GC purpose
     logging.info('no abort, checking remote read')
     # (FOR TESTING ONLY) sleep to delay remote read request
-    logging.info('sleeping...')
-    time.sleep(0.1)
-    logging.info('waking up...')
+    #logging.info('sleeping...')
+    #time.sleep(0.1)
+    #logging.info('waking up...')
 
     function_location_map = versioned_key_map[cid].schedule.locations
     for fname in causal_frontier_map:
