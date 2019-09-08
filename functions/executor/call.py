@@ -353,7 +353,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #logging.info('GCing version store and schedule')
             #logging.info('GCing schedule only for benchmark')
             observed_cache_address = set()
-            # disable GC for benchmark
+            # IMPORTANT: we disable GC of version store for benchmark purpose
             '''for pvt in prior_version_tuples:
                 if pvt.cache_address not in observed_cache_address:
                     observed_cache_address.add(pvt.cache_address)
