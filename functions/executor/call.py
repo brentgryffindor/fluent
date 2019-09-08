@@ -360,7 +360,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                     sckt = pusher_cache.get(gc_addr)
                     sckt.send_string(schedule.client_id)'''
             for fname in schedule.locations:
-                logging.info('sending gc request for function %s cid %s', % (fname, schedule.client_id))
+                logging.info('sending gc request for function %s cid %s' % (fname, schedule.client_id))
                 gc_req = ExecutorGCRequest()
                 gc_req.function_name = fname
                 gc_req.schedule_id = schedule.id
@@ -464,7 +464,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         if schedule.target_function not in function_result_cache:
             function_result_cache[schedule.target_function] = {}
         # perform result caching
-        logging.info('caching function result for function %s cid %s', % (schedule.target_function, schedule.client_id))
+        logging.info('caching function result for function %s cid %s' % (schedule.target_function, schedule.client_id))
         function_result_cache[schedule.target_function][schedule.client_id] = (key_vc_map, result)
 
     return result
