@@ -303,10 +303,13 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             logging.info('received gc request')
             gc_req = ScheduleGCRequest()
             gc_req.ParseFromString(dag_gc_socket.recv())
+            logging.info('parsed gc request')
             if gc_req.function_name in queue and gc_req.schedule_id in queue[gc_req.function_name]:
+                logging.info('gc schedule for function %s schedule %s' % (gc_req.function_name, gc_req.schedule_id))
                 del queue[gc_req.function_name][gc_req.schedule_id]
             else:
                 logging.error('Function %s schedule id %s not in queue. Cannot GC' % (gc_req.function_name, gc_req.schedule_id))
+
             if gc_req.function_name in function_result_cache and gc_req.client_id in function_result_cache[gc_req.function_name]:
                 logging.info('gc function result cache for function %s cid %s' % (gc_req.function_name, gc_req.client_id))
                 del function_result_cache[gc_req.function_name][gc_req.client_id]
