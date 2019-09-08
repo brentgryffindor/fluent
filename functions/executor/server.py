@@ -301,7 +301,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if dag_gc_socket in socks and socks[dag_gc_socket] == zmq.POLLIN:
             logging.info('received gc request')
-            gc_req = ScheduleGCRequest()
+            gc_req = ExecutorGCRequest()
             gc_req.ParseFromString(dag_gc_socket.recv())
             logging.info('parsed gc request')
             if gc_req.function_name in queue and gc_req.schedule_id in queue[gc_req.function_name]:
