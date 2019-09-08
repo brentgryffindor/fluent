@@ -360,6 +360,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                     sckt = pusher_cache.get(gc_addr)
                     sckt.send_string(schedule.client_id)'''
             for fname in schedule.locations:
+                logging.info('sending gc request for function %s', fname)
                 gc_req = ExecutorGCRequest()
                 gc_req.function_name = fname
                 gc_req.schedule_id = schedule.id
