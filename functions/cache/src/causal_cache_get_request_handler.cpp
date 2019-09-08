@@ -374,6 +374,7 @@ void get_request_handler(
         log->info("Executor: protocol metadata says RemoteRead");
         // scheduler msg arrived and already sent remote read to other caches
         if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() == 0) {
+          log->info("RemoteRead already done, responding...");
           // if all remote read already done
           // we can return result now
           CausalGetResponse response;
@@ -419,6 +420,7 @@ void get_request_handler(
           // GC protocol metadata
           protocol_matadata_map.erase(cid_function_pair);
         } else {
+          log->info("RemoteRead not done yet");
           // remote read not done yet
           // we need to save the cached versions for later checking and executor response address
           pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;

@@ -399,6 +399,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         #logging.info('Done resolving reference')
         # check if it is conservative protocol and cached
         if conservative and cached[0]:
+            logging.info('function result cache hit')
             # update dependency before returning
             for key in keys:
                 if key in dependencies:
@@ -407,6 +408,8 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 else:
                     dependencies[key] = function_result_cache[schedule.target_function][schedule.client_id][0][key]
             return function_result_cache[schedule.target_function][schedule.client_id][1]
+
+        logging.info('function result cache miss')
 
         if error == KEY_DNE or error == ABORT:
             abort[0] = True

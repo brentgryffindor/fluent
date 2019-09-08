@@ -20,6 +20,7 @@ def run(flconn, kvs, mode, sckt):
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b,c):
+            import time
             time.sleep(0.1)
             return '0'
             '''result = ''

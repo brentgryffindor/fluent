@@ -300,6 +300,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             total_occupancy += elapsed
 
         if dag_gc_socket in socks and socks[dag_gc_socket] == zmq.POLLIN:
+            logging.info('received gc request')
             gc_req = ScheduleGCRequest()
             gc_req.ParseFromString(dag_gc_socket.recv())
             if gc_req.function_name in queue and gc_req.schedule_id in queue[gc_req.function_name]:
@@ -307,6 +308,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             else:
                 logging.error('Function %s schedule id %s not in queue. Cannot GC' % (gc_req.function_name, gc_req.schedule_id))
             if gc_req.function_name in function_result_cache and gc_req.client_id in function_result_cache[gc_req.function_name]:
+                logging.info('gc function result cache for cid %s function %s' % (gc_req.client_id, gc_req.function_name))
                 del function_result_cache[gc_req.function_name][gc_req.client_id]
                 if len(function_result_cache[gc_req.function_name]) == 0:
                     del function_result_cache[gc_req.function_name]
