@@ -227,7 +227,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     for trname in schedule.triggers:
         trigger = triggers[trname]
         if trigger.HasField('abort') and trigger.abort:
-            #logging.info('abort')
+            logging.info('abort due to upstream')
             _abort_dag(fname, schedule, pusher_cache)
             return
 
@@ -264,7 +264,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             cached[0] = False
 
     if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
-        #logging.info('abort due to parallel flow check failure')
+        logging.info('abort due to parallel flow check failure')
         _abort_dag(fname, schedule, pusher_cache)
         return
 
@@ -277,6 +277,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     #logging.info('finish executing function')
 
     if abort[0]:
+        logging.info('abort due to resolve ref')
         _abort_dag(fname, schedule, pusher_cache)
         return
 

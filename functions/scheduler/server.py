@@ -344,9 +344,9 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                         finished_functions = set()
                         # (FOR TESTING ONLY) sleep to delay the scheduler
-                        logging.info('sleeping...')
-                        time.sleep(0.1)
-                        logging.info('waking up...')
+                        #logging.info('sleeping...')
+                        #time.sleep(0.1)
+                        #logging.info('waking up...')
 
                         if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map, pusher_cache):
                             # the protocol aborted, so we need to do conservative protocol
