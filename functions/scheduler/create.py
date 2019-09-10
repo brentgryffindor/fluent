@@ -53,7 +53,7 @@ def create_func(func_create_socket, kvs, consistency=CROSS):
 
 def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                pin_accept_socket, func_locations, call_frequency,
-               num_replicas=1):
+               num_replicas=9):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -79,11 +79,12 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                 ip_func_map[loc].add(fn)
 
         # this seems to force each executor thread to pin only one function?
-        for thread in ip_func_map:
-            candidates.discard(thread)
+        #for thread in ip_func_map:
+        #    candidates.discard(thread)
 
         for _ in range(num_replicas):
             if len(candidates) == 0:
+                logging.error('No Resource')
                 sutils.error.error = NO_RESOURCES
                 dag_create_socket.send(sutils.error.SerializeToString())
 
@@ -184,6 +185,7 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
                          pusher_cache)
 
     if resp.success:
+        logging.info('Pin function %s to ip %s tid %d successful' % (fname, node, tid))
         return node, tid
     else:  # the pin operation was rejected, remove node and try again
         logging.error('Node %s:%d rejected pin operation for %s. Retrying.'

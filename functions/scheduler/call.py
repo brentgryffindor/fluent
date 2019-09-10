@@ -92,16 +92,22 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         full_read_set = set()
         versioned_key_map[schedule.client_id] = sutils.DagConsistencyMetadata(call.name)
 
+    chosen_node = set()
 
     for fname in dag.functions:
-        locations = func_locations[fname]
+        locations = func_locations[fname].copy()
         args = call.function_args[fname].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
                     map(lambda arg: get_serializer(arg.type).load(arg.body),
                         args)))
+        # remove previously selected nodes
+        locations = set(filter(lambda loc: loc[0] not in chosen_node, locations))
         loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
+        chosen_node.add(loc[0])
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
+
+        logging.info('function %s scheduled on node %s tid %d' % (fname, loc[0], loc[1]))
 
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
@@ -179,6 +185,11 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
 
 def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
+    # for benchmark, randomly pick a thread
+    executors = set(valid_executors)
+    return sys_random.choice(executors)
+
+'''def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     # Construct a map which maps from IP addresses to the number of
     # relevant arguments they have cached. For the time begin, we will
     # just pick the machine that has the most number of keys cached.
@@ -236,4 +247,4 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
 
     running_counts[max_ip].add(time.time())
 
-    return max_ip
+    return max_ip'''
