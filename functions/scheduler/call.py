@@ -186,7 +186,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
 def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     # for benchmark, randomly pick a thread
-    executors = set(valid_executors)
+    executors = list(set(valid_executors))
     return sys_random.choice(executors)
 
 '''def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
