@@ -28,7 +28,9 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     resp_ip, name = splits[0], splits[1]
     sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
 
-    if len(pinned_functions) > 0 or not status.running:
+    # for benchmark, we allow each executor to pin multiple functions
+    #if len(pinned_functions) > 0 or not status.running:
+    if not status.running:
         resp = sutils.error.SerializeToString()
         sckt.send(sutils.error.SerializeToString())
         return
