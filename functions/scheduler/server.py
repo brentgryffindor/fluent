@@ -124,6 +124,10 @@ def scheduler(ip, mgmt_ip, route_addr):
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
                                        key_ip_map, kvs)
 
+    # log scheduler ips
+    for sched_ip in schedulers:
+        logging.info('scheduler ip is %s' % sched_ip)
+
     # track how often each DAG function is called
     call_frequency = {}
 
