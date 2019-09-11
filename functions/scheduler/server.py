@@ -136,23 +136,25 @@ def scheduler(ip, mgmt_ip, route_addr):
     while True:
         socks = dict(poller.poll(timeout=1000))
 
+        logging.info('heart beat...')
+
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
             msg = connect_socket.recv_string()
             connect_socket.send_string(route_addr)
 
         if (func_create_socket in socks and
                 socks[func_create_socket] == zmq.POLLIN):
-            #logging.info('Received function create request')
+            logging.info('Received function create request')
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            #logging.info('Received function call request')
+            logging.info('Received function call request')
             call_function(func_call_socket, pusher_cache, executors,
                           key_ip_map, running_counts, backoff)
 
         if (dag_create_socket in socks and socks[dag_create_socket]
                 == zmq.POLLIN):
-            #logging.info('Received dag create request')
+            logging.info('Received dag create request')
             create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
                        ip, pin_accept_socket, func_locations, call_frequency)
 
