@@ -252,9 +252,11 @@ def scheduler(ip, mgmt_ip, route_addr):
             # not yet know about
             for dname in status.dags:
                 if dname not in dags:
+                    logging.info('Getting DAG %s from the kvs' % dname)
                     payload = kvs.get(dname)
                     while not payload:
                         payload = kvs.get(dname)
+                    logging.info('Got DAG %s from the kvs' % dname)
                     dag = Dag()
                     dag.ParseFromString(payload.reveal()[1])
 
