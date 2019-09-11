@@ -440,8 +440,9 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         end = time.time()
         if end - start > THRESHOLD:
-            schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
-                                               executors, key_ip_map, kvs)
+            # for benchmark: don't have to update schedulers and key_ip_map
+            #schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
+            #                                   executors, key_ip_map, kvs)
 
             status = SchedulerStatus()
             for name in dags.keys():
