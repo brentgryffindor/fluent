@@ -136,8 +136,6 @@ def scheduler(ip, mgmt_ip, route_addr):
     while True:
         socks = dict(poller.poll(timeout=1000))
 
-        logging.info('heart beat...')
-
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
             msg = connect_socket.recv_string()
             connect_socket.send_string(route_addr)
@@ -448,6 +446,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         end = time.time()
         if end - start > THRESHOLD:
+            logging.info('heart beat...')
             # for benchmark: don't have to update schedulers and key_ip_map
             #schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
             #                                   executors, key_ip_map, kvs)
