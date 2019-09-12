@@ -43,6 +43,7 @@ void key_shipping_response_handler(
       response.cache_address());
   // check if gathered all responses
   if (pending_key_shipping_map[response.client_id()].first.size() == 0) {
+    std::cout << "client id " + response.client_id() + " gathered all responses\n";
     SchedulerKeyShippingResponse scheduler_response;
     scheduler_response.set_client_id(response.client_id());
     scheduler_response.set_cache_address(
@@ -50,10 +51,13 @@ void key_shipping_response_handler(
     // send response
     string resp_string;
     scheduler_response.SerializeToString(&resp_string);
+    std::cout << "response address is " + pending_key_shipping_map[response.client_id()].second + "\n";
     kZmqUtil->send_string(
         resp_string,
         &pushers[pending_key_shipping_map[response.client_id()].second]);
+    std::cout << "sent\n";
     // GC
     pending_key_shipping_map.erase(response.client_id());
+    std::cout << "GC client id " + response.client_id() + "\n";
   }
 }
