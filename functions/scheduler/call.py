@@ -107,7 +107,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         chosen_node.add(loc[0])
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
-        logging.info('function %s scheduled on node %s tid %d' % (fname, loc[0], loc[1]))
+        #logging.info('function %s scheduled on node %s tid %d' % (fname, loc[0], loc[1]))
 
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]

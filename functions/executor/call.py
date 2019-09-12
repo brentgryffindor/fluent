@@ -429,7 +429,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 #logging.info('value is %s' % deserialize_val(kv_pairs[key][1]))
             else:
                 #logging.info('no deserialization of key %s' % key)
-                func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
+                func_args[key_index_map[key]] = kv_pairs[key][1]
                 #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
             keys.remove(key)
             # update dependency
