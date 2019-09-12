@@ -12,7 +12,7 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-total_num_keys = 1000
+total_num_keys = 100000
 
 functions = ['strmnp1', 'strmnp2', 'strmnp3']
 connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
@@ -85,7 +85,7 @@ def run(flconn, kvs, mode, sckt):
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b):
             import time
-            time.sleep(0.01)
+            time.sleep(0.001)
             return '0'
             '''result = ''
             for i, char in enumerate(a):
@@ -162,7 +162,7 @@ def run(flconn, kvs, mode, sckt):
 
     elif mode == 'run':
         ### CREATE ZIPF TABLE###
-        zipf = 4.0
+        zipf = 2.0
         base = get_base(total_num_keys, zipf)
         sum_probs = {}
         sum_probs[0] = 0.0
@@ -176,10 +176,9 @@ def run(flconn, kvs, mode, sckt):
         print('Running DAG')
         logging.info('Running DAG')
 
-        max_vc_length = 0;
-        client_num = 100
+        client_num = 1000
 
-        for i in range(6, client_num + 1):
+        for i in range(1, client_num + 1):
             cid = 'client_' + str(i)
 
             logging.info("running client %s" % cid)
