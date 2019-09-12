@@ -657,7 +657,9 @@ void optimistic_protocol(
               // send response
               string resp_string;
               response.SerializeToString(&resp_string);
+              std::cout << "OPT_ABORT: response address is " + response_address + "\n";
               kZmqUtil->send_string(resp_string, &pushers[response_address]);
+              std::cout << "Done sending request\n";
               protocol_matadata_map[cid_function_pair].progress_ = kFinish;
               return;
             }
@@ -764,7 +766,9 @@ void optimistic_protocol(
     // send response
     string resp_string;
     response.SerializeToString(&resp_string);
+    std::cout << "OPT_SUCCEED: response address is " + response_address + "\n";
     kZmqUtil->send_string(resp_string, &pushers[response_address]);
+    std::cout << "Done sending request\n";
     protocol_matadata_map[cid_function_pair].progress_ = kFinish;
   }
 }
@@ -1083,9 +1087,11 @@ void send_executor_response(const ClientIdFunctionPair& cid_function_pair,
   // send response
   string resp_string;
   response.SerializeToString(&resp_string);
+  std::cout << "versioned key response: response address is " + pending_cross_metadata[cid_function_pair].executor_response_address_ + "\n";
   kZmqUtil->send_string(resp_string,
                         &pushers[pending_cross_metadata[cid_function_pair]
                                      .executor_response_address_]);
+  std::cout << "Done sending request\n";
   // GC
   pending_cross_metadata.erase(cid_function_pair);
 }
