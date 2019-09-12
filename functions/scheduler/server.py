@@ -542,7 +542,7 @@ def _construct_causal_frontier(prior_causal_lowerbound_list):
             if dominated:
                 continue
             for tp in to_remove:
-                causal_frontier.remove(tp)
+                causal_frontier[versioned_key.key].remove(tp)
             causal_frontier[versioned_key.key].append([versioned_key.vector_clock, False, causal_lowerbound_fname_tp[1]])
     return causal_frontier
 
