@@ -326,27 +326,28 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             sckt.send(result)
             client_respond_time = time.time()
             logging.info('client respond timestamp is %s' % client_respond_time)
-        else:
-            #logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
-            #        (schedule.dag.name, schedule.id, schedule.output_key))
 
-            vector_clock = {}
-            if schedule.output_key in dependencies:
-                if schedule.client_id in dependencies[schedule.output_key]:
-                    dependencies[schedule.output_key][schedule.client_id] += 1
-                else:
-                    dependencies[schedule.output_key][schedule.client_id] = 1
-                vector_clock.update(dependencies[schedule.output_key])
-                del dependencies[schedule.output_key]
+        vector_clock = {}
+        if schedule.output_key in dependencies:
+            if schedule.client_id in dependencies[schedule.output_key]:
+                dependencies[schedule.output_key][schedule.client_id] += 1
             else:
-                vector_clock = {schedule.client_id : 1}
+                dependencies[schedule.output_key][schedule.client_id] = 1
+            vector_clock.update(dependencies[schedule.output_key])
+            del dependencies[schedule.output_key]
+        else:
+            vector_clock = {schedule.client_id : 1}
 
-            succeed = kvs.causal_put(schedule.output_key,
-                                     vector_clock, dependencies,
-                                     result, schedule.client_id)
-            while not succeed:
-                kvs.causal_put(schedule.output_key, vector_clock,
-                               dependencies, result, schedule.client_id)
+        logging.info('issuing causal put of key %s' % schedule.output_key)
+        succeed = kvs.causal_put(schedule.output_key,
+                                 vector_clock, dependencies,
+                                 result, schedule.client_id)
+        logging.info('finish causal put of key %s' % schedule.output_key)
+
+        while not succeed:
+            logging.info('retrying causal put')
+            kvs.causal_put(schedule.output_key, vector_clock,
+                           dependencies, result, schedule.client_id)
 
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:

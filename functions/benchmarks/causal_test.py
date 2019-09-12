@@ -174,13 +174,15 @@ def run(flconn, kvs, mode, sckt):
                     'strmnp2' : refs2 ,
                     'strmnp3' : refs3 }
 
-        rid = flconn.call_dag(dag_name, arg_map, False, CROSS, 'result', 'test_cid')
+        res = flconn.call_dag(dag_name, arg_map, True, CROSS, None, 'test_cid')
+
+        '''rid = flconn.call_dag(dag_name, arg_map, False, CROSS, 'result', 'test_cid')
         print("output key is %s" % rid)
 
         res = kvs.get(rid)
         while not res:
             res = kvs.get(rid)
-        res = deserialize_val(res.values[0])
+        res = deserialize_val(res.values[0])'''
 
         print('Result is: %s' % res)
         #logging.info('Result is: %s' % res)
