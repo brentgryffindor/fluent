@@ -598,6 +598,8 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
                             # abort
                             return True
                         break
+    if len(remove_candidate) != 0:
+        logging.info('cid %s rescued by not reading from local' % cid)
     # update remove set
     for key in remove_candidate:
         readset_remove_map[key] = True
