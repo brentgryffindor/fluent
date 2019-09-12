@@ -12,7 +12,7 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-total_num_keys = 100000
+total_num_keys = 1000000
 
 functions = ['strmnp1', 'strmnp2', 'strmnp3']
 connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
@@ -162,7 +162,7 @@ def run(flconn, kvs, mode, sckt):
 
     elif mode == 'run':
         ### CREATE ZIPF TABLE###
-        zipf = 2.0
+        zipf = 1.0
         base = get_base(total_num_keys, zipf)
         sum_probs = {}
         sum_probs[0] = 0.0
