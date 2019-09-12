@@ -26,8 +26,8 @@ void warmup(StoreType& causal_cut_store) {
   CrossCausalPayload<SetLattice<string>> payload;
   payload.vector_clock.insert("base", 1);
   payload.value = value;
-  for (unsigned i = 1; i < 100001; i++) {
-    Key key = string(6 - std::to_string(i).length(), '0') + std::to_string(i);
+  for (unsigned i = 1; i < 1001; i++) {
+    Key key = string(4 - std::to_string(i).length(), '0') + std::to_string(i);
     causal_cut_store[key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(payload);
   }
 }
