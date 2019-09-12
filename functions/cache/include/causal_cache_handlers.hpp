@@ -51,7 +51,8 @@ void versioned_key_response_handler(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map);
+    ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map,
+    StoreType& unmerged_store);
 
 void kvs_response_handler(
     const KeyResponse& response, StoreType& unmerged_store,

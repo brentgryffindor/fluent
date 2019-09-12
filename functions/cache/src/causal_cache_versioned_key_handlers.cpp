@@ -71,7 +71,8 @@ void versioned_key_response_handler(
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map) {
+    ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map,
+    StoreType& unmerged_store) {
   VersionedKeyResponse response;
   response.ParseFromString(serialized);
 
@@ -117,6 +118,20 @@ void versioned_key_response_handler(
     }
     if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() ==
         0) {
+      // EXPERIMANTAL: merge result_ to unmerged_store to sync between caches
+      for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
+        Key key = pair.first;
+        if (unmerged_store.find(key) == unmerged_store.end()) {
+          unmerged_store[key] = pair.second;
+        } else {
+          unsigned comp_result = causal_comparison(unmerged_store[key], pair.second);
+          if (comp_result == kCausalLess) {
+            unmerged_store[key] = pair.second;
+          } else if (comp_result == kCausalConcurrent) {
+            unmerged_store[key] = causal_merge(unmerged_store[key], pair.second);
+          }
+        }
+      }
       // if no more remote read, first check protocol metadata
       if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
         log->error("cid function pair entry not in protocol metadata map.");
@@ -138,7 +153,6 @@ void versioned_key_response_handler(
         CausalGetResponse cache_response;
         cache_response.set_error(ErrorType::NO_ERROR);
         
-        // merge from in_preparation to causal_cut_store
         for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
           auto tp = cache_response.add_tuples();
           tp->set_key(pair.first);
