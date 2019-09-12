@@ -376,6 +376,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 per_cache_message_map[cache_address].per_function_readsets.extend([per_function_readset])
                                 # compute if it needs to fetch keys from other caches
                                 #logging.info('computing remote fetch')
+                                # a map from remote cache ip to PerCacheFunctionKeyPair
+                                remote_cache_map = {}
                                 for key in per_function_readset.keys:
                                     target_vc = versioned_key_map[response.client_id].global_causal_cut[key]
                                     vc = {}
@@ -394,14 +396,17 @@ def scheduler(ip, mgmt_ip, route_addr):
                                                 function_key_pair.source_function_name = fname
                                                 function_key_pair.target_function_name = tp[1]
                                                 function_key_pair.key = key
-                                                per_cache_function_key_pair = PerCacheFunctionKeyPair()
-                                                target_cache_ip = versioned_key_map[response.client_id].func_location[tp[1]][0]
-                                                per_cache_function_key_pair.cache_address = utils._get_cache_key_shipping_request_address(target_cache_ip)
-                                                per_cache_function_key_pair.function_key_pairs.extend([function_key_pair])
-                                                per_cache_message_map[cache_address].per_cache_function_key_pairs.extend([per_cache_function_key_pair])
+
+                                                target_cache_address = utils._get_cache_key_shipping_request_address(versioned_key_map[response.client_id].func_location[tp[1]][0])
+                                                if target_cache_address not in remote_cache_map:
+                                                    remote_cache_map[target_cache_address] = PerCacheFunctionKeyPair()
+                                                    remote_cache_map[target_cache_address].cache_address = target_cache_address
+                                                remote_cache_map[target_cache_address].function_key_pairs.extend([function_key_pair])
 
                                                 if sutils._compare_vector_clock(vc, target_vc) == sutils.CausalComp.GreaterOrEqual:
                                                     break
+                                for remote_cache_address in remote_cache_map:
+                                    per_cache_message_map[cache_address].per_cache_function_key_pairs.extend([remote_cache_map[remote_cache_address]])
                             # send message to caches
                             #logging.info('sending key shipping request to cache')
                             for cache_addr in per_cache_message_map:
