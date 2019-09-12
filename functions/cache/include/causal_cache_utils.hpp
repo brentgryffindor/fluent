@@ -19,10 +19,10 @@
 #include "kvs_async_client.hpp"
 
 // period to report to the KVS about its key set
-const unsigned kCausalCacheReportThreshold = 5;
+const unsigned kCausalCacheReportThreshold = 1;
 
 // period to migrate keys from unmerged store to causal cut store
-const unsigned kMigrateThreshold = 10;
+const unsigned kMigrateThreshold = 1;
 
 // macros used for vector clock comparison
 const unsigned kCausalGreaterOrEqual = 0;
