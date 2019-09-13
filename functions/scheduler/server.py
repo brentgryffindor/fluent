@@ -31,6 +31,11 @@ from . import utils
 
 THRESHOLD = 5  # how often metadata is updated
 
+# counters to track occurance
+remote_read_counter = 0
+linear_abort_counter = 0
+parallel_abort_counter = 0
+
 def scheduler(ip, mgmt_ip, route_addr):
     logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
@@ -452,6 +457,9 @@ def scheduler(ip, mgmt_ip, route_addr):
         end = time.time()
         if end - start > THRESHOLD:
             logging.info('heart beat...')
+            logging.info('remote read counter is %d' % remote_read_counter)
+            logging.info('linear abort counter is %d' % linear_abort_counter)
+            logging.info('parallel abort counter is %d' % parallel_abort_counter)
             # for benchmark: don't have to update schedulers and key_ip_map
             #schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
             #                                   executors, key_ip_map, kvs)
@@ -648,6 +656,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     if len(function_trigger_map[fname]) > 1 and _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
                         # abort
                         logging.info('cid %s abort due to parallel flow checking failure' % cid)
+                        parallel_abort_counter += 1
                         return True
                     # turn prior read list into a map
                     prior_read_map = {}
@@ -662,7 +671,8 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
                     #prior_per_func_read_map[fname] = list()
                     if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname], fname_readset_remove_map[fname]):
                         # abort
-                        logging.info('cid %s abort due to optimistic protocol failure' % cid)
+                        logging.info('cid %s abort due to linear flow checking failure' % cid)
+                        linear_abort_counter += 1
                         return True
                     finished_functions.add(fname)
                     causal_frontier_map[fname] = causal_frontier
@@ -703,6 +713,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
 
     if has_remote_read:
         logging.info('cid %s has remote read' % cid)
+        remote_read_counter += 1
     return False
 
 
