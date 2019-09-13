@@ -58,7 +58,11 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
             if conn[1] == func:
                 num_parents += 1
 
-        to_generate = 2 - num_parents
+        if num_parents == 2:
+            to_generate = 1
+        else:
+            to_generate = 2
+            
         refs = ()
         keys_chosen = []
         while not to_generate == 0:
