@@ -4,6 +4,7 @@ import logging
 import sys
 from benchmarks import causal_test
 from benchmarks import causal_bench
+from benchmarks import causal_bench_parallel_dag
 import client as flclient
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -34,5 +35,7 @@ if bname == 'causal_test':
     causal_test.run(flconn, kvs, mode, None)
 elif bname == 'causal_bench':
 	causal_bench.run(flconn, kvs, mode, None)
+elif bname == 'causal_bench_parallel_dag':
+	causal_bench_parallel_dag.run(flconn, kvs, mode, None)
 else:
     print('Unknown benchmark type: %s!' % (bname))

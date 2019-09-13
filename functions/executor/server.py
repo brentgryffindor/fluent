@@ -135,8 +135,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     function_result_cache = {}
 
     logging.info('enter warmup')
-    for k in range(1, 1000001):
-        warmup_key = str(k).zfill(7)
+    for k in range(1, 10001):
+        warmup_key = str(k).zfill(5)
         vc = {'base' : 1}
         cache[warmup_key] = (vc, str(0).zfill(8))
     logging.info('finish warmup')

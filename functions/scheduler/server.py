@@ -647,7 +647,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
 
                     if len(function_trigger_map[fname]) > 1 and _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
                         # abort
-                        #logging.info('abort due to parallel flow checking failure')
+                        logging.info('cid %s abort due to parallel flow checking failure' % cid)
                         return True
                     # turn prior read list into a map
                     prior_read_map = {}
