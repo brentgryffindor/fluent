@@ -12,7 +12,7 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-total_num_keys = 10000
+total_num_keys = 100000
 
 functions = ['strmnp1', 'strmnp2', 'strmnp3']
 connections = [('strmnp1', 'strmnp3'), ('strmnp2', 'strmnp3')]
@@ -48,7 +48,7 @@ def sample(n, base, sum_probs):
     return zipf_value
 
 
-def generate_arg_map(functions, connections, num_keys, base, sum_probs):
+def generate_arg_map(functions, connections, num_keys, base, sum_probs, outer):
     arg_map = {}
     keys_read = []
 
@@ -68,7 +68,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         while not to_generate == 0:
             # sample key from zipf
             key = sample(num_keys, base, sum_probs)
-            key = str(key).zfill(len(str(num_keys)))
+            key = str(key + outer * num_keys).zfill(len(str(num_keys)) + 1)
 
             if key not in keys_chosen:
                 keys_chosen.append(key)
@@ -88,14 +88,10 @@ def run(flconn, kvs, mode, sckt):
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp1(a,b):
-            import time
-            time.sleep(0.001)
-            return '0'
+            return '0'.zfill(8)
 
         def strmnp2(a,b,c):
-            import time
-            time.sleep(0.001)
-            return '0'
+            return '0'.zfill(8)
 
         cloud_strmnp1 = flconn.register(strmnp1, 'strmnp1')
         cloud_strmnp2 = flconn.register(strmnp1, 'strmnp2')
@@ -110,7 +106,7 @@ def run(flconn, kvs, mode, sckt):
         ### TEST REGISTERED FUNCTIONS ###
         refs = ()
         for _ in range(2):
-            val = '00000'
+            val = '0'.zfill(8)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
             ccv.values.extend([serialize_val(val)])
@@ -125,7 +121,7 @@ def run(flconn, kvs, mode, sckt):
 
         refs = ()
         for _ in range(3):
-            val = '00000'
+            val = '0'.zfill(8)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
             ccv.values.extend([serialize_val(val)])
@@ -135,7 +131,7 @@ def run(flconn, kvs, mode, sckt):
 
             refs += (FluentReference(k, True, CROSSCAUSAL),)
         strmnp_test3 = cloud_strmnp3(*refs).get()
-        if strmnp_test1 != '0' or strmnp_test2 != '0' or strmnp_test3 != '0':
+        if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
             logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
             sys.exit(1)
 
@@ -188,28 +184,39 @@ def run(flconn, kvs, mode, sckt):
         print('Running DAG')
         logging.info('Running DAG')
 
-        client_num = 1000
+        client_num = 100
 
-        for i in range(1, client_num + 1):
-            cid = 'client_' + str(i)
+        total_time = []
 
-            logging.info("running client %s" % cid)
+        all_times = []
 
-            arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
+        for outer in range(10):
+            total_time_per_loop = 0
+            for i in range(0, client_num):
+                cid = str(i).zfill(3)
 
-            for func in arg_map:
-                logging.info("function is %s" % func)
-                for ref in arg_map[func]:
-                    print("key of reference is %s" % ref.key)
+                logging.info("running client %s loop %s" % (cid, outer))
 
-            for key in read_set:
-                print("read set contains %s" % key)
+                arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs, outer)
 
-            output = random.choice(read_set)
-            print("Output key is %s" % output)
+                for func in arg_map:
+                    logging.info("function is %s" % func)
+                    for ref in arg_map[func]:
+                        print("key of reference is %s" % ref.key)
 
-            start = time.time()
-            res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
-            end = time.time()
-            print('Result is: %s' % res)
-            print('time is: %s' % (end - start))
+                for key in read_set:
+                    print("read set contains %s" % key)
+
+                output = random.choice(read_set)
+                print("Output key is %s" % output)
+
+                start = time.time()
+                res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
+                end = time.time()
+                total_time_per_loop += (end - start)
+                all_times.append((end - start))
+                print('Result is: %s' % res)
+            total_time.append(total_time_per_loop)
+        print('total time is %s' % total_time)
+        print('average time per loop is %s' % (sum(total_time)/len(total_time)))
+        utils.print_latency_stats(all_times, 'latency')

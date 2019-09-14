@@ -84,9 +84,7 @@ def run(flconn, kvs, mode, sckt):
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b):
-            import time
-            time.sleep(0.001)
-            return '0'
+            return '0'.zfill(8)
             '''result = ''
             for i, char in enumerate(a):
                 if i % 3 == 0:
@@ -110,7 +108,7 @@ def run(flconn, kvs, mode, sckt):
         ### TEST REGISTERED FUNCTIONS ###
         refs = ()
         for _ in range(2):
-            val = '00000'
+            val = '0'.zfill(8)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
             ccv.values.extend([serialize_val(val)])
@@ -123,7 +121,7 @@ def run(flconn, kvs, mode, sckt):
         strmnp_test1 = cloud_strmnp1(*refs).get()
         strmnp_test2 = cloud_strmnp2(*refs).get()
         strmnp_test3 = cloud_strmnp3(*refs).get()
-        if strmnp_test1 != '0' or strmnp_test2 != '0' or strmnp_test3 != '0':
+        if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
             logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
             sys.exit(1)
 
@@ -162,7 +160,7 @@ def run(flconn, kvs, mode, sckt):
 
     elif mode == 'run':
         ### CREATE ZIPF TABLE###
-        zipf = 2.0
+        zipf = 1.5
         base = get_base(total_num_keys, zipf)
         sum_probs = {}
         sum_probs[0] = 0.0
@@ -176,14 +174,16 @@ def run(flconn, kvs, mode, sckt):
         print('Running DAG')
         logging.info('Running DAG')
 
-        client_num = 1000
+        client_num = 100
 
         total_time = []
 
+        all_times = []
+
         for outer in range(10):
             total_time_per_loop = 0
-            for i in range(1, client_num + 1):
-                cid = 'client_' + str(i)
+            for i in range(0, client_num):
+                cid = str(i).zfill(3)
 
                 logging.info("running client %s loop %s" % (cid, outer))
 
@@ -204,7 +204,9 @@ def run(flconn, kvs, mode, sckt):
                 res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
                 end = time.time()
                 total_time_per_loop += (end - start)
+                all_times.append((end - start))
                 print('Result is: %s' % res)
             total_time.append(total_time_per_loop)
         print('total time is %s' % total_time)
-        print('average time per loop is %s' % sum(total_time)/len(total_time))
+        print('average time per loop is %s' % (sum(total_time)/len(total_time)))
+        utils.print_latency_stats(all_times, 'latency')
