@@ -509,8 +509,10 @@ def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
 
 def _abort_dag(fname, schedule, pusher_cache):
     # send abort info to downstream
+    is_sink = True
     for conn in schedule.dag.connections:
         if conn.source == fname:
+            is_sink = False
             new_trigger = DagTrigger()
             new_trigger.id = schedule.id
             new_trigger.target_function = conn.sink
@@ -520,3 +522,33 @@ def _abort_dag(fname, schedule, pusher_cache):
             dest_ip = schedule.locations[conn.sink]
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
+    if is_sink:
+        result = serialize_val('abort')
+        if schedule.HasField('response_address'):
+            #logging.info('direct response')
+            sckt = pusher_cache.get(schedule.response_address)
+            sckt.send(result)
+            client_respond_time = time.time()
+            logging.info('client respond timestamp is %s' % client_respond_time)
+
+        #logging.info('GCing version store and schedule')
+        #logging.info('GCing schedule only for benchmark')
+        observed_cache_ip = set()
+        # IMPORTANT: we disable GC of version store for benchmark purpose
+        for fname in schedule.locations:
+            cache_ip = schedule.locations[fname].split(':')[0]
+            if cache_ip not in observed_cache_ip:
+                observed_cache_ip.add(cache_ip)
+                gc_addr = utils._get_cache_gc_address(cache_ip)
+                logging.info('cache GC address is %s' % gc_addr)
+                sckt = pusher_cache.get(gc_addr)
+                sckt.send_string(schedule.client_id)
+            logging.info('sending gc request for function %s cid %s' % (fname, schedule.client_id))
+            gc_req = ExecutorGCRequest()
+            gc_req.function_name = fname
+            gc_req.schedule_id = schedule.id
+            gc_req.client_id = schedule.client_id
+            gc_addr = utils._get_schedule_gc_address(schedule.locations[fname])
+            #logging.info('schedule GC address is %s' % gc_addr)
+            sckt = pusher_cache.get(gc_addr)
+            sckt.send(gc_req.SerializeToString())

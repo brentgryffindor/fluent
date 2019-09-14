@@ -191,7 +191,7 @@ void get_request_handler(
             response.SerializeToString(&resp_string);
             kZmqUtil->send_string(resp_string,
                                   &pushers[request.response_address()]);
-            protocol_matadata_map[cid_function_pair].progress_ = kFinish;
+            //protocol_matadata_map[cid_function_pair].progress_ = kFinish;
           } else {
             //log->info("printing prior version tuples");
             // debug: print what's in the prior_version_tuples

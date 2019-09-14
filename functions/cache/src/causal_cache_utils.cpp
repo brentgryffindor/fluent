@@ -661,7 +661,7 @@ void optimistic_protocol(
               std::cout << "OPT_ABORT: response address is " + response_address + "\n";
               kZmqUtil->send_string(resp_string, &pushers[response_address]);
               std::cout << "Done sending request\n";
-              protocol_matadata_map[cid_function_pair].progress_ = kFinish;
+              //protocol_matadata_map[cid_function_pair].progress_ = kFinish;
               return;
             }
             break;
@@ -724,7 +724,7 @@ void optimistic_protocol(
         response_address;
     pending_cross_metadata[cid_function_pair].remove_set_ = remove_candidate;
     pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
-    protocol_matadata_map[cid_function_pair].progress_ = kRemoteRead;
+    //protocol_matadata_map[cid_function_pair].progress_ = kRemoteRead;
   } else {
     log->info("Executor: all local read");
     // all local read
@@ -770,7 +770,7 @@ void optimistic_protocol(
     std::cout << "OPT_SUCCEED: response address is " + response_address + "\n";
     kZmqUtil->send_string(resp_string, &pushers[response_address]);
     std::cout << "Done sending request\n";
-    protocol_matadata_map[cid_function_pair].progress_ = kFinish;
+    //protocol_matadata_map[cid_function_pair].progress_ = kFinish;
   }
 }
 
