@@ -162,7 +162,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                 call_frequency[fname] += 1
 
             rid = call_dag(call, pusher_cache, dags, func_locations,
-                           key_ip_map, running_counts, backoff, ip, pending_versioned_key_collection_response, versioned_key_map)
+                           key_ip_map, running_counts, backoff, ip)
             work_end = time.time()
             #logging.info('dag call receive timestamp is %s' % work_start)
             #logging.info('dag call finish timestamp is %s' % work_end)

@@ -57,7 +57,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
 
 
 def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
-             running_counts, backoff, scheduler_ip, pending_versioned_key_collection_response, versioned_key_map):
+             running_counts, backoff, scheduler_ip):
     dag, sources = dags[call.name]
 
     schedule = DagSchedule()
@@ -90,7 +90,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         # also initialize the versioned key map
         read_set = {}
         full_read_set = set()
-        versioned_key_map[schedule.client_id] = sutils.DagConsistencyMetadata(call.name)
 
     chosen_node = set()
 
@@ -118,12 +117,9 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
             if len(refs) != 0:
                 read_set[fname] = set(ref.key for ref in refs)
                 full_read_set = full_read_set.union(read_set[fname])
-                versioned_key_map[schedule.client_id].per_func_read_set[fname] = read_set[fname]
-                versioned_key_map[schedule.client_id].func_location[fname] = (loc[0], loc[1])
 
     if schedule.consistency == CROSS:
         schedule.full_read_set.extend(full_read_set)
-        versioned_key_map[schedule.client_id].schedule = schedule
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
