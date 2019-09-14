@@ -140,7 +140,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         sckt = pusher_cache.get(ip)
         sckt.send(schedule.SerializeToString())
 
-    for source in sources:
+    '''for source in sources:
         trigger = DagTrigger()
         trigger.id = schedule.id
         trigger.source = 'BEGIN'
@@ -148,7 +148,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
         ip = sutils._get_dag_trigger_address(schedule.locations[source])
         sckt = pusher_cache.get(ip)
-        sckt.send(trigger.SerializeToString())
+        sckt.send(trigger.SerializeToString())'''
 
     # if we are in causal mode, start the conservative protocol by querying the caches for key versions
     if schedule.consistency == CROSS:

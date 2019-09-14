@@ -653,86 +653,8 @@ def _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_r
 
 def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, total_num_functions, function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map, pusher_cache, occurance_counter):
     #logging.info('entering simulation')
-    causal_frontier_map = {}
-    fname_readset_remove_map = {}
-    while len(finished_functions) < total_num_functions:
-        for fname in function_trigger_map:
-            if not fname in finished_functions:
-                finished = True
-                for trigger_function in function_trigger_map[fname]:
-                    if trigger_function not in finished_functions:
-                        finished = False
-                if finished:
-                    fname_readset_remove_map[fname] = {}
-                    # aggregate the prior_causal_lowerbound_list and prior_read_list respectively
-                    prior_causal_lowerbound_list = []
-                    prior_read_list = []
-                    for source_func in function_trigger_map[fname]:
-                        prior_causal_lowerbound_list.extend(prior_per_func_causal_lowerbound_map[source_func])
-                        prior_read_list.extend(prior_per_func_read_map[source_func])
-
-                    if len(function_trigger_map[fname]) > 1 and _scheduler_check_parallel_flow(prior_causal_lowerbound_list, prior_read_list):
-                        # abort
-                        logging.info('cid %s abort due to parallel flow checking failure' % cid)
-                        occurance_counter[2] += 1
-                        return True
-                    # turn prior read list into a map
-                    prior_read_map = {}
-                    for versioned_key in prior_read_list:
-                        prior_read_map[versioned_key.key] = versioned_key.vector_clock
-                    causal_frontier = _construct_causal_frontier(prior_causal_lowerbound_list)
-                    # (cgwu) is this a bug? seems like we shouldn't initiate it to all prior values...
-                    # (update) probably not a bug because we need cummulative causal lowerbound and read map
-                    prior_per_func_causal_lowerbound_map[fname] = prior_causal_lowerbound_list
-                    prior_per_func_read_map[fname] = prior_read_list
-                    #prior_per_func_causal_lowerbound_map[fname] = list()
-                    #prior_per_func_read_map[fname] = list()
-                    if _optimistic_protocol(versioned_key_map, cid, fname, causal_frontier, prior_read_map, prior_per_func_causal_lowerbound_map[fname], prior_per_func_read_map[fname], fname_readset_remove_map[fname]):
-                        # abort
-                        logging.info('cid %s abort due to linear flow checking failure' % cid)
-                        occurance_counter[1] += 1
-                        return True
-                    finished_functions.add(fname)
-                    causal_frontier_map[fname] = causal_frontier
-    # we don't abort, so check remote read and send request to cache
-    # note that even if no remote read is required, we still send the message as a Ping for GC purpose
-    #logging.info('no abort, checking remote read')
-
-    has_remote_read = False
-
-    function_location_map = versioned_key_map[cid].schedule.locations
-    for fname in causal_frontier_map:
-        #logging.info('function name is %s' % fname)
-        remote_read_request = SchedulerRemoteReadRequest()
-        remote_read_request.client_id = cid
-        remote_read_request.function_name = fname
-        remote_read_request.thread_id = int(function_location_map[fname].split(':')[1])
-        for key in fname_readset_remove_map[fname]:
-            remote_read_request.read_map[key] = fname_readset_remove_map[fname][key]
-        for key in causal_frontier_map[fname]:
-            for causal_lowerbound_fname_tp in causal_frontier_map[fname][key]:
-                if causal_lowerbound_fname_tp[1]:
-                    # read this version from remote
-                    #logging.info('reading key %s from remote' % key)
-                    has_remote_read = True
-                    remote_read_tuple = SchedulerRemoteReadTuple()
-                    loc = function_location_map[causal_lowerbound_fname_tp[2]].split(':')
-                    remote_read_tuple.cache_address = utils._get_cache_versioned_key_request_connect_address(loc[0])
-                    remote_read_tuple.function_name = causal_lowerbound_fname_tp[2]
-                    remote_read_tuple.versioned_key.key = key
-                    remote_read_tuple.versioned_key.vector_clock.update(causal_lowerbound_fname_tp[0])
-                    remote_read_request.tuples.extend([remote_read_tuple])
-        # send to cache
-        #logging.info('sending to cache')
-        loc = function_location_map[fname].split(':')
-        #logging.info('cache location is %s' % utils._get_cache_scheduler_remote_read_address(loc[0]))
-        sckt = pusher_cache.get(utils._get_cache_scheduler_remote_read_address(loc[0]))
-        sckt.send(remote_read_request.SerializeToString())
-
-    if has_remote_read:
-        logging.info('cid %s has remote read' % cid)
-        occurance_counter[0] += 1
-    return False
+    occurance_counter[1] += 1
+    return True
 
 
 def _call_dag_conservative(schedule, dags, pusher_cache):
