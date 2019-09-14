@@ -48,7 +48,7 @@ def sample(n, base, sum_probs):
     return zipf_value
 
 
-def generate_arg_map(functions, connections, num_keys, base, sum_probs):
+def generate_arg_map(functions, connections, num_keys, base, sum_probs, outer):
     arg_map = {}
     keys_read = []
 
@@ -64,7 +64,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         while not to_generate == 0:
             # sample key from zipf
             key = sample(num_keys, base, sum_probs)
-            key = str(key).zfill(len(str(num_keys)))
+            key = str(key + outer * num_keys).zfill(len(str(num_keys)))
 
             if key not in keys_chosen:
                 keys_chosen.append(key)
@@ -178,30 +178,33 @@ def run(flconn, kvs, mode, sckt):
 
         client_num = 1000
 
-        total_time = 0
+        total_time = []
 
-        for i in range(1, client_num + 1):
-            cid = 'client_' + str(i)
+        for outer in range(10):
+            total_time_per_loop = 0
+            for i in range(1, client_num + 1):
+                cid = 'client_' + str(i)
 
-            logging.info("running client %s" % cid)
+                logging.info("running client %s loop %s" % (cid, outer))
 
-            arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
+                arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs, outer)
 
-            for func in arg_map:
-                logging.info("function is %s" % func)
-                for ref in arg_map[func]:
-                    print("key of reference is %s" % ref.key)
+                for func in arg_map:
+                    logging.info("function is %s" % func)
+                    for ref in arg_map[func]:
+                        print("key of reference is %s" % ref.key)
 
-            for key in read_set:
-                print("read set contains %s" % key)
+                for key in read_set:
+                    print("read set contains %s" % key)
 
-            output = random.choice(read_set)
-            print("Output key is %s" % output)
+                output = random.choice(read_set)
+                print("Output key is %s" % output)
 
-            start = time.time()
-            res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
-            end = time.time()
-            total_time += (end - start)
-            print('Result is: %s' % res)
-            print('time is: %s' % (end - start))
+                start = time.time()
+                res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
+                end = time.time()
+                total_time_per_loop += (end - start)
+                print('Result is: %s' % res)
+            total_time.append(total_time_per_loop)
         print('total time is %s' % total_time)
+        print('average time per loop is %s' % sum(total_time)/len(total_time))
