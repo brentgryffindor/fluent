@@ -130,7 +130,7 @@ void get_request_handler(
                                   &pushers[request.response_address()]);
             // GC the version store and conservative store
             // IMPORTANT: we disable GC of version store for benchmark purpose
-            //version_store.erase(cid_function_pair);
+            version_store.erase(cid_function_pair);
             conservative_store.erase(cid_function_pair);
             return;
           }

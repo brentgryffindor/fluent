@@ -64,7 +64,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs, outer):
         while not to_generate == 0:
             # sample key from zipf
             key = sample(num_keys, base, sum_probs)
-            key = str(key + outer * num_keys).zfill(len(str(num_keys)))
+            key = str(key + outer * num_keys).zfill(len(str(num_keys)) + 1)
 
             if key not in keys_chosen:
                 keys_chosen.append(key)
