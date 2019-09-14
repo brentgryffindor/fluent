@@ -223,6 +223,7 @@ def _resolve_ref_normal(refs, kvs):
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache, function_result_cache):
     #logging.info('exec dag causal')
     fname = schedule.target_function
+    logging.info('start processing client id %s function %s' % (schedule.client_id, fname))
     # first check if we need to abort
     for trname in schedule.triggers:
         trigger = triggers[trname]
