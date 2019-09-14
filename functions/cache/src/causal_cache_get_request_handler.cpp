@@ -160,6 +160,11 @@ void get_request_handler(
         // IMPORTANT: we disable GC of version store for benchmark purpose
         version_store.erase(cid_function_pair);
         conservative_store.erase(cid_function_pair);
+        // GC protocol metadata in case optimistic protocol skipped sending request to cache
+        // due to detecting abort at the executor level
+        if (protocol_matadata_map.find(cid_function_pair) != protocol_matadata_map.end()) {
+          protocol_matadata_map.erase(cid_function_pair);
+        }
       } else {
         log->error(
             "no matching cid function pair found in conservative store.");
