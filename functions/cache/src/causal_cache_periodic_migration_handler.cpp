@@ -31,6 +31,7 @@ void periodic_migration_handler(
              kCausalGreaterOrEqual) &&
         find_lattice_from_in_preparation(in_preparation, pair.first) ==
             nullptr) {
+      std::cout << "merging key " + pair.first + "\n";
       to_fetch_map[pair.first] = set<Key>();
       in_preparation[pair.first].second[pair.first] = pair.second;
       recursive_dependency_check(pair.first, pair.second, in_preparation,
