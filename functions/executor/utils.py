@@ -22,6 +22,7 @@ import zmq
 
 UTILIZATION_REPORT_PORT = 7003
 EXECUTOR_DEPART_PORT = 7005
+VERSION_GC_PORT = 7200
 
 
 def _retrieve_function(name, kvs, consistency=CROSS):
@@ -70,3 +71,6 @@ def _get_depart_done_addr(mgmt_ip):
 def _get_schedule_gc_address(ip_tid):
     ip, tid = ip_tid.split(':')
     return 'tcp://' + ip + ':' + str(int(tid) + server_utils.DAG_SCHEDULE_GC_PORT)
+
+def _get_cache_gc_address(ip):
+    return 'tcp://' + ip + ':' + str(VERSION_GC_PORT)

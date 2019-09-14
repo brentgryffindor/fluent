@@ -353,16 +353,16 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
         if not conservative:
             #logging.info('GCing version store and schedule')
             #logging.info('GCing schedule only for benchmark')
-            observed_cache_address = set()
+            observed_cache_ip = set()
             # IMPORTANT: we disable GC of version store for benchmark purpose
-            for pvt in prior_version_tuples:
-                if pvt.cache_address not in observed_cache_address:
-                    observed_cache_address.add(pvt.cache_address)
-                    gc_addr = pvt.cache_address[:-4] + str(int(pvt.cache_address[-4:]) - 50)
+            for fname in schedule.locations:
+                cache_ip = schedule.locations[fname].split(':')[0]
+                if cache_ip not in observed_cache_ip:
+                    observed_cache_ip.add(cache_ip)
+                    gc_addr = utils._get_cache_gc_address(cache_ip)
                     logging.info('cache GC address is %s' % gc_addr)
                     sckt = pusher_cache.get(gc_addr)
                     sckt.send_string(schedule.client_id)
-            for fname in schedule.locations:
                 logging.info('sending gc request for function %s cid %s' % (fname, schedule.client_id))
                 gc_req = ExecutorGCRequest()
                 gc_req.function_name = fname
