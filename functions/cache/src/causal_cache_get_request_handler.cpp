@@ -422,6 +422,8 @@ void get_request_handler(
                                 &pushers[request.response_address()]);
           // GC protocol metadata
           protocol_matadata_map.erase(cid_function_pair);
+          // GC pending cross metadata
+          pending_cross_metadata.erase(cid_function_pair);
         } else {
           log->info("RemoteRead not done yet");
           // remote read not done yet
