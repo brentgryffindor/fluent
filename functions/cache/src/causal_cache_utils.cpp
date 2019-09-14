@@ -657,6 +657,7 @@ void optimistic_protocol(
               // send response
               string resp_string;
               response.SerializeToString(&resp_string);
+              log->info("aborting");
               std::cout << "OPT_ABORT: response address is " + response_address + "\n";
               kZmqUtil->send_string(resp_string, &pushers[response_address]);
               std::cout << "Done sending request\n";

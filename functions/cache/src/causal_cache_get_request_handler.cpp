@@ -88,7 +88,7 @@ void get_request_handler(
 
     auto cid_function_pair =
         std::make_pair(request.client_id(), request.function_name());
-    log->info("Executor: function name is {}", request.function_name());
+    log->info("Executor: cid {} function name is {}", request.client_id(), request.function_name());
     if (request.conservative()) {
       // first check if this request is in conservative mode
       log->info("GET for conservative protocol");
@@ -174,10 +174,10 @@ void get_request_handler(
         //log->info("GET for optimistic protocol");
         //std::cout << "GET for optimistic protocol\n";
         if (version_store.find(cid_function_pair) != version_store.end()) {
-          //log->info("version store already present");
+          log->info("version store already present");
           //std::cout << "version store already present\n";
           if (version_store[cid_function_pair].first) {
-            //log->info("DNE");
+            log->info("DNE");
             // some keys DNE
             CausalGetResponse response;
             response.set_error(ErrorType::KEY_DNE);
@@ -227,6 +227,7 @@ void get_request_handler(
           // this means that the scheduler request arrives first and is still
           // fetching required data from Anna so we set the executor flag to true
           // and populate necessary metadata and wait for these data to arrive
+          log->info("scheduler arrives first, still fetching from Anna");
           pending_cross_metadata[cid_function_pair].executor_response_address_ =
               request.response_address();
           // construct causal frontier
@@ -261,7 +262,7 @@ void get_request_handler(
                                version_store, pending_cross_metadata,
                                to_fetch_map, cover_map, pushers, client, cct,
                                causal_frontier, log, protocol_matadata_map)) {
-            //log->info("not covered");
+            log->info("not covered");
             pending_cross_metadata[cid_function_pair].read_set_ = read_set;
             pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
             pending_cross_metadata[cid_function_pair].executor_response_address_ =
@@ -286,7 +287,7 @@ void get_request_handler(
             // store cached versions
             pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
           } else {
-            //log->info("covered");
+            log->info("covered");
             // all keys covered, first populate version store entry
             // in this case, it's not possible that keys DNE
             version_store[cid_function_pair].first = false;

@@ -161,7 +161,7 @@ class IpcAnnaClient:
 
         request.response_address = self.get_response_address
         send_start = time.time()
-        #logging.info('sending GET')
+        logging.info('sending GET')
         self.get_request_socket.send(request.SerializeToString())
 
 

@@ -494,6 +494,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       for (const auto& pair : version_store) {
         log->info("cid {} function {}", pair.first.first, pair.first.second);
       }
+      for (const auto& pair : pending_cross_metadata) {
+        log->info("pending cid {} function {}", pair.first.first, pair.first.second);
+      }
 
       KeySet set;
 
