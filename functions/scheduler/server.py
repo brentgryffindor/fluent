@@ -63,6 +63,8 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     # track max dependency size
     max_dep_size = 0
+    dep_key_involved = []
+    max_vc_size = 0
 
     connect_socket = ctx.socket(zmq.REP)
     connect_socket.bind(sutils.BIND_ADDR_TEMPLATE % (CONNECT_PORT))
@@ -345,6 +347,13 @@ def scheduler(ip, mgmt_ip, route_addr):
                             for key in versioned_key_map[response.client_id].per_func_versioned_key_chain[fname]:
                                 if len(versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key]) > max_dep_size:
                                     max_dep_size = len(versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key])
+                                    dep_key_involved.clear()
+                                    for dep_key in versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key]:
+                                        dep_key_involved.append(dep_key)
+                                for dep_key in versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key]:
+                                    vc_size = len(versioned_key_map[response.client_id].per_func_versioned_key_chain[fname][key][dep_key])
+                                    if vc_size > max_vc_size:
+                                        max_vc_size = vc_size
                         #logging.info('receive cache response for all funcs at %s' % cache_response)
                         # trigger conservative protocol
                         # TODO: refactor to a function
@@ -467,6 +476,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             logging.info('linear abort counter is %d' % occurance_counter[1])
             logging.info('parallel abort counter is %d' % occurance_counter[2])
             logging.info('max dependency size is %d' % max_dep_size)
+            logging.info('dep key involved are %s' % dep_key_involved)
+            logging.info('max vc size is %d' % max_vc_size)
             # for benchmark: don't have to update schedulers and key_ip_map
             #schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
             #                                   executors, key_ip_map, kvs)
