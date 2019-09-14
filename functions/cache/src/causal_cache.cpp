@@ -489,6 +489,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // caching; we only do this periodically because we are okay with receiving
     // potentially stale updates
     if (duration >= kCausalCacheReportThreshold) {
+      // periodically print out who is in the version store
+      log->info("printing version store");
+      for (const auto& pair : version_store) {
+        log->info("cid {} function {}", pair.first.first, pair.first.second);
+      }
+
       KeySet set;
 
       for (const auto& pair : unmerged_store) {
