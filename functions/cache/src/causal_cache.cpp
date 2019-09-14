@@ -518,7 +518,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     }
 
     migrate_end = std::chrono::system_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::seconds>(migrate_end -
+    duration = std::chrono::duration_cast<std::chrono::microseconds>(migrate_end -
                                                                 migrate_start)
                    .count();
 
