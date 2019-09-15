@@ -170,7 +170,7 @@ def run(flconn, kvs, mode, sckt):
 
     elif mode == 'run':
         ### CREATE ZIPF TABLE###
-        zipf = 2.0
+        zipf = 1.2
         base = get_base(total_num_keys, zipf)
         sum_probs = {}
         sum_probs[0] = 0.0
@@ -219,4 +219,5 @@ def run(flconn, kvs, mode, sckt):
             total_time.append(total_time_per_loop)
         print('total time is %s' % total_time)
         print('average time per loop is %s' % (sum(total_time)/len(total_time)))
+        print('zipf %f' % zipf)
         utils.print_latency_stats(all_times, 'latency')
