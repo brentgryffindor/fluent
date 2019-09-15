@@ -24,16 +24,16 @@ void scheduler_remote_read_handler(
   request.ParseFromString(serialized);
   auto cid_function_pair =
       std::make_pair(request.client_id(), request.function_name());
-  log->info("Scheduler: function name is {}", request.function_name());
+  //log->info("Scheduler: function name is {}", request.function_name());
   if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
-    log->info("Scheduler: protocol metadata not present");
+    //log->info("Scheduler: protocol metadata not present");
     // optimistic protocol for this cid_fname pair hasn't reached this cache yet
     if (request.tuples_size() == 0) {
-      log->info("Scheduler: no remote read necessary");
+      //log->info("Scheduler: no remote read necessary");
       // no remote read necessary
       protocol_matadata_map[cid_function_pair].msg_ = kNoAction;
     } else {
-      log->info("Scheduler: issuing remote read request");
+      //log->info("Scheduler: issuing remote read request");
       // need to perform remote read
       // assemble messages
       map<Address, VersionedKeyRequest> addr_request_map;
@@ -76,12 +76,12 @@ void scheduler_remote_read_handler(
       protocol_matadata_map[cid_function_pair].msg_ = kRemoteRead;
     }
   } else if (protocol_matadata_map[cid_function_pair].progress_ == kRemoteRead) {
-    log->info("Scheduler: protocol metadata says RemoteRead");
+    //log->info("Scheduler: protocol metadata says RemoteRead");
     // progress is pending remote read
     // after remote read, gc happens in versioned key response handler
     protocol_matadata_map[cid_function_pair].msg_ = kNoAction;
   } else if (protocol_matadata_map[cid_function_pair].progress_ == kFinish) {
-    log->info("Scheduler: protocol metadata says Finish");
+    //log->info("Scheduler: protocol metadata says Finish");
     // progress is finish
     // gc happen here
     protocol_matadata_map.erase(cid_function_pair);

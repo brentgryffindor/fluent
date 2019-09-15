@@ -103,9 +103,6 @@ def scheduler(ip, mgmt_ip, route_addr):
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
                                        key_ip_map, kvs)
 
-    # log scheduler ips
-    for sched_ip in schedulers:
-        logging.info('scheduler ip is %s' % sched_ip)
 
     # track how often each DAG function is called
     call_frequency = {}
@@ -124,17 +121,17 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if (func_create_socket in socks and
                 socks[func_create_socket] == zmq.POLLIN):
-            logging.info('Received function create request')
+            #logging.info('Received function create request')
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            logging.info('Received function call request')
+            #logging.info('Received function call request')
             call_function(func_call_socket, pusher_cache, executors,
                           key_ip_map, running_counts, backoff)
 
         if (dag_create_socket in socks and socks[dag_create_socket]
                 == zmq.POLLIN):
-            logging.info('Received dag create request')
+            #logging.info('Received dag create request')
             create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
                        ip, pin_accept_socket, func_locations, call_frequency)
 
@@ -238,11 +235,11 @@ def scheduler(ip, mgmt_ip, route_addr):
             # not yet know about
             for dname in status.dags:
                 if dname not in dags:
-                    logging.info('Getting DAG %s from the kvs' % dname)
+                    #logging.info('Getting DAG %s from the kvs' % dname)
                     payload = kvs.get(dname)
                     while not payload:
                         payload = kvs.get(dname)
-                    logging.info('Got DAG %s from the kvs' % dname)
+                    #logging.info('Got DAG %s from the kvs' % dname)
                     dag = Dag()
                     dag.ParseFromString(payload.reveal()[1])
 

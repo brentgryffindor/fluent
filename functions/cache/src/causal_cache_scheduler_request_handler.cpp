@@ -36,7 +36,6 @@ void scheduler_request_handler(
   // debug
   //log->info("client id is {}", request.client_id());
   //log->info("function name is {}", request.function_name());
-  auto scheduler_start = std::chrono::system_clock::now();
   auto cid_function_pair =
       std::make_pair(request.client_id(), request.function_name());
 
@@ -47,12 +46,12 @@ void scheduler_request_handler(
 
   if (version_store.find(cid_function_pair) != version_store.end()) {
     // the entry already exists in version store
-    log->info("version store already present");
+    //log->info("version store already present");
     CausalSchedulerResponse response;
     response.set_client_id(request.client_id());
     response.set_function_name(request.function_name());
     if (version_store[cid_function_pair].first) {
-      log->info("DNE");
+      //log->info("DNE");
       // some keys DNE
       response.set_succeed(false);
       // send response
@@ -117,7 +116,4 @@ void scheduler_request_handler(
                               pushers, request.scheduler_address());
     }
   }
-  auto scheduler_end = std::chrono::system_clock::now();
-  auto scheduler_time = std::chrono::duration_cast<std::chrono::microseconds>(scheduler_end - scheduler_start).count();
-  log->info("scheduler request {} micro seconds", scheduler_time);
 }

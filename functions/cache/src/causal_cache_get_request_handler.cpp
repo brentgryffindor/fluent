@@ -36,7 +36,7 @@ void get_request_handler(
   //std::cout << "response address is " + request.response_address() + "\n";
 
   if (request.consistency() == ConsistencyType::SINGLE) {
-    log->info("Receive GET in single mode");
+    //log->info("Receive GET in single mode");
     bool covered_locally = true;
     set<Key> read_set;
     set<Key> to_cover;
@@ -74,7 +74,7 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
-    log->info("Receive GET in cross mode");
+    //log->info("Receive GET in cross mode");
     //std::cout << "Receive GET in cross mode\n";
     // convert the cached keys into a map
     map<Key, VectorClock> cached_versions;
@@ -88,10 +88,10 @@ void get_request_handler(
 
     auto cid_function_pair =
         std::make_pair(request.client_id(), request.function_name());
-    log->info("Executor: cid {} function name is {}", request.client_id(), request.function_name());
+    //log->info("Executor: cid {} function name is {}", request.client_id(), request.function_name());
     if (request.conservative()) {
       // first check if this request is in conservative mode
-      log->info("GET for conservative protocol");
+      //log->info("GET for conservative protocol");
       //std::cout << "GET for conservative protocol\n";
       // fetch from conservative store
       if (conservative_store.find(cid_function_pair) !=
@@ -173,16 +173,16 @@ void get_request_handler(
       // first check protocol metadata
       if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
         // scheduler msg hasn't arrived yet (no hint), so we proceed as usual
-        log->info("Executor: protocol metadata not present");
+        //log->info("Executor: protocol metadata not present");
         // we first check if the version store is already populated by the scheduler
         // if so, means that all data should already be fetched or DNE
         //log->info("GET for optimistic protocol");
         //std::cout << "GET for optimistic protocol\n";
         if (version_store.find(cid_function_pair) != version_store.end()) {
-          log->info("version store already present");
+          //log->info("version store already present");
           //std::cout << "version store already present\n";
           if (version_store[cid_function_pair].first) {
-            log->info("DNE");
+            //log->info("DNE");
             // some keys DNE
             CausalGetResponse response;
             response.set_error(ErrorType::KEY_DNE);
@@ -232,7 +232,7 @@ void get_request_handler(
           // this means that the scheduler request arrives first and is still
           // fetching required data from Anna so we set the executor flag to true
           // and populate necessary metadata and wait for these data to arrive
-          log->info("scheduler arrives first, still fetching from Anna");
+          //log->info("scheduler arrives first, still fetching from Anna");
           pending_cross_metadata[cid_function_pair].executor_response_address_ =
               request.response_address();
           // construct causal frontier
@@ -267,7 +267,7 @@ void get_request_handler(
                                version_store, pending_cross_metadata,
                                to_fetch_map, cover_map, pushers, client, cct,
                                causal_frontier, log, protocol_matadata_map)) {
-            log->info("not covered");
+            //log->info("not covered");
             pending_cross_metadata[cid_function_pair].read_set_ = read_set;
             pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
             pending_cross_metadata[cid_function_pair].executor_response_address_ =
@@ -292,7 +292,7 @@ void get_request_handler(
             // store cached versions
             pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
           } else {
-            log->info("covered");
+            //log->info("covered");
             // all keys covered, first populate version store entry
             // in this case, it's not possible that keys DNE
             version_store[cid_function_pair].first = false;
@@ -329,7 +329,7 @@ void get_request_handler(
         }
       } else if (protocol_matadata_map[cid_function_pair].msg_ == kNoAction) {
         // skip optimistic protocol and read from version store and return, also GC protocol metadata
-        log->info("Executor: protocol metadata says NoAction");
+        //log->info("Executor: protocol metadata says NoAction");
         CausalGetResponse response;
 
         response.set_error(ErrorType::NO_ERROR);
@@ -368,7 +368,7 @@ void get_request_handler(
         // GC protocol metadata
         protocol_matadata_map.erase(cid_function_pair);
       } else if (protocol_matadata_map[cid_function_pair].msg_ == kAbort) {
-        log->info("Executor: protocol metadata says Abort");
+        //log->info("Executor: protocol metadata says Abort");
         // abort
         CausalGetResponse response;
         response.set_error(ErrorType::ABORT);
@@ -379,10 +379,10 @@ void get_request_handler(
         // GC protocol metadata
         protocol_matadata_map.erase(cid_function_pair);
       } else if (protocol_matadata_map[cid_function_pair].msg_ == kRemoteRead) {
-        log->info("Executor: protocol metadata says RemoteRead");
+        //log->info("Executor: protocol metadata says RemoteRead");
         // scheduler msg arrived and already sent remote read to other caches
         if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() == 0) {
-          log->info("RemoteRead already done, responding...");
+          //log->info("RemoteRead already done, responding...");
           // if all remote read already done
           // we can return result now
           CausalGetResponse response;
@@ -430,7 +430,7 @@ void get_request_handler(
           // GC pending cross metadata
           pending_cross_metadata.erase(cid_function_pair);
         } else {
-          log->info("RemoteRead not done yet");
+          //log->info("RemoteRead not done yet");
           // remote read not done yet
           // we need to save the cached versions for later checking and executor response address
           pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
