@@ -160,16 +160,12 @@ class IpcAnnaClient:
             request.full_read_set.extend(full_read_set)
 
         request.response_address = self.get_response_address
-        send_start = time.time()
-        logging.info('sending GET')
+        #logging.info('sending GET')
         self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
-            receive_end = time.time()
-            logging.info('ipc took %s' % (receive_end - send_start))
-            #logging.info('received response')
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
@@ -183,16 +179,16 @@ class IpcAnnaClient:
             #logging.info('parsed')
 
             if resp.error == KEY_DNE:
-                logging.info('key dne')
+                #logging.info('key dne')
                 return resp.error
             elif resp.error == ABORT:
-                logging.info('abort')
+                #logging.info('abort')
                 return resp.error
             else:
-                logging.info('GET successful')
+                #logging.info('GET successful')
                 versioned_key_read = []
                 for tp in resp.tuples:
-                    logging.info('key is %s', tp.key)
+                    #logging.info('key is %s', tp.key)
                     val = CrossCausalValue()
                     val.ParseFromString(tp.payload)
 

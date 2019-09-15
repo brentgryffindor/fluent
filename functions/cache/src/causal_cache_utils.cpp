@@ -657,10 +657,10 @@ void optimistic_protocol(
               // send response
               string resp_string;
               response.SerializeToString(&resp_string);
-              log->info("aborting");
-              std::cout << "OPT_ABORT: response address is " + response_address + "\n";
+              //log->info("aborting");
+              //std::cout << "OPT_ABORT: response address is " + response_address + "\n";
               kZmqUtil->send_string(resp_string, &pushers[response_address]);
-              std::cout << "Done sending request\n";
+              //std::cout << "Done sending request\n";
               protocol_matadata_map[cid_function_pair].progress_ = kFinish;
               return;
             }
@@ -709,7 +709,7 @@ void optimistic_protocol(
     kZmqUtil->send_string(req_string, &pushers[pair.first]);
   }
   if (addr_request_map.size() != 0) {
-    log->info("Executor: has remote read");
+    //log->info("Executor: has remote read");
     // remote read sent, merge local read to pending map
     // debug
     //log->info("printing version store keys");
@@ -726,7 +726,7 @@ void optimistic_protocol(
     pending_cross_metadata[cid_function_pair].cached_versions_ = cached_versions;
     protocol_matadata_map[cid_function_pair].progress_ = kRemoteRead;
   } else {
-    log->info("Executor: all local read");
+    //log->info("Executor: all local read");
     // all local read
     // respond to executor
     CausalGetResponse response;
@@ -734,16 +734,14 @@ void optimistic_protocol(
     response.set_error(ErrorType::NO_ERROR);
 
     for (const Key& key : read_set) {
-      log->info("local read key {}", key);
+      //log->info("local read key {}", key);
       // first check if the cached version is the same as what we want to return
       if (cached_versions.find(key) == cached_versions.end() || cached_versions.at(key).reveal() != version_store.at(cid_function_pair).second.at(key).at(key)->reveal().vector_clock.reveal()) {
-        log->info("key {} not cached by executor, sending...", key);
+        //log->info("key {} not cached by executor, sending...", key);
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
         tp->set_payload(
             serialize(*(version_store.at(cid_function_pair).second.at(key).at(key))));
-      } else {
-        log->info("key {} cached by executor, don't send", key);
       }
       // then populate prior_version_tuples
       if (remove_candidate.find(key) == remove_candidate.end()) {
@@ -767,9 +765,9 @@ void optimistic_protocol(
     // send response
     string resp_string;
     response.SerializeToString(&resp_string);
-    std::cout << "OPT_SUCCEED: response address is " + response_address + "\n";
+    //std::cout << "OPT_SUCCEED: response address is " + response_address + "\n";
     kZmqUtil->send_string(resp_string, &pushers[response_address]);
-    std::cout << "Done sending request\n";
+    //std::cout << "Done sending request\n";
     protocol_matadata_map[cid_function_pair].progress_ = kFinish;
   }
 }
@@ -1088,11 +1086,11 @@ void send_executor_response(const ClientIdFunctionPair& cid_function_pair,
   // send response
   string resp_string;
   response.SerializeToString(&resp_string);
-  std::cout << "versioned key response: response address is " + pending_cross_metadata[cid_function_pair].executor_response_address_ + "\n";
+  //std::cout << "versioned key response: response address is " + pending_cross_metadata[cid_function_pair].executor_response_address_ + "\n";
   kZmqUtil->send_string(resp_string,
                         &pushers[pending_cross_metadata[cid_function_pair]
                                      .executor_response_address_]);
-  std::cout << "Done sending request\n";
+  //std::cout << "Done sending request\n";
   // GC
   pending_cross_metadata.erase(cid_function_pair);
 }

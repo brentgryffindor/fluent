@@ -149,7 +149,7 @@ void versioned_key_response_handler(
         // if we reach here, it means that the executor request hasn't arrived but the scheduler msg arrived
         // we pre-send the result to function executor for caching
         // initiate message to be sent to the executor thread for caching
-        log->info("remote read finished but executor request hasn't arrived yet, sending payload for caching...");
+        //log->info("remote read finished but executor request hasn't arrived yet, sending payload for caching...");
         CausalGetResponse cache_response;
         cache_response.set_error(ErrorType::NO_ERROR);
         
