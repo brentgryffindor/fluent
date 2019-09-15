@@ -160,7 +160,7 @@ class IpcAnnaClient:
             request.full_read_set.extend(full_read_set)
 
         request.response_address = self.get_response_address
-        l#ogging.info('sending GET')
+        #logging.info('sending GET')
         self.get_request_socket.send(request.SerializeToString())
 
 
