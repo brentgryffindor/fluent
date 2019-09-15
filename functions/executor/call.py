@@ -223,12 +223,12 @@ def _resolve_ref_normal(refs, kvs):
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache, function_result_cache):
     #logging.info('exec dag causal')
     fname = schedule.target_function
-    logging.info('start processing client id %s function %s' % (schedule.client_id, fname))
+    #logging.info('start processing client id %s function %s' % (schedule.client_id, fname))
     # first check if we need to abort
     for trname in schedule.triggers:
         trigger = triggers[trname]
         if trigger.HasField('abort') and trigger.abort:
-            logging.info('abort due to upstream')
+            #logging.info('abort due to upstream')
             _abort_dag(fname, schedule, pusher_cache)
             return
 
@@ -261,11 +261,11 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         if conservative and trigger.HasField('invalidate') and trigger.invalidate:
             # if any upstream function cache is invalidated, we have to invalidate this function cache as well
-            logging.info('invalidate function result cache due to upstream invalidation')
+            #logging.info('invalidate function result cache due to upstream invalidation')
             cached[0] = False
 
     if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
-        logging.info('abort due to parallel flow check failure')
+        #logging.info('abort due to parallel flow check failure')
         _abort_dag(fname, schedule, pusher_cache)
         return
 
@@ -278,7 +278,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     #logging.info('finish executing function')
 
     if abort[0]:
-        logging.info('abort due to resolve ref')
+        #logging.info('abort due to resolve ref')
         _abort_dag(fname, schedule, pusher_cache)
         return
 
@@ -316,8 +316,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             else:
                 sckt = pusher_cache.get(sutils._get_dag_conservative_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
-            trigger_send = time.time()
-            logging.info('trigger send time %s' % trigger_send)
 
     if is_sink:
         result = serialize_val(result)
@@ -325,8 +323,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #logging.info('direct response')
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result)
-            client_respond_time = time.time()
-            logging.info('client respond timestamp is %s' % client_respond_time)
 
         vector_clock = {}
         if schedule.output_key in dependencies:
@@ -339,14 +335,14 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
         else:
             vector_clock = {schedule.client_id : 1}
 
-        logging.info('issuing causal put of key %s' % schedule.output_key)
+        #logging.info('issuing causal put of key %s' % schedule.output_key)
         succeed = kvs.causal_put(schedule.output_key,
                                  vector_clock, dependencies,
                                  result, schedule.client_id)
-        logging.info('finish causal put of key %s' % schedule.output_key)
+        #logging.info('finish causal put of key %s' % schedule.output_key)
 
         while not succeed:
-            logging.info('retrying causal put')
+            #logging.info('retrying causal put')
             kvs.causal_put(schedule.output_key, vector_clock,
                            dependencies, result, schedule.client_id)
 
@@ -361,10 +357,10 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 if cache_ip not in observed_cache_ip:
                     observed_cache_ip.add(cache_ip)
                     gc_addr = utils._get_cache_gc_address(cache_ip)
-                    logging.info('cache GC address is %s' % gc_addr)
+                    #logging.info('cache GC address is %s' % gc_addr)
                     sckt = pusher_cache.get(gc_addr)
                     sckt.send_string(schedule.client_id)
-                logging.info('sending gc request for function %s cid %s' % (fname, schedule.client_id))
+                #logging.info('sending gc request for function %s cid %s' % (fname, schedule.client_id))
                 gc_req = ExecutorGCRequest()
                 gc_req.function_name = fname
                 gc_req.schedule_id = schedule.id
@@ -404,7 +400,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         #logging.info('Done resolving reference')
         # check if it is conservative protocol and cached
         if conservative and cached[0]:
-            logging.info('function result cache hit')
+            #logging.info('function result cache hit')
             # update dependency before returning
             for key in keys:
                 if key in dependencies:
@@ -414,7 +410,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                     dependencies[key] = function_result_cache[schedule.target_function][schedule.client_id][0][key]
             return function_result_cache[schedule.target_function][schedule.client_id][1]
 
-        logging.info('function result cache miss')
+        #logging.info('function result cache miss')
 
         if error == KEY_DNE or error == ABORT:
             abort[0] = True
@@ -422,7 +418,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
         #logging.info('swapping args and deserializing')
         for key in kv_pairs:
-            logging.info('cache miss for key %s' % key)
+            #logging.info('cache miss for key %s' % key)
             if deserialize[key]:
                 #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
@@ -441,7 +437,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 dependencies[key] = kv_pairs[key][0]
             key_vc_map[key] = kv_pairs[key][0]
         for key in keys:
-            logging.info('cache hit for key %s' % key)
+            #logging.info('cache hit for key %s' % key)
             # these are keys that are cached
             # we first update the prior_read_map since cached keys are not returned by the cache
             vk = VersionedKey()
@@ -468,7 +464,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         if schedule.target_function not in function_result_cache:
             function_result_cache[schedule.target_function] = {}
         # perform result caching
-        logging.info('caching function result for function %s cid %s' % (schedule.target_function, schedule.client_id))
+        #logging.info('caching function result for function %s cid %s' % (schedule.target_function, schedule.client_id))
         function_result_cache[schedule.target_function][schedule.client_id] = (key_vc_map, result)
 
     return result

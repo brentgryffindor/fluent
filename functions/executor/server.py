@@ -219,7 +219,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if dag_exec_socket in socks and socks[dag_exec_socket] == zmq.POLLIN:
             trigger_receive = time.time()
-            logging.info('trigger receive time %s' % trigger_receive)
+            #logging.info('trigger receive time %s' % trigger_receive)
             work_start = time.time()
             trigger = DagTrigger()
             trigger.ParseFromString(dag_exec_socket.recv())
@@ -251,7 +251,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_counts[fname] += 1
 
             elapsed = time.time() - work_start
-            logging.info('took %s to execute func' % elapsed)
+            #logging.info('took %s to execute func' % elapsed)
             event_occupancy['dag_exec'] += elapsed
             total_occupancy += elapsed
 
@@ -300,18 +300,18 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             total_occupancy += elapsed
 
         if dag_gc_socket in socks and socks[dag_gc_socket] == zmq.POLLIN:
-            logging.info('received gc request')
+            #logging.info('received gc request')
             gc_req = ExecutorGCRequest()
             gc_req.ParseFromString(dag_gc_socket.recv())
-            logging.info('parsed gc request')
+            #logging.info('parsed gc request')
             if gc_req.function_name in queue and gc_req.schedule_id in queue[gc_req.function_name]:
-                logging.info('gc schedule for function %s schedule %s' % (gc_req.function_name, gc_req.schedule_id))
+                #logging.info('gc schedule for function %s schedule %s' % (gc_req.function_name, gc_req.schedule_id))
                 del queue[gc_req.function_name][gc_req.schedule_id]
             else:
                 logging.error('Function %s schedule id %s not in queue. Cannot GC' % (gc_req.function_name, gc_req.schedule_id))
 
             if gc_req.function_name in function_result_cache and gc_req.client_id in function_result_cache[gc_req.function_name]:
-                logging.info('gc function result cache for function %s cid %s' % (gc_req.function_name, gc_req.client_id))
+                #logging.info('gc function result cache for function %s cid %s' % (gc_req.function_name, gc_req.client_id))
                 del function_result_cache[gc_req.function_name][gc_req.client_id]
                 if len(function_result_cache[gc_req.function_name]) == 0:
                     del function_result_cache[gc_req.function_name]
@@ -323,7 +323,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             resp.ParseFromString(cache_socket.recv())
             # populate cache
             for tp in resp.tuples:
-                logging.info('caching key %s' % tp.key)
+                #logging.info('caching key %s' % tp.key)
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
                 cache[tp.key] = (val.vector_clock, val.values[0])
