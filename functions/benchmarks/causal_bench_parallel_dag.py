@@ -170,7 +170,7 @@ def run(flconn, kvs, mode, sckt):
 
     elif mode == 'run':
         ### CREATE ZIPF TABLE###
-        zipf = 1.0
+        zipf = 2.0
         base = get_base(total_num_keys, zipf)
         sum_probs = {}
         sum_probs[0] = 0.0
@@ -186,12 +186,10 @@ def run(flconn, kvs, mode, sckt):
 
         client_num = 100
 
-        total_time = []
-
         all_times = []
 
+        abort_count = 0
         for outer in range(10):
-            total_time_per_loop = 0
             for i in range(0, client_num):
                 cid = str(i).zfill(3)
 
@@ -213,10 +211,10 @@ def run(flconn, kvs, mode, sckt):
                 start = time.time()
                 res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
                 end = time.time()
-                total_time_per_loop += (end - start)
-                all_times.append((end - start))
                 print('Result is: %s' % res)
-            total_time.append(total_time_per_loop)
-        print('total time is %s' % total_time)
-        print('average time per loop is %s' % (sum(total_time)/len(total_time)))
+                if res != 'abort':
+                    all_times.append((end - start))
+                else:
+                    abort_count += 1
         utils.print_latency_stats(all_times, 'latency')
+        print('abort count is %d' % abort_count)
