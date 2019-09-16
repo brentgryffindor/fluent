@@ -169,14 +169,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   map<Key, std::list<Key>::iterator> iterator_cache;
 
   // warmup
-  std::cout << "creating val\n";
-  LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(thread_id), string(8, '0')));
-  std::cout << "created val\n";
-  for (unsigned i = 1; i < 1001; i++) {
+  std::cout << "warmup start\n";
+  for (unsigned i = 1; i < 10001; i++) {
     std::cout << "i is " + std::to_string(i) + "\n";
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
     key_type_map[key] = LatticeType::LWW;
-    local_lww_cache[key] = val;
+    local_lww_cache[key] = LWWPairLattice<string>(TimestampValuePair<string>(generate_timestamp(thread_id), string(1, '0')));
   }
   std::cout << "warmup done\n";
 
