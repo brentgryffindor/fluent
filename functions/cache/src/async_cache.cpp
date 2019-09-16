@@ -174,7 +174,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     std::cout << "i is " + std::to_string(i) + "\n";
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
     key_type_map[key] = LatticeType::LWW;
-    local_lww_cache[key] = LWWPairLattice<string>(TimestampValuePair<string>(generate_timestamp(thread_id), string(1, '0')));
+    //local_lww_cache[key] = LWWPairLattice<string>(TimestampValuePair<string>(generate_timestamp(thread_id), string(1, '0')));
   }
   std::cout << "warmup done\n";
 
