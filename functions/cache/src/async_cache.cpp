@@ -39,36 +39,8 @@ struct PendingClientMetadata {
 };
 
 string get_serialized_value_from_cache(
-    const Key& key, LatticeType type,
-    const map<Key, LWWPairLattice<string>>& local_lww_cache,
-    const map<Key, SetLattice<string>>& local_set_cache,
-    const map<Key, OrderedSetLattice<string>>& local_ordered_set_cache,
-    logger log) {
-  if (type == LatticeType::LWW) {
-    if (local_lww_cache.find(key) != local_lww_cache.end()) {
-      return serialize(local_lww_cache.at(key));
-    } else {
-      log->error("Key {} not found in LWW cache.", key);
-      return "";
-    }
-  } else if (type == LatticeType::SET) {
-    if (local_set_cache.find(key) != local_set_cache.end()) {
-      return serialize(local_set_cache.at(key));
-    } else {
-      log->error("Key {} not found in SET cache.", key);
-      return "";
-    }
-  } else if (type == LatticeType::ORDERED_SET) {
-    if (local_ordered_set_cache.find(key) != local_ordered_set_cache.end()) {
-      return serialize(local_ordered_set_cache.at(key));
-    } else {
-      log->error("Key {} not found in ORDERED_SET cache.", key);
-      return "";
-    }
-  } else {
-    log->error("Invalid lattice type.");
-    return "";
-  }
+    const Key& key, const map<Key, LWWPairLattice<string>>& local_lww_cache, logger log) {
+  return serialize(local_lww_cache.at(key));
 }
 
 void update_cache(const Key& key, LatticeType type, const string& payload,
@@ -101,6 +73,7 @@ void send_get_response(
     KeyTuple* tp = response.add_tuples();
     tp->set_key(key);
     if (local_lww_cache.find(key) == local_lww_cache.end()) {
+      log->info("set error not found in lww");
       // key dne in cache, it actually means that there is a
       // response from kvs that has error = 1
       tp->set_error(1);
@@ -108,8 +81,7 @@ void send_get_response(
       tp->set_error(0);
       tp->set_lattice_type(LatticeType::LWW);
       tp->set_payload(get_serialized_value_from_cache(
-          key, LatticeType::LWW, local_lww_cache, local_set_cache,
-          local_ordered_set_cache, log));
+          key, local_lww_cache, log));
     }
   }
 
@@ -215,9 +187,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         std::cout << "covered!\n";
         log->info("covered!");
         std::cout << "response address is " + request.response_address() + "\n";
-        while(true) {
-          
-        }
+        log->info("response address is {}", request.response_address());
         send_get_response(read_set, request.response_address(), key_type_map,
                           local_lww_cache, local_set_cache,
                           local_ordered_set_cache, pushers, log);
