@@ -167,11 +167,21 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   std::list<Key> access_order;
   map<Key, std::list<Key>::iterator> iterator_cache;
 
+  // warmup
+  LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(thread_id), string(8, '0')));
+  for (unsigned i = 1; i < 1000001; i++) {
+    Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
+    key_type_map[key] = LatticeType::LWW;
+    local_lww_cache[key] = val;
+  }
+
   while (true) {
     kZmqUtil->poll(0, &pollitems);
 
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
+      std::cout << "received get\n";
+      log->info("received get");
       string serialized = kZmqUtil->recv_string(&get_puller);
       KeyRequest request;
       request.ParseFromString(serialized);
@@ -183,6 +193,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       for (KeyTuple tuple : request.tuples()) {
         Key key = tuple.key();
         read_set.insert(key);
+        std::cout << "key is " + key + "\n";
+        log->info("key is {}", key);
 
         if (key_type_map.find(key) == key_type_map.end()) {
           // this means key dne in cache
@@ -199,10 +211,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       }
 
       if (covered) {
+        std::cout << "covered!\n";
+        log->info("covered!");
         send_get_response(read_set, request.response_address(), key_type_map,
                           local_lww_cache, local_set_cache,
                           local_ordered_set_cache, pushers, log);
       } else {
+        std::cout << "not covered!\n";
+        log->info("not covered!");
         pending_request_read_set[request.response_address()] =
             PendingClientMetadata(read_set, to_retrieve);
       }
