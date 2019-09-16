@@ -85,11 +85,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     #    logging.info('no client id!')
 
     if schedule.consistency == CROSS:
-        # define read set and full read set
-        # and set dag name
-        # also initialize the versioned key map
-        read_set = {}
-        full_read_set = set()
 
     chosen_node = set()
 
@@ -111,15 +106,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
-
-        # populate read set and full read set
-        if schedule.consistency == CROSS:
-            if len(refs) != 0:
-                read_set[fname] = set(ref.key for ref in refs)
-                full_read_set = full_read_set.union(read_set[fname])
-
-    if schedule.consistency == CROSS:
-        schedule.full_read_set.extend(full_read_set)
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
