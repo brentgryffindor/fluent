@@ -84,8 +84,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     #else:
     #    logging.info('no client id!')
 
-    if schedule.consistency == CROSS:
-
     chosen_node = set()
 
     for fname in dag.functions:
