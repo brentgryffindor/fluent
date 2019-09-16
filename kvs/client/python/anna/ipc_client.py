@@ -59,6 +59,7 @@ class IpcAnnaClient:
             tp.key = key
 
         request.response_address = self.get_response_address
+        logging.info('sending get')
         self.get_request_socket.send(request.SerializeToString())
 
         try:
@@ -75,6 +76,7 @@ class IpcAnnaClient:
 
             return resp
         else:
+            logging.info('received response')
             kv_pairs = {}
             resp = KeyResponse()
             resp.ParseFromString(msg)
