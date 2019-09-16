@@ -68,7 +68,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs, outer):
 
             if key not in keys_chosen:
                 keys_chosen.append(key)
-                refs += (FluentReference(key, False, CROSSCAUSAL),)
+                refs += (FluentReference(key, False, LWW),)
                 to_generate -= 1
                 keys_read.append(key)
 
@@ -106,7 +106,7 @@ def run(flconn, kvs, mode, sckt):
             sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
-        refs = ()
+        '''refs = ()
         for _ in range(2):
             val = '0'.zfill(8)
             ccv = CrossCausalValue()
@@ -116,14 +116,14 @@ def run(flconn, kvs, mode, sckt):
             print("key name is ", k)
             kvs.put(k, ccv)
 
-            refs += (FluentReference(k, True, CROSSCAUSAL),)
+            refs += (FluentReference(k, True, LWW),)
 
         strmnp_test1 = cloud_strmnp1(*refs).get()
         strmnp_test2 = cloud_strmnp2(*refs).get()
         strmnp_test3 = cloud_strmnp3(*refs).get()
         if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
             logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
-            sys.exit(1)
+            sys.exit(1)'''
 
         print('Successfully tested functions!')
         logging.info('Successfully tested functions!')
@@ -160,7 +160,7 @@ def run(flconn, kvs, mode, sckt):
 
     elif mode == 'run':
         ### CREATE ZIPF TABLE###
-        zipf = 1.5
+        zipf = 2.0
         base = get_base(total_num_keys, zipf)
         sum_probs = {}
         sum_probs[0] = 0.0
@@ -199,7 +199,7 @@ def run(flconn, kvs, mode, sckt):
                 print("Output key is %s" % output)
 
                 start = time.time()
-                res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
+                res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
                 end = time.time()
                 print('Result is: %s' % res)
                 if res != 'abort':
