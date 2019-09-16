@@ -131,7 +131,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
-    #logging.info('exec dag normal')
+    logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
