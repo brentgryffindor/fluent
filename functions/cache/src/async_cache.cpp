@@ -120,6 +120,7 @@ void send_error_response(RequestType type, const Address& response_addr,
 }
 
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
+  std::cout << "start\n";
   string log_file = "cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "cache_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
@@ -168,9 +169,13 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   map<Key, std::list<Key>::iterator> iterator_cache;
 
   // warmup
+  std::cout << "creating val\n";
   LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(thread_id), string(8, '0')));
+  std::cout << "created val\n";
   for (unsigned i = 1; i < 1000001; i++) {
+    std::cout << "i is " + std::to_string(i) + "\n";
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
+    std::cout << "key is " + key + "\n";
     key_type_map[key] = LatticeType::LWW;
     local_lww_cache[key] = val;
   }
