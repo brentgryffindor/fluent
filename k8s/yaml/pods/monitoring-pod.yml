@@ -30,6 +30,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "bolt-on_nolog"
+      value: "session_nolog"
   nodeSelector:
     role: general
