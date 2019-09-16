@@ -160,7 +160,7 @@ def run(flconn, kvs, mode, sckt):
 
     elif mode == 'run':
         ### CREATE ZIPF TABLE###
-        zipf = 1.2
+        zipf = 1.5
         base = get_base(total_num_keys, zipf)
         sum_probs = {}
         sum_probs[0] = 0.0
