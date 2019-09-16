@@ -174,9 +174,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   auto report_start = std::chrono::system_clock::now();
   auto report_end = std::chrono::system_clock::now();
 
-  std::list<Key> access_order;
-  map<Key, std::list<Key>::iterator> iterator_cache;
-
   // warmup
   log->info("warmup begin");
   std::cout << "warmup start\n";
@@ -211,18 +208,16 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           to_retrieve.insert(key);
           key_requestor_map[key].insert(request.response_address());
           client->get_async(key);
-        } else {
-          access_order.erase(iterator_cache[key]);
         }
-
-        access_order.push_front(key);
-        iterator_cache[key] = access_order.begin();
       }
 
       if (covered) {
         std::cout << "covered!\n";
         log->info("covered!");
         std::cout << "response address is " + request.response_address() + "\n";
+        while(true) {
+          
+        }
         send_get_response(read_set, request.response_address(), key_type_map,
                           local_lww_cache, local_set_cache,
                           local_ordered_set_cache, pushers, log);
@@ -274,13 +269,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache,
                        local_ordered_set_cache, log);
-
-          if (iterator_cache.find(key) != iterator_cache.end()) {
-            access_order.erase(iterator_cache[key]);
-          }
-
-          access_order.push_front(key);
-          iterator_cache[key] = access_order.begin();
 
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
@@ -429,26 +417,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
-    }
-
-    if (key_type_map.size() > 1000) {
-      // drop the 10 least recently accessed keys
-      for (int i = 0; i < 10; i++) {
-        Key key = access_order.back();
-        access_order.pop_back();
-        iterator_cache.erase(key);
-
-        LatticeType type = key_type_map[key];
-        key_type_map.erase(key);
-
-        if (type == LWW) {
-          local_lww_cache.erase(key);
-        } else if (type == SET) {
-          local_set_cache.erase(key);
-        } else if (type == ORDERED_SET) {
-          local_ordered_set_cache.erase(key);
-        }
-      }
     }
   }
 }
