@@ -21,7 +21,7 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 unsigned kCacheReportThreshold = 5;
 
 void warmup(map<Key, LWWPairLattice<string>>& local_lww_cache, map<Key, LatticeType>& key_type_map) {
-  for (unsigned i = 1; i < 10001; i++) {
+  for (unsigned i = 1; i < 1000001; i++) {
     //std::cout << "i is " + std::to_string(i) + "\n";
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
     //key_type_map[key] = LatticeType::LWW;
@@ -100,15 +100,15 @@ void send_get_response(
   for (const Key& key : read_set) {
     KeyTuple* tp = response.add_tuples();
     tp->set_key(key);
-    if (key_type_map.find(key) == key_type_map.end()) {
+    if (local_lww_cache.find(key) == local_lww_cache.end()) {
       // key dne in cache, it actually means that there is a
       // response from kvs that has error = 1
       tp->set_error(1);
     } else {
       tp->set_error(0);
-      tp->set_lattice_type(key_type_map.at(key));
+      tp->set_lattice_type(LatticeType::LWW);
       tp->set_payload(get_serialized_value_from_cache(
-          key, key_type_map.at(key), local_lww_cache, local_set_cache,
+          key, LatticeType::LWW, local_lww_cache, local_set_cache,
           local_ordered_set_cache, log));
     }
   }
@@ -178,9 +178,11 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   map<Key, std::list<Key>::iterator> iterator_cache;
 
   // warmup
+  log->info("warmup begin");
   std::cout << "warmup start\n";
   warmup(local_lww_cache, key_type_map);
   std::cout << "warmup done\n";
+  log->info("warmup end");
 
   while (true) {
     kZmqUtil->poll(0, &pollitems);
@@ -203,7 +205,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         std::cout << "key is " + key + "\n";
         log->info("key is {}", key);
 
-        if (key_type_map.find(key) == key_type_map.end()) {
+        if (local_lww_cache.find(key) == local_lww_cache.end()) {
           // this means key dne in cache
           covered = false;
           to_retrieve.insert(key);
