@@ -55,6 +55,7 @@ class IpcAnnaClient:
         request.type = GET
 
         for key in keys:
+            logging.info('key is %s' % key)
             tp = request.tuples.add()
             tp.key = key
 
