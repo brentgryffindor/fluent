@@ -67,8 +67,6 @@ void scheduler_remote_read_handler(
         // populate local read if not in remove set
         if (!pair.second) {
           pending_cross_metadata[cid_function_pair].result_[pair.first] = version_store.at(cid_function_pair).second.at(pair.first).at(pair.first);
-        } else {
-          pending_cross_metadata[cid_function_pair].remove_set_.insert(pair.first);
         }
       }
       // update the executor thread id for possible later caching

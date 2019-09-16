@@ -84,6 +84,9 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     #else:
     #    logging.info('no client id!')
 
+    if schedule.consistency == CROSS:
+        read_set = {}
+
     chosen_node = set()
 
     for fname in dag.functions:
@@ -105,6 +108,11 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
 
+        # populate read set and full read set
+        if schedule.consistency == CROSS:
+            if len(refs) != 0:
+                read_set[fname] = set(ref.key for ref in refs)
+
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
         ip = utils._get_queue_address(loc[0], loc[1])
@@ -116,6 +124,10 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
         schedule.ClearField('triggers')
         schedule.triggers.extend(triggers)
+
+        if schedule.consistency == CROSS:
+            schedule.ClearField('full_read_set')
+            schedule.full_read_set.extend(read_set[func])
 
         sckt = pusher_cache.get(ip)
         sckt.send(schedule.SerializeToString())

@@ -214,17 +214,8 @@ void get_request_handler(
             // it's not possible to read different versions of the same key in
             // prior execution because otherwise it'll be aborted, so a simple map
             // is fine
-            map<Key, VectorClock> prior_read_map;
-            // store prior read to a map
-            for (const auto& versioned_key : request.prior_read_map()) {
-              // convert protobuf type to VectorClock
-              for (const auto& key_version_pair : versioned_key.vector_clock()) {
-                prior_read_map[versioned_key.key()].insert(
-                    key_version_pair.first, key_version_pair.second);
-              }
-            }
             optimistic_protocol(cid_function_pair, read_set, version_store,
-                                prior_read_map, pending_cross_metadata, pushers,
+                                pending_cross_metadata, pushers,
                                 cct, causal_frontier, request.response_address(), log, cached_versions, protocol_matadata_map);
           }
         } else if (pending_cross_metadata.find(cid_function_pair) !=
@@ -238,15 +229,6 @@ void get_request_handler(
           // construct causal frontier
           pending_cross_metadata[cid_function_pair].causal_frontier_ =
               construct_causal_frontier(request);
-          // store prior read to a map
-          for (const auto& versioned_key : request.prior_read_map()) {
-            // convert protobuf type to VectorClock
-            for (const auto& key_version_pair : versioned_key.vector_clock()) {
-              pending_cross_metadata[cid_function_pair]
-                  .prior_read_map_[versioned_key.key()]
-                  .insert(key_version_pair.first, key_version_pair.second);
-            }
-          }
           // store full read set for constructing version store later
           for (const Key& key : request.full_read_set()) {
             pending_cross_metadata[cid_function_pair].full_read_set_.insert(key);
@@ -275,15 +257,6 @@ void get_request_handler(
             // store causal frontier
             pending_cross_metadata[cid_function_pair].causal_frontier_ =
                 causal_frontier;
-            // store prior read to a map
-            for (const auto& versioned_key : request.prior_read_map()) {
-              // convert protobuf type to VectorClock
-              for (const auto& key_version_pair : versioned_key.vector_clock()) {
-                pending_cross_metadata[cid_function_pair]
-                    .prior_read_map_[versioned_key.key()]
-                    .insert(key_version_pair.first, key_version_pair.second);
-              }
-            }
             // store full read set for constructing version store later
             for (const Key& key : request.full_read_set()) {
               pending_cross_metadata[cid_function_pair].full_read_set_.emplace(
@@ -313,17 +286,8 @@ void get_request_handler(
             // it's not possible to read different versions of the same key in
             // prior execution because otherwise it'll be aborted, so a simple map
             // is fine
-            map<Key, VectorClock> prior_read_map;
-            // store prior read to a map
-            for (const auto& versioned_key : request.prior_read_map()) {
-              // convert protobuf type to VectorClock
-              for (const auto& key_version_pair : versioned_key.vector_clock()) {
-                prior_read_map[versioned_key.key()].insert(
-                    key_version_pair.first, key_version_pair.second);
-              }
-            }
             optimistic_protocol(cid_function_pair, read_set, version_store,
-                                prior_read_map, pending_cross_metadata, pushers,
+                                pending_cross_metadata, pushers,
                                 cct, causal_frontier, request.response_address(), log, cached_versions, protocol_matadata_map);
           }
         }
@@ -400,22 +364,18 @@ void get_request_handler(
               tp->set_payload(serialize(*(pair.second)));
             }
             // then populate prior_version_tuples
-            if (pending_cross_metadata[cid_function_pair].remove_set_.find(
-                    pair.first) ==
-                pending_cross_metadata[cid_function_pair].remove_set_.end()) {
-              for (const auto& key_ptr_pair : version_store.at(cid_function_pair).second.at(pair.first)) {
-                PriorVersionTuple* tp = response.add_prior_version_tuples();
-                tp->set_cache_address(
-                    cct.causal_cache_versioned_key_request_connect_address());
-                tp->set_function_name(cid_function_pair.second);
-                auto vk = tp->mutable_versioned_key();
-                vk->set_key(key_ptr_pair.first);
-                auto ptr = vk->mutable_vector_clock();
-                for (const auto& client_version_pair :
-                     key_ptr_pair.second->reveal().vector_clock.reveal()) {
-                  (*ptr)[client_version_pair.first] =
-                      client_version_pair.second.reveal();
-                }
+            for (const auto& key_ptr_pair : version_store.at(cid_function_pair).second.at(pair.first)) {
+              PriorVersionTuple* tp = response.add_prior_version_tuples();
+              tp->set_cache_address(
+                  cct.causal_cache_versioned_key_request_connect_address());
+              tp->set_function_name(cid_function_pair.second);
+              auto vk = tp->mutable_versioned_key();
+              vk->set_key(key_ptr_pair.first);
+              auto ptr = vk->mutable_vector_clock();
+              for (const auto& client_version_pair :
+                   key_ptr_pair.second->reveal().vector_clock.reveal()) {
+                (*ptr)[client_version_pair.first] =
+                    client_version_pair.second.reveal();
               }
             }
           }

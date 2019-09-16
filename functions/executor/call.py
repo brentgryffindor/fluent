@@ -439,12 +439,6 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         for key in keys:
             #logging.info('cache hit for key %s' % key)
             # these are keys that are cached
-            # we first update the prior_read_map since cached keys are not returned by the cache
-            vk = VersionedKey()
-            vk.key = key
-            vk.vector_clock.update(cache[key][0])
-            prior_read_map.extend([vk])
-            
             func_args[key_index_map[key]] = cache[key][1]
             # update dependency
             if key in dependencies:
@@ -485,14 +479,6 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
     if result == KEY_DNE or result == ABORT:
         #logging.info('dne or abort')
         return result
-
-    if not conservative:
-        prior_version_tuples.extend(result[0])
-        prior_read_map.extend(result[1])
-        # debug print
-        #for prior_version_tuple in prior_version_tuples:
-        #    logging.info('function name is %s' % prior_version_tuple.function_name)
-        #    logging.info('key is %s' % prior_version_tuple.versioned_key.key)
 
     return NO_ERROR
 

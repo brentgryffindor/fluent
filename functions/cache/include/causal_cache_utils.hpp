@@ -106,18 +106,15 @@ struct PendingClientMetadata {
       read_set_(std::move(read_set)),
       to_cover_set_(std::move(to_cover_set)),
       causal_frontier_(std::move(causal_frontier)),
-      prior_read_map_(std::move(prior_read_map)),
       full_read_set_(std::move(full_read_set)),
       remote_read_tracker_(std::move(remote_read_tracker)) {}
 
   set<Key> read_set_;
   set<Key> to_cover_set_;
   CausalFrontierType causal_frontier_;
-  map<Key, VectorClock> prior_read_map_;
   set<Key> full_read_set_;
   map<Key, std::unordered_set<VectorClock, VectorClockHash>>
       remote_read_tracker_;
-  set<Key> remove_set_;
   StoreType result_;
   Address executor_response_address_;
   Address scheduler_response_address_;
@@ -129,7 +126,6 @@ struct PendingClientMetadata {
   bool operator==(const PendingClientMetadata& input) const {
     if (read_set_ == input.read_set_ && to_cover_set_ == input.to_cover_set_ &&
         causal_frontier_ == input.causal_frontier_ &&
-        prior_read_map_ == input.prior_read_map_ &&
         full_read_set_ == input.full_read_set_ &&
         remote_read_tracker_ == input.remote_read_tracker_) {
       return true;
@@ -244,20 +240,11 @@ void populate_causal_frontier(const Key& key, const VectorClock& vc,
                               const Address& executor_addr,
                               CausalFrontierType& causal_frontier);
 
-// determine if we can remove a local read to prevent a potential abort
-bool remove_from_local_readset(const Key& key,
-                               CausalFrontierType& causal_frontier,
-                               const set<Key>& read_set,
-                               set<Key>& remove_candidate,
-                               const VersionStoreType& version_store,
-                               const ClientIdFunctionPair& cid_function_pair, logger log);
-
 CausalFrontierType construct_causal_frontier(const CausalGetRequest& request);
 
 void optimistic_protocol(
     const ClientIdFunctionPair& cid_function_pair, const set<Key>& read_set,
     const VersionStoreType& version_store,
-    const map<Key, VectorClock>& prior_read_map,
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
