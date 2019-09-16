@@ -131,7 +131,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
-    logging.info('exec dag normal for cid %s' % schedule.client_id)
+    #logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
@@ -163,13 +163,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        if schedule.HasField('output_key'):
-            logging.info('DAG %s (ID %s) completed; result at %s.' %
-                         (schedule.dag.name, trigger.id, schedule.output_key))
-        else:
-            logging.info('DAG %s (ID %s) completed; result at %s.' %
-                         (schedule.dag.name, trigger.id, schedule.id))
-
         result = serialize_val(result)
         if schedule.HasField('response_address'):
             sckt = pusher_cache.get(schedule.response_address)

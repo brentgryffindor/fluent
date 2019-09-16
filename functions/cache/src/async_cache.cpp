@@ -73,7 +73,7 @@ void send_get_response(
     KeyTuple* tp = response.add_tuples();
     tp->set_key(key);
     if (local_lww_cache.find(key) == local_lww_cache.end()) {
-      log->info("set error not found in lww");
+      //log->info("set error not found in lww");
       // key dne in cache, it actually means that there is a
       // response from kvs that has error = 1
       tp->set_error(1);
@@ -101,7 +101,7 @@ void send_error_response(RequestType type, const Address& response_addr,
 }
 
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
-  std::cout << "start\n";
+  //std::cout << "start\n";
   string log_file = "cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "cache_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
@@ -148,9 +148,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
   // warmup
   log->info("warmup begin");
-  std::cout << "warmup start\n";
+  //std::cout << "warmup start\n";
   warmup(local_lww_cache, key_type_map);
-  std::cout << "warmup done\n";
+  //std::cout << "warmup done\n";
   log->info("warmup end");
 
   while (true) {
@@ -158,8 +158,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::cout << "received get\n";
-      log->info("received get");
+      //std::cout << "received get\n";
+      //log->info("received get");
       string serialized = kZmqUtil->recv_string(&get_puller);
       KeyRequest request;
       request.ParseFromString(serialized);
@@ -171,8 +171,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       for (KeyTuple tuple : request.tuples()) {
         Key key = tuple.key();
         read_set.insert(key);
-        std::cout << "key is " + key + "\n";
-        log->info("key is {}", key);
+        //std::cout << "key is " + key + "\n";
+        //log->info("key is {}", key);
 
         if (local_lww_cache.find(key) == local_lww_cache.end()) {
           // this means key dne in cache
@@ -184,16 +184,16 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       }
 
       if (covered) {
-        std::cout << "covered!\n";
-        log->info("covered!");
-        std::cout << "response address is " + request.response_address() + "\n";
-        log->info("response address is {}", request.response_address());
+        //std::cout << "covered!\n";
+        //log->info("covered!");
+        //std::cout << "response address is " + request.response_address() + "\n";
+        //log->info("response address is {}", request.response_address());
         send_get_response(read_set, request.response_address(), key_type_map,
                           local_lww_cache, local_set_cache,
                           local_ordered_set_cache, pushers, log);
       } else {
-        std::cout << "not covered!\n";
-        log->info("not covered!");
+        //std::cout << "not covered!\n";
+        //log->info("not covered!");
         pending_request_read_set[request.response_address()] =
             PendingClientMetadata(read_set, to_retrieve);
       }
