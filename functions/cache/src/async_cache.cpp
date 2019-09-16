@@ -20,6 +20,15 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 unsigned kCacheReportThreshold = 5;
 
+void warmup(map<Key, LatticeType>& key_type_map) {
+  for (unsigned i = 1; i < 10001; i++) {
+    //std::cout << "i is " + std::to_string(i) + "\n";
+    Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
+    key_type_map[key] = LatticeType::LWW;
+    //local_lww_cache[key] = LWWPairLattice<string>(TimestampValuePair<string>(generate_timestamp(thread_id), string(1, '0')));
+  }
+}
+
 struct PendingClientMetadata {
   PendingClientMetadata() = default;
   PendingClientMetadata(set<Key> read_set, set<Key> to_retrieve_set) :
@@ -170,12 +179,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
   // warmup
   std::cout << "warmup start\n";
-  for (unsigned i = 1; i < 10001; i++) {
-    std::cout << "i is " + std::to_string(i) + "\n";
-    Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
-    key_type_map[key] = LatticeType::LWW;
-    //local_lww_cache[key] = LWWPairLattice<string>(TimestampValuePair<string>(generate_timestamp(thread_id), string(1, '0')));
-  }
+  warmup(key_type_map);
   std::cout << "warmup done\n";
 
   while (true) {
