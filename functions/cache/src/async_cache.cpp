@@ -222,6 +222,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       if (covered) {
         std::cout << "covered!\n";
         log->info("covered!");
+        std::cout << "response address is " + request.response_address() + "\n";
         send_get_response(read_set, request.response_address(), key_type_map,
                           local_lww_cache, local_set_cache,
                           local_ordered_set_cache, pushers, log);

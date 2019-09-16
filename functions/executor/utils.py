@@ -25,7 +25,7 @@ EXECUTOR_DEPART_PORT = 7005
 VERSION_GC_PORT = 7200
 
 
-def _retrieve_function(name, kvs, consistency=CROSS):
+def _retrieve_function(name, kvs, consistency=NORMAL):
     kvs_name = server_utils._get_func_kvs_name(name)
     #logging.info('function name is %s', kvs_name)
 

@@ -441,8 +441,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
             set<Address>& cache_ips = key_to_cache_ips[key];
             for (const Address& cache_ip : cache_ips) {
-              CausalCacheThread cct(cache_ip, 0);
-              addr_keyset_map[cct.causal_cache_update_connect_address()].insert(
+              CacheThread ct(cache_ip, 0);
+              addr_keyset_map[ct.cache_update_connect_address()].insert(
                   key);
             }
           }
