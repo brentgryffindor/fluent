@@ -175,10 +175,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   for (unsigned i = 1; i < 100001; i++) {
     std::cout << "i is " + std::to_string(i) + "\n";
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
-    std::cout << "key is " + key + "\n";
     key_type_map[key] = LatticeType::LWW;
     local_lww_cache[key] = val;
   }
+  std::cout << "warmup done\n";
 
   while (true) {
     kZmqUtil->poll(0, &pollitems);
