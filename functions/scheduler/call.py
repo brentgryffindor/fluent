@@ -127,7 +127,11 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
         if schedule.consistency == CROSS:
             schedule.ClearField('full_read_set')
-            schedule.full_read_set.extend(read_set[func])
+            downstream_functions = _find_downstream_functions(func, dag.connections)
+            full_read_set = set()
+            for dfunc in downstream_functions:
+                full_read_set = full_read_set.union(read_set[dfunc])
+            schedule.full_read_set.extend(full_read_set)
 
         sckt = pusher_cache.get(ip)
         sckt.send(schedule.SerializeToString())
@@ -212,3 +216,18 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     running_counts[max_ip].add(time.time())
 
     return max_ip'''
+
+# given a func name, find all downstream functions including itself
+def _find_downstream_functions(fname, connections):
+    result = set()
+    result.add(fname)
+    explored = set()
+    diff = result - explored
+    while len(diff) != 0:
+        for candidate in diff:
+            for conn in connections:
+                if conn.source == candidate:
+                    result.add(conn.sink)
+        explored = explored.union(diff)
+        diff = result - explored
+    return result

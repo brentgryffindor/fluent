@@ -480,6 +480,8 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
         #logging.info('dne or abort')
         return result
 
+    prior_version_tuples.extend(result[0])
+
     return NO_ERROR
 
 def _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
