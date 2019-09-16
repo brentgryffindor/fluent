@@ -172,7 +172,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   std::cout << "creating val\n";
   LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(thread_id), string(8, '0')));
   std::cout << "created val\n";
-  for (unsigned i = 1; i < 100001; i++) {
+  for (unsigned i = 1; i < 10001; i++) {
     std::cout << "i is " + std::to_string(i) + "\n";
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
     key_type_map[key] = LatticeType::LWW;
