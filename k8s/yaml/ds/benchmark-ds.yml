@@ -44,9 +44,9 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "hybrid_nolog"
       - name: benchmark-2
-        image: fluentproject/executor
+        image: cgwu/executor
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -59,9 +59,9 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "hybrid_nolog"
       - name: benchmark-3
-        image: fluentproject/executor
+        image: cgwu/executor
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -74,9 +74,9 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "hybrid_nolog"
       - name: benchmark-4
-        image: fluentproject/executor
+        image: cgwu/executor
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -89,4 +89,4 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "hybrid_nolog"
