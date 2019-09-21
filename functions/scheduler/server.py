@@ -301,7 +301,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             # update pending map and versioned key map. if collected all, run conservative protocol
             response = CausalSchedulerResponse()
             response.ParseFromString(versioned_key_collection_socket.recv())
-            logging.info('received version key collection response for cid %s function %s' % (response.client_id, response.function_name))
+            #logging.info('received version key collection response for cid %s function %s' % (response.client_id, response.function_name))
             if response.succeed == False:
                 # TODO: handle dne
                 logging.error('Key DNE error.')
@@ -342,6 +342,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 versioned_key_map[response.client_id].global_causal_frontier[vk.key].append((vk.vector_clock, response.function_name))
 
                     if len(pending_versioned_key_collection_response[response.client_id]) == 0:
+                        logging.info('cid %s gathered all versioned key response' % response.client_id)
                         cache_response = time.time()
                         # track dependency numbers
                         for fname in versioned_key_map[response.client_id].func_location:
@@ -441,9 +442,11 @@ def scheduler(ip, mgmt_ip, route_addr):
         if key_shipping_response_socket in socks and socks[key_shipping_response_socket] == zmq.POLLIN:
             response = SchedulerKeyShippingResponse()
             response.ParseFromString(key_shipping_response_socket.recv())
+            logging.info('received key shipping response for cid %s cache %s' % (response.client_id, response.cache_address))
             if response.client_id in pending_conservative_response and response.cache_address in pending_conservative_response[response.client_id][1]:
                 pending_conservative_response[response.client_id][1].remove(response.cache_address)
                 if len(pending_conservative_response[response.client_id][1]) == 0:
+                    logging.info('cid %s received key shipping response from all caches' % response.client_id)
                     _call_dag_conservative(pending_conservative_response[response.client_id][0], dags, pusher_cache)
                     # GC
                     del pending_conservative_response[response.client_id]
@@ -480,8 +483,13 @@ def scheduler(ip, mgmt_ip, route_addr):
             logging.info('dep key involved are %s' % dep_key_involved)
             logging.info('max vc size is %d' % max_vc_size)
             logging.info('pending versioned key collection response')
-            for key in pending_versioned_key_collection_response:
-                logging.info(key)
+            for cid in pending_versioned_key_collection_response:
+                logging.info(cid)
+            logging.info('pending conservative response')
+            for cid in pending_conservative_response:
+                logging.info('cid %s pending' % cid)
+                for cache_addr in pending_conservative_response[cid][1]:
+                    logging.info('cache is %s' % cache_addr)
             # for benchmark: don't have to update schedulers and key_ip_map
             #schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
             #                                   executors, key_ip_map, kvs)

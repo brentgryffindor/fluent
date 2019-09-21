@@ -451,7 +451,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       //log->info("received key shipping response");
       string serialized = kZmqUtil->recv_string(&key_shipping_response_puller);
       key_shipping_response_handler(serialized, pending_key_shipping_map,
-                                    conservative_store, cct, pushers);
+                                    conservative_store, cct, pushers, log);
       //log->info("done key shipping response");
       std::cout << "done key shipping response\n";
     }
@@ -499,6 +499,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       }
       for (const auto& pair : protocol_matadata_map) {
         log->info("protocol cid {} function {}", pair.first.first, pair.first.second);
+      }
+      for (const auto& pair : pending_key_shipping_map) {
+        log->info("pending key shipping cid {}", pair.first);
+        for (const auto& pending_address : pair.second.first) {
+          log->info("waiting for cache {}", pending_address);
+        }
       }
 
       KeySet set;

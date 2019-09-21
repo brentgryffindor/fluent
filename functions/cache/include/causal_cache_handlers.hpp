@@ -113,7 +113,7 @@ void key_shipping_response_handler(
     map<string, pair<set<Address>, Address>>& pending_key_shipping_map,
     std::unordered_map<ClientIdFunctionPair, StoreType, PairHash>&
         conservative_store,
-    const CausalCacheThread& cct, SocketCache& pushers);
+    const CausalCacheThread& cct, SocketCache& pushers, logger log);
 
 void scheduler_remote_read_handler(
     const string& serialized, VersionStoreType& version_store,
