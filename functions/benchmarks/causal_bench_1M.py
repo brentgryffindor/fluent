@@ -12,11 +12,6 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-total_num_keys = 1000000
-
-functions = ['strmnp1', 'strmnp2', 'strmnp3']
-connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-
 zipf = 0
 base = 0
 sum_probs = {}
@@ -81,8 +76,11 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         
     return arg_map, list(set(keys_read))
 
-def run(flconn, kvs, mode, segment):
+def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
+    functions = ['strmnp1', 'strmnp2', 'strmnp3']
+    connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
+    total_num_keys = 1000000
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -167,12 +165,10 @@ def run(flconn, kvs, mode, segment):
     elif mode == 'zipf':
         logging.info("Creating Probability Table with zipf %f" % zipf)
         ### CREATE ZIPF TABLE###
-        zipf = 1.5
-        base = get_base(total_num_keys, zipf)
-        sum_probs = {}
-        sum_probs[0] = 0.0
+        params[0] = 1.5
+        params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
-            sum_probs[i] = sum_probs[i - 1] + (base / np.power(float(i), zipf))
+            params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % zipf)
         return []
@@ -181,7 +177,10 @@ def run(flconn, kvs, mode, segment):
         ### RUN DAG ###
         #print('Running DAG')
         logging.info('Running DAG')
-
+        zipf = params[0]
+        base = params[1]
+        sum_probs = params[2]
+        
         request_num = 3000
 
         total_time = []

@@ -38,10 +38,16 @@ def benchmark(flconn, tid):
 
 
 def run_bench(bname, mode, segment, flconn, kvs, sckt):
+    zipf = 0
+    base = 0
+    sum_probs = {}
+    sum_probs[0] = 0.0
+
+    params = [zipf, base, sum_probs]
     logging.info('Running benchmark %s with mode %s.' % (bname, mode))
 
     if bname == 'causal_bench_1M':
-        latency = causal_bench_1M.run(flconn, kvs, mode, segment)
+        latency = causal_bench_1M.run(flconn, kvs, mode, segment, params)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
