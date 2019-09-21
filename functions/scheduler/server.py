@@ -450,6 +450,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                     _call_dag_conservative(pending_conservative_response[response.client_id][0], dags, pusher_cache)
                     # GC
                     del pending_conservative_response[response.client_id]
+            else:
+                logging.error('cid %s cache %s not expected' % (response.client_id, response.cache_address))
 
 
 
