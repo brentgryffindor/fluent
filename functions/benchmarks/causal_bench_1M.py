@@ -163,14 +163,14 @@ def run(flconn, kvs, mode, segment, params):
         logging.info('Data populated')
 
     elif mode == 'zipf':
-        logging.info("Creating Probability Table with zipf %f" % zipf)
+        logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
         params[0] = 1.5
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
-        logging.info("Created Probability Table with zipf %f" % zipf)
+        logging.info("Created Probability Table with zipf %f" % params[0])
         return []
 
     elif mode == 'run':
@@ -180,7 +180,7 @@ def run(flconn, kvs, mode, segment, params):
         zipf = params[0]
         base = params[1]
         sum_probs = params[2]
-        
+
         request_num = 3000
 
         total_time = []
