@@ -217,8 +217,8 @@ def run(flconn, kvs, mode, segment, params):
             start = time.time()
             scheduler_time = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
             end = time.time()
-            #all_times.append((end - start))
-            all_times.append(scheduler_time)
+            all_times.append((end - start))
+            #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
         return all_times
         #print('zipf %f' % zipf)
