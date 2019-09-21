@@ -672,6 +672,7 @@ def _simulate_optimistic_protocol(versioned_key_map, cid, finished_functions, to
 
 
 def _call_dag_conservative(schedule, dags, pusher_cache):
+    logging.info('calling conservatice for cid %s schedule id %s' % (schedule.client_id, schedule.id))
     sources = dags[schedule.dag.name][1]
     for source in sources:
         trigger = DagTrigger()
@@ -680,6 +681,7 @@ def _call_dag_conservative(schedule, dags, pusher_cache):
         trigger.target_function = source
 
         ip = sutils._get_dag_conservative_trigger_address(schedule.locations[source])
+        logging.info('source ip is %s' % ip)
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 

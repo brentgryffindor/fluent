@@ -277,8 +277,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_conservative_exec_socket.recv())
 
             fname = trigger.target_function
-            #logging.info('Received a conservative trigger for schedule %s, function %s.' %
-            #             (trigger.id, fname))
+            logging.info('Received a conservative trigger for schedule %s, function %s.' %
+                         (trigger.id, fname))
 
             key = (trigger.id, fname)
             if key not in received_conservative_triggers:
@@ -286,6 +286,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             received_conservative_triggers[key][trigger.source] = trigger
             if fname in queue and trigger.id in queue[fname]:
+                logging.info('schedule already arrived')
                 schedule = queue[fname][trigger.id]
                 if len(received_conservative_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
@@ -294,6 +295,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                                       thread_id, cache, function_result_cache, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
+            else:
+                logging.error('schedule has not arrived yet!')
 
             elapsed = time.time() - work_start
             event_occupancy['dag_conservative_exec'] += elapsed
