@@ -54,14 +54,34 @@ elif 'warmup' in msg:
 			sent_msgs += 1
 			index += 1
 elif 'run' in msg:
-	index = 0
-	for ip in ips:
-		for tid in range(NUM_THREADS):
-			sckt = ctx.socket(zmq.PUSH)
-			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-			sckt.send_string(msg + ':' + str(index))
-			sent_msgs += 1
-			index += 1
+	end_recv = 0
+
+	latency = []
+
+	for loop in range(20):
+		print('loop is %d' % loop)
+		index = 0
+		for ip in ips:
+			for tid in range(NUM_THREADS):
+				sckt = ctx.socket(zmq.PUSH)
+				sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+				sckt.send_string(msg + ':' + str(index))
+				sent_msgs += 1
+				index += 1
+
+		while end_recv < sent_msgs:
+			payload = recv_socket.recv()
+			logging.info("received response")
+			end_recv += 1
+			latency += cp.loads(payload)
+
+		sent_msgs = 0
+		end_recv = 0
+		time.sleep(0.5)
+	logging.info("benchmark done")
+	utils.print_latency_stats(latency, 'Causal', True)
+	utils.print_latency_stats(latency, 'Causal')
+	sys.exit(0)
 
 end_recv = 0
 
@@ -71,11 +91,5 @@ while end_recv < sent_msgs:
 	payload = recv_socket.recv()
 	logging.info("received response")
 	end_recv += 1
-	if 'run' in msg:
-		latency += cp.loads(payload)
-
-if 'run' in msg:
-	utils.print_latency_stats(latency, 'Causal', True)
-	utils.print_latency_stats(latency, 'Causal')
 
 logging.info("benchmark done")

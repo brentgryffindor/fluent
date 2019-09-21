@@ -190,35 +190,34 @@ def run(flconn, kvs, mode, segment, params):
         read_map = {}
         write_map = {}
 
-        for loop in range(10):
-            for i in range(25*segment, 25*segment + 25):
-                cid = str(i).zfill(3)
+        for i in range(15*segment, 15*segment + 15):
+            cid = str(i).zfill(3)
 
-                logging.info("running client %s loop %s" % (cid, loop))
+            logging.info("running client %s" % cid)
 
-                arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
+            arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
 
-                for func in arg_map:
-                    logging.info("function is %s" % func)
-                    for ref in arg_map[func]:
-                        if ref.key not in read_map:
-                            read_map[ref.key] = 0
-                        read_map[ref.key] += 1
-                        #print("key of reference is %s" % ref.key)
+            for func in arg_map:
+                logging.info("function is %s" % func)
+                for ref in arg_map[func]:
+                    if ref.key not in read_map:
+                        read_map[ref.key] = 0
+                    read_map[ref.key] += 1
+                    #print("key of reference is %s" % ref.key)
 
-                #for key in read_set:
-                #    print("read set contains %s" % key)
+            #for key in read_set:
+            #    print("read set contains %s" % key)
 
-                output = random.choice(read_set)
-                if output not in write_map:
-                    write_map[output] = 0
-                write_map[output] += 1
-                #print("Output key is %s" % output)
+            output = random.choice(read_set)
+            if output not in write_map:
+                write_map[output] = 0
+            write_map[output] += 1
+            #print("Output key is %s" % output)
 
-                start = time.time()
-                res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
-                end = time.time()
-                all_times.append((end - start))
+            start = time.time()
+            res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
+            end = time.time()
+            all_times.append((end - start))
             #print('Result is: %s' % res)
         return all_times
         #print('zipf %f' % zipf)
