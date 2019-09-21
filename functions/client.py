@@ -173,15 +173,18 @@ class FluentConnection():
         if direct_response:
             dc.response_address = self.response_address
 
+        send_time = time.time()
         self.dag_call_sock.send(dc.SerializeToString())
 
         r = GenericResponse()
         r.ParseFromString(self.dag_call_sock.recv())
+        receive_time = time.time()
+
 
         if direct_response:
             try:
                 result = self.response_sock.recv()
-                return deserialize_val(result)
+                return (receive_time - send_time)
             except zmq.ZMQError as e:
                 if e.errno == zmq.EAGAIN:
                     return None
