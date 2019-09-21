@@ -301,6 +301,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             # update pending map and versioned key map. if collected all, run conservative protocol
             response = CausalSchedulerResponse()
             response.ParseFromString(versioned_key_collection_socket.recv())
+            logging.info('received version key collection response for cid %s function %s' % (response.client_id, response.function_name))
             if response.succeed == False:
                 # TODO: handle dne
                 logging.error('Key DNE error.')
@@ -478,6 +479,9 @@ def scheduler(ip, mgmt_ip, route_addr):
             logging.info('max dependency size is %d' % max_dep_size)
             logging.info('dep key involved are %s' % dep_key_involved)
             logging.info('max vc size is %d' % max_vc_size)
+            logging.info('pending versioned key collection response')
+            for key in pending_versioned_key_collection_response:
+                logging.info(key)
             # for benchmark: don't have to update schedulers and key_ip_map
             #schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
             #                                   executors, key_ip_map, kvs)

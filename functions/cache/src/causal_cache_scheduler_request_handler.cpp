@@ -39,6 +39,7 @@ void scheduler_request_handler(
   auto scheduler_start = std::chrono::system_clock::now();
   auto cid_function_pair =
       std::make_pair(request.client_id(), request.function_name());
+  log->info("Scheduler: received request for cid {}", request.client_id());
 
   set<Key> read_set;
   for (const string& key : request.keys()) {
@@ -70,6 +71,7 @@ void scheduler_request_handler(
     // this means that executor already issued the GET request but not all
     // required data have been fetched from the KVS, so we just add scheduler
     // address to the pending map
+    log->info("Scheduler: executor already arrived, pending");
     pending_cross_metadata[cid_function_pair].scheduler_response_address_ =
         request.scheduler_address();
   } else {
@@ -83,6 +85,7 @@ void scheduler_request_handler(
                          version_store, pending_cross_metadata, to_fetch_map,
                          cover_map, pushers, client, cct, causal_frontier,
                          log, protocol_matadata_map)) {
+      log->info("Scheduler: not covered");
       pending_cross_metadata[cid_function_pair].read_set_ = read_set;
       pending_cross_metadata[cid_function_pair].to_cover_set_ = to_cover;
       pending_cross_metadata[cid_function_pair].scheduler_response_address_ =
@@ -92,6 +95,7 @@ void scheduler_request_handler(
         pending_cross_metadata[cid_function_pair].full_read_set_.insert(key);
       }
     } else {
+      log->info("Scheduler: all keys covered");
       // all keys covered, first populate version store entry
       // in this case, it's not possible that keys DNE
       version_store[cid_function_pair].first = false;
@@ -119,5 +123,5 @@ void scheduler_request_handler(
   }
   auto scheduler_end = std::chrono::system_clock::now();
   auto scheduler_time = std::chrono::duration_cast<std::chrono::microseconds>(scheduler_end - scheduler_start).count();
-  log->info("scheduler request {} micro seconds", scheduler_time);
+  log->info("scheduler request {} micro seconds for cid {}", scheduler_time, request.client_id());
 }
