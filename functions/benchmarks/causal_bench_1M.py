@@ -191,7 +191,7 @@ def run(flconn, kvs, mode, segment, params):
         write_map = {}
 
         for loop in range(20):
-            for i in range(30*segment, 30*segment + 30):
+            for i in range(20*segment, 20*segment + 20):
                 cid = str(i).zfill(3)
 
                 logging.info("running client %s loop %s" % (cid, loop))
