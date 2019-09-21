@@ -35,6 +35,12 @@ if 'create' in msg:
 
     sckt.send_string(msg)
     sent_msgs += 1
+elif 'zipf' in msg:
+    sckt = ctx.socket(zmq.PUSH)
+    sckt.connect('tcp://' + ips[0] + ':3000')
+
+    sckt.send_string(msg)
+    sent_msgs += 1
 elif 'warmup' in msg:
 	index = 0
 	for ip in ips:

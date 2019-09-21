@@ -21,6 +21,13 @@ def benchmark(flconn, tid):
     benchmark_start_socket.bind('tcp://*:' + str(BENCHMARK_START_PORT + tid))
     kvs = flconn.kvs_client
 
+    zipf = 0
+    base = 0
+    sum_probs = {}
+    sum_probs[0] = 0.0
+
+    params = [zipf, base, sum_probs]
+
     while True:
         msg = benchmark_start_socket.recv_string()
         splits = msg.split(':')
@@ -34,16 +41,10 @@ def benchmark(flconn, tid):
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
-        run_bench(bname, mode, segment, flconn, kvs, sckt)
+        run_bench(bname, mode, segment, flconn, kvs, sckt, params)
 
 
-def run_bench(bname, mode, segment, flconn, kvs, sckt):
-    zipf = 0
-    base = 0
-    sum_probs = {}
-    sum_probs[0] = 0.0
-
-    params = [zipf, base, sum_probs]
+def run_bench(bname, mode, segment, flconn, kvs, sckt, params):
     logging.info('Running benchmark %s with mode %s.' % (bname, mode))
 
     if bname == 'causal_bench_1M':
