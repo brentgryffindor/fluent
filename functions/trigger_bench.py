@@ -9,7 +9,7 @@ from benchmarks import utils
 logging.basicConfig(filename='log_trigger.txt', level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-NUM_THREADS = 1
+NUM_THREADS = 3
 
 ips = []
 with open('bench_ips.txt', 'r') as f:
@@ -36,11 +36,14 @@ if 'create' in msg:
     sckt.send_string(msg)
     sent_msgs += 1
 elif 'zipf' in msg:
-    sckt = ctx.socket(zmq.PUSH)
-    sckt.connect('tcp://' + ips[0] + ':3000')
-
-    sckt.send_string(msg)
-    sent_msgs += 1
+	index = 0
+	for ip in ips:
+		for tid in range(NUM_THREADS):
+			sckt = ctx.socket(zmq.PUSH)
+			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+			sckt.send_string(msg)
+			sent_msgs += 1
+			index += 1
 elif 'warmup' in msg:
 	index = 0
 	for ip in ips:
@@ -73,5 +76,6 @@ while end_recv < sent_msgs:
 
 if 'run' in msg:
 	utils.print_latency_stats(latency, 'Causal', True)
+	utils.print_latency_stats(latency, 'Causal')
 
 logging.info("benchmark done")
