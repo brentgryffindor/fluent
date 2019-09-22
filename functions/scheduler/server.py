@@ -374,6 +374,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                         #time.sleep(0.1)
                         #logging.info('waking up...')
 
+                        start_simulation = time.time()
+
                         if _simulate_optimistic_protocol(versioned_key_map, response.client_id, finished_functions, len(dags[dag_name][0].functions), function_trigger_map, prior_per_func_causal_lowerbound_map, prior_per_func_read_map, pusher_cache, occurance_counter):
                             # the protocol aborted, so we need to do conservative protocol
                             #logging.info('optimistic protocol will abort')
@@ -436,6 +438,9 @@ def scheduler(ip, mgmt_ip, route_addr):
                         #logging.info('GC pending versioned key collection map and versioned key map')
                         del pending_versioned_key_collection_response[response.client_id]
                         del versioned_key_map[response.client_id]
+
+                        end_simulation = time.time()
+                        logging.info('simulation for cid %s took %s' % (response.client_id, (end_simulation - start_simulation)))
 
         if key_shipping_response_socket in socks and socks[key_shipping_response_socket] == zmq.POLLIN:
             response = SchedulerKeyShippingResponse()
