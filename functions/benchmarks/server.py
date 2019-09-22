@@ -36,6 +36,7 @@ def benchmark(flconn, tid):
         bname = splits[1]
         mode = splits[2]
         segment = None
+        loop = None
         if len(splits) > 3:
             segment = int(splits[3])
             loop = int(splits[4])
@@ -45,7 +46,7 @@ def benchmark(flconn, tid):
         run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop)
 
 
-def run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop=0):
+def run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop):
     logging.info('Running benchmark %s with mode %s.' % (bname, mode))
 
     if bname == 'causal_bench_1M':
