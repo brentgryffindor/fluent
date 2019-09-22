@@ -39,7 +39,7 @@ def run():
         thread_id = int(os.environ['THREAD_ID'])
         schedulers = os.environ['SCHED_IPS'].split(' ')
 
-        flconn = flclient.FluentConnection(function_addr, ip, thread_id)
+        flconn = flclient.FluentConnection(schedulers[thread_id], ip, thread_id)
         benchmark(flconn, thread_id)
     else:
         schedulers = os.environ['SCHED_IPS'].split(' ')
