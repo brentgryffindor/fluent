@@ -46,7 +46,7 @@ spec:
         - name: REPO_BRANCH
           value: "causal_hybrid"
       - name: benchmark-2
-        image: fluentproject/executor
+        image: cgwu/executor
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -61,7 +61,7 @@ spec:
         - name: REPO_BRANCH
           value: "causal_hybrid"
       - name: benchmark-3
-        image: fluentproject/executor
+        image: cgwu/executor
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -76,7 +76,7 @@ spec:
         - name: REPO_BRANCH
           value: "causal_hybrid"
       - name: benchmark-4
-        image: fluentproject/executor
+        image: cgwu/executor
         env: 
         - name: SYSTEM_FUNC
           value: benchmark

@@ -213,6 +213,15 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 runtimes[fname] += fend - fstart
                 exec_counts[fname] += 1
 
+            if (trkey in received_conservative_triggers and (len(received_conservative_triggers[trkey]) == len(schedule.triggers))):
+                # trigger conservative here
+                exec_dag_function(pusher_cache, client,
+                                  received_conservative_triggers[trkey],
+                                  pinned_functions[fname], schedule, ip,
+                                  thread_id, cache, function_result_cache, True)
+                del received_conservative_triggers[trkey]
+                del queue[fname][schedule.id]
+
             elapsed = time.time() - work_start
             event_occupancy['dag_queue'] += elapsed
             total_occupancy += elapsed
