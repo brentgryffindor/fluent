@@ -76,7 +76,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
 
     return arg_map, list(set(keys_read))
 
-def run(flconn, kvs, mode, segment, params):
+def run(flconn, kvs, mode, segment, params, loop=0):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
@@ -190,6 +190,8 @@ def run(flconn, kvs, mode, segment, params):
         read_map = {}
         write_map = {}
 
+        stragler = {}
+
         for i in range(15*segment, 15*segment + 15):
             cid = str(i).zfill(3)
 
@@ -217,9 +219,13 @@ def run(flconn, kvs, mode, segment, params):
             start = time.time()
             scheduler_time = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
             end = time.time()
-            all_times.append((end - start))
+            elapsed = (end - start)
+            all_times.append(elapsed)
+            if elapsed > 0.05:
+                stragler[cid+'_'+str(loop)] = elapsed
             #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
+        logging.info(stragler)
         return all_times
         #print('zipf %f' % zipf)
         #utils.print_latency_stats(all_times, 'latency')
