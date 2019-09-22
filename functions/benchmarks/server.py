@@ -14,6 +14,7 @@ def benchmark(flconn, tid):
     logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
     logging.info('tid is %d' % tid)
+    logging.info('scheduler address is %s' % flconn.service_addr)
 
     ctx = zmq.Context(1)
 
