@@ -47,7 +47,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
         try:
             if consistency == NORMAL:
                 #logging.info('entering single func normal')
-                result = _exec_func_normal(kvs, f, fargs)
+                result, versions = _exec_func_normal(kvs, f, fargs)
                 #logging.info('function executed')
             else:
                 #logging.info('entering single func causal')
@@ -116,12 +116,12 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, function_result_cache, conservative=False):
+                      tid, cache, function_result_cache, rc, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule)
+                                  triggers, function, schedule, rc)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
@@ -130,17 +130,22 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     #user_lib.close()
 
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, rc):
     #logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
+    prior_read_map = []
+
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
+        prior_read_map += list(trigger.prior_read_map)
 
     fargs = _process_args(fargs)
-    result = _exec_func_normal(kvs, function, fargs)
+    result, versions = _exec_func_normal(kvs, function, fargs, rc)
+
+    prior_read_map += versions
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -150,6 +155,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             new_trigger.id = schedule.id
             new_trigger.target_function = conn.sink
             new_trigger.source = fname
+
+            new_trigger.prior_read_map.extend(prior_read_map)
 
             if type(result) != tuple:
                 result = (result,)
@@ -163,23 +170,48 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        result = serialize_val(result)
+        #result = serialize_val(result)
         if schedule.HasField('response_address'):
+            # PUT to redis
+            logging.info('putting key %s to redis' % schedule.output_key)
+            vc = None
+            for vk in prior_read_map:
+                if vk.key == schedule.output_key:
+                    vc = vk.vector_clock
+                    break
+            if not schedule.client_id in vc:
+                vc[schedule.client_id] = 0
+            vc[schedule.client_id] += 1
+            rcv = RedisCausalValue()
+            rcv.vector_clock.update(vc)
+            rcv.value = b'0'.zfill(8)
+            rc.set(schedule.output_key, rcv.SerializeToString())
+            logging.info('PUT successful')
+            # then respond to client
+            key_version_map = {}
+            for vk in prior_read_map:
+                if not vk.key in key_version_map:
+                    key_version_map[vk.key] = []
+                vc = {}
+                vc.update(vk.vector_clock)
+                key_version_map[vk.key].append(vc)
+
+            consistent = True
+            for key in key_version_map:
+                consistent = all(vc == key_version_map[key][0] for vc in key_version_map[key])
+                if not consistent:
+                    break
             sckt = pusher_cache.get(schedule.response_address)
-            sckt.send(result)
+            sckt.send(serialize_val(consistent))
         else:
-            lattice = LWWPairLattice(generate_timestamp(0), result)
-            if schedule.HasField('output_key'):
-                kvs.put(schedule.output_key, lattice)
-            else:
-                kvs.put(schedule.id, lattice)
+            logging.error('only direct response supported!')
 
 
-def _exec_func_normal(kvs, func, args):
+def _exec_func_normal(kvs, func, args, rc=None):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
 
     if refs:
-        refs = _resolve_ref_normal(refs, kvs)
+        refs = _resolve_ref_normal(refs, kvs, rc)
     end = time.time()
 
     func_args = ()
@@ -191,23 +223,40 @@ def _exec_func_normal(kvs, func, args):
 
     # execute the function
     res = func(*func_args)
-    return res
+
+    versions = []
+    # parse payload's
+    for key in refs:
+        cv = RedisCausalValue()
+        cv.ParseFromString(refs[key])
+        vk = VersionedKey()
+        vk.key = key
+        vk.vector_clock.update(cv.vector_clock)
+        versions.append(vk)
+
+    return (res, versions)
 
 
-def _resolve_ref_normal(refs, kvs):
+def _resolve_ref_normal(refs, kvs, rc):
     start = time.time()
     keys = [ref.key for ref in refs]
     keys = list(set(keys))
-    kv_pairs = kvs.get(keys)
+    result = rc.mget(keys)
+
+    kv_pairs = {}
+
+    for i, key in enumerate(keys):
+        kv_pairs[key] = result[i]
+    #kv_pairs = kvs.get(keys)
 
     # when chaining function executions, we must wait
-    num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
-    while num_nulls > 0:
-        kv_pairs = kvs.get(keys)
+    #num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
+    #while num_nulls > 0:
+    #    kv_pairs = kvs.get(keys)
 
-    for ref in refs:
-        if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
-            kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
+    #for ref in refs:
+    #    if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
+    #        kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
 
     end = time.time()
     return kv_pairs

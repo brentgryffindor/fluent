@@ -298,3 +298,8 @@ message SchedulerRemoteReadRequest {
   repeated SchedulerRemoteReadTuple tuples = 4;
   required uint32 thread_id = 5;
 }
+
+message RedisCausalValue {
+  map<string, uint32> vector_clock = 1;
+  required bytes value = 2;
+}
