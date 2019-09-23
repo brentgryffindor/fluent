@@ -184,7 +184,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             vc[schedule.client_id] += 1
             rcv = RedisCausalValue()
             rcv.vector_clock.update(vc)
-            rcv.value = b'0'.zfill(8)
+            rcv.value = result
             rc.set(schedule.output_key, rcv.SerializeToString())
             logging.info('PUT successful')
             # then respond to client
@@ -225,13 +225,13 @@ def _exec_func_normal(kvs, func, args, rc=None):
     res = func(*func_args)
 
     versions = []
-    # parse payload's
+    # parse vector clock out of payload
     for key in refs:
-        cv = RedisCausalValue()
-        cv.ParseFromString(refs[key])
+        rcv = RedisCausalValue()
+        rcv.ParseFromString(refs[key])
         vk = VersionedKey()
         vk.key = key
-        vk.vector_clock.update(cv.vector_clock)
+        vk.vector_clock.update(rcv.vector_clock)
         versions.append(vk)
 
     return (res, versions)
