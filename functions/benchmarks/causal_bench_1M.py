@@ -155,7 +155,7 @@ def run(flconn, kvs, mode, segment, params):
         warm_begin = time.time()
         block_size = int(total_num_keys/6)
         for k in range(block_size*segment+1,block_size*segment + block_size+1):
-            if k % 50 == 0:
+            if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
             k = str(k).zfill(len(str(total_num_keys)))
             rcv = RedisCausalValue()
