@@ -28,6 +28,7 @@ def benchmark(flconn, tid):
     sum_probs[0] = 0.0
 
     params = [zipf, base, sum_probs]
+    total_inconsistency = [0]
 
     while True:
         msg = benchmark_start_socket.recv_string()
@@ -49,12 +50,12 @@ def run_bench(bname, mode, segment, flconn, kvs, sckt, params):
     logging.info('Running benchmark %s with mode %s.' % (bname, mode))
 
     if bname == 'causal_bench_1M':
-        latency = causal_bench_1M.run(flconn, kvs, mode, segment, params)
+        result = causal_bench_1M.run(flconn, kvs, mode, segment, params)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
         return
 
     # some benchmark modes return no results
-    sckt.send(cp.dumps(latency))
+    sckt.send(cp.dumps(result))
     logging.info('*** Benchmark %s finished. ***' % (bname))

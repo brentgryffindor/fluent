@@ -58,6 +58,8 @@ elif 'run' in msg:
 
 	latency = []
 
+	total_inconsistency = 0
+
 	for loop in range(20):
 		print('loop is %d' % loop)
 		index = 0
@@ -73,7 +75,9 @@ elif 'run' in msg:
 			payload = recv_socket.recv()
 			logging.info("received response")
 			end_recv += 1
-			latency += cp.loads(payload)
+			result = cp.loads(payload)
+			latency += result[0]
+			total_inconsistency += result[1]
 
 		sent_msgs = 0
 		end_recv = 0
@@ -81,6 +85,7 @@ elif 'run' in msg:
 	logging.info("benchmark done")
 	utils.print_latency_stats(latency, 'Causal', True)
 	utils.print_latency_stats(latency, 'Causal')
+	print('total inconsistency is %d' % total_inconsistency)
 	sys.exit(0)
 
 end_recv = 0

@@ -143,7 +143,7 @@ def run(flconn, kvs, mode, segment, params):
 
         #print("Successfully created the DAG")
         logging.info("Successfully created the DAG")
-        return []
+        return [[], 0]
 
     elif mode == 'warmup':
         logging.info('Connecting to redis')
@@ -162,9 +162,10 @@ def run(flconn, kvs, mode, segment, params):
             rcv.value = b'0'.zfill(8)
             rc.set(k, rcv.SerializeToString())
         warm_end = time.time()
-        print('warmup took %s' % (warm_end - warm_begin))
+        #print('warmup took %s' % (warm_end - warm_begin))
 
         logging.info('Data populated')
+        return [[], 0]
 
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
@@ -175,7 +176,7 @@ def run(flconn, kvs, mode, segment, params):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % params[0])
-        return []
+        return [[], 0]
 
     elif mode == 'run':
         ### RUN DAG ###
@@ -229,7 +230,7 @@ def run(flconn, kvs, mode, segment, params):
             if not res:
                 inconsistency += 1
         logging.info('total inconsistency is %d' % inconsistency)
-        return all_times
+        return [all_times, inconsistency]
         #print('zipf %f' % zipf)
         #utils.print_latency_stats(all_times, 'latency')
         #print('read map size is %d' % len(read_map))
