@@ -173,7 +173,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         #result = serialize_val(result)
         if schedule.HasField('response_address'):
             # PUT to redis
-            logging.info('putting key %s to redis' % schedule.output_key)
+            #logging.info('putting key %s to redis' % schedule.output_key)
             vc = {}
             for vk in prior_read_map:
                 if vk.key == schedule.output_key:
@@ -186,7 +186,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             rcv.vector_clock.update(vc)
             rcv.value = result
             rc.set(schedule.output_key, rcv.SerializeToString())
-            logging.info('PUT successful')
+            #logging.info('PUT successful')
             # then respond to client
             key_version_map = {}
             for vk in prior_read_map:
@@ -200,9 +200,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             for key in key_version_map:
                 consistent = all(vc == key_version_map[key][0] for vc in key_version_map[key])
                 if not consistent:
-                    logging.info('cid %s key %s inconsistent: showing VCs' % (schedule.client_id, key))
-                    for vc in key_version_map[key]:
-                        logging.info('VC is %s' % vc)
                     break
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(serialize_val(consistent))
