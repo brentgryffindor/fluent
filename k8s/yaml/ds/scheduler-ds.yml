@@ -33,7 +33,7 @@ spec:
       hostIPC: true
       containers:
       - name: scheduler-container
-        image: cgwu/executor
+        image: cgwu/executor_elasticache
         imagePullPolicy: Always
         env:
         - name: ROUTE_ADDR
