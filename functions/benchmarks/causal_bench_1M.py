@@ -89,7 +89,7 @@ def run(flconn, kvs, mode, segment, params):
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b):
-            return '0'.zfill(8)
+            return b'0'.zfill(8)
             '''result = ''
             for i, char in enumerate(a):
                 if i % 3 == 0:
@@ -158,7 +158,7 @@ def run(flconn, kvs, mode, segment, params):
                 logging.info('warmup for key %s done' % k)
             k = str(k).zfill(len(str(total_num_keys)))
             rcv = RedisCausalValue()
-            rcv.value = '0'.zfill(8)
+            rcv.value = b'0'.zfill(8)
             rc.set(k, rcv.SerializeToString())
         warm_end = time.time()
         print('warmup took %s' % (warm_end - warm_begin))
