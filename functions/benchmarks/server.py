@@ -28,7 +28,6 @@ def benchmark(flconn, tid):
     sum_probs[0] = 0.0
 
     params = [zipf, base, sum_probs]
-    total_inconsistency = [0]
 
     while True:
         msg = benchmark_start_socket.recv_string()
