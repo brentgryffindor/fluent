@@ -177,7 +177,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             vc = None
             for vk in prior_read_map:
                 if vk.key == schedule.output_key:
-                    vc = vk.vector_clock
+                    vc = vk.vector_clock.copy()
                     break
             if not schedule.client_id in vc:
                 vc[schedule.client_id] = 0
