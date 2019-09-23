@@ -218,7 +218,7 @@ def run(flconn, kvs, mode, segment, params):
             #print("Output key is %s" % output)
 
             start = time.time()
-            res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
+            res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             end = time.time()
             all_times.append((end - start))
             #all_times.append(scheduler_time)
