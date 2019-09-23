@@ -82,7 +82,7 @@ def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 99996
+    total_num_keys = 9996
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -159,7 +159,7 @@ def run(flconn, kvs, mode, segment, params):
                 logging.info('warmup for key %s done' % k)
             k = str(k).zfill(len(str(total_num_keys)))
             rcv = RedisCausalValue()
-            rcv.value = b'0'.zfill(262144)
+            rcv.value = b'0'.zfill(524288)
             rc.set(k, rcv.SerializeToString())
         warm_end = time.time()
         #print('warmup took %s' % (warm_end - warm_begin))
