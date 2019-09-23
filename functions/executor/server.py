@@ -88,7 +88,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
     client = IpcAnnaClient(ctx, thread_id)
 
-    startup_nodes = [{"host": "cgwu-cluster.kvm9la.clustercfg.use1.cache.amazonaws.com", "port": "6379"}]
+    startup_nodes = [{"host": "hydro.kvm9la.clustercfg.use1.cache.amazonaws.com", "port": "6379"}]
 
     rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=False, skip_full_coverage_check=True)
 

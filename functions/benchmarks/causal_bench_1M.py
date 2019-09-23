@@ -147,7 +147,7 @@ def run(flconn, kvs, mode, segment, params):
 
     elif mode == 'warmup':
         logging.info('Connecting to redis')
-        startup_nodes = [{"host": "cgwu-cluster.kvm9la.clustercfg.use1.cache.amazonaws.com", "port": "6379"}]
+        startup_nodes = [{"host": "hydro.kvm9la.clustercfg.use1.cache.amazonaws.com", "port": "6379"}]
         rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True, skip_full_coverage_check=True)
         logging.info('Connected')
         ### CREATE DATA###
