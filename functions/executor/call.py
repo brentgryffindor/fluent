@@ -172,37 +172,16 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
     if is_sink:
         #result = serialize_val(result)
         if schedule.HasField('response_address'):
-            # PUT to redis
-            #logging.info('putting key %s to redis' % schedule.output_key)
-            vc = {}
-            for vk in prior_read_map:
-                if vk.key == schedule.output_key:
-                    vc.update(vk.vector_clock)
-                    break
-            if not schedule.client_id in vc:
-                vc[schedule.client_id] = 0
-            vc[schedule.client_id] += 1
-            rcv = RedisCausalValue()
-            rcv.vector_clock.update(vc)
-            rcv.value = result
-            rc.set(schedule.output_key, rcv.SerializeToString())
-            #logging.info('PUT successful')
-            # then respond to client
-            key_version_map = {}
-            for vk in prior_read_map:
-                if not vk.key in key_version_map:
-                    key_version_map[vk.key] = []
-                vc = {}
-                vc.update(vk.vector_clock)
-                key_version_map[vk.key].append(vc)
-
+            # respond to client
             consistent = True
-            for key in key_version_map:
-                consistent = all(vc == key_version_map[key][0] for vc in key_version_map[key])
-                if not consistent:
-                    break
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(serialize_val(consistent))
+            # PUT to redis
+            #logging.info('putting key %s to redis' % schedule.output_key)
+            rcv = RedisCausalValue()
+            rcv.value = b'0'.zfill(65536)
+            rc.set(schedule.output_key, rcv.SerializeToString())
+            #logging.info('PUT successful')
         else:
             logging.error('only direct response supported!')
 
@@ -225,14 +204,6 @@ def _exec_func_normal(kvs, func, args, rc=None):
     res = func(*func_args)
 
     versions = []
-    # parse vector clock out of payload
-    for key in refs:
-        rcv = RedisCausalValue()
-        rcv.ParseFromString(refs[key])
-        vk = VersionedKey()
-        vk.key = key
-        vk.vector_clock.update(rcv.vector_clock)
-        versions.append(vk)
 
     return (res, versions)
 
