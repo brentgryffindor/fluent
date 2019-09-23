@@ -159,7 +159,7 @@ def run(flconn, kvs, mode, segment, params):
                 logging.info('warmup for key %s done' % k)
             k = str(k).zfill(len(str(total_num_keys)))
             rcv = RedisCausalValue()
-            rcv.value = b'0'.zfill(65536)
+            rcv.value = b'0'.zfill(131072)
             rc.set(k, rcv.SerializeToString())
         warm_end = time.time()
         #print('warmup took %s' % (warm_end - warm_begin))
