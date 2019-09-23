@@ -82,7 +82,7 @@ def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 100
+    total_num_keys = 1200
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -153,8 +153,9 @@ def run(flconn, kvs, mode, segment, params):
         ### CREATE DATA###
         logging.info('Warming up keys')
         warm_begin = time.time()
-        for k in range(1,total_num_keys+1):
-            if k % 10 == 0:
+        block_size = total_num_keys/6
+        for k in range(block_size*segment+1,block_size*segment + block_size+1):
+            if k % 50 == 0:
                 logging.info('warmup for key %s done' % k)
             k = str(k).zfill(len(str(total_num_keys)))
             rcv = RedisCausalValue()
@@ -168,7 +169,7 @@ def run(flconn, kvs, mode, segment, params):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.0
+        params[0] = 2.0
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
