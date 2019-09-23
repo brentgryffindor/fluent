@@ -174,10 +174,10 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         if schedule.HasField('response_address'):
             # PUT to redis
             logging.info('putting key %s to redis' % schedule.output_key)
-            vc = None
+            vc = {}
             for vk in prior_read_map:
                 if vk.key == schedule.output_key:
-                    vc = vk.vector_clock.copy()
+                    vc.update(vk.vector_clock)
                     break
             if not schedule.client_id in vc:
                 vc[schedule.client_id] = 0
