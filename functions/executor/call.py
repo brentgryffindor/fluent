@@ -200,7 +200,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             for key in key_version_map:
                 consistent = all(vc == key_version_map[key][0] for vc in key_version_map[key])
                 if not consistent:
-                    logging.info('key %s inconsistent: showing VCs' % key)
+                    logging.info('cid %s key %s inconsistent: showing VCs' % (schedule.client_id, key))
                     for vc in key_version_map[key]:
                         logging.info('VC is %s' % vc)
                     break

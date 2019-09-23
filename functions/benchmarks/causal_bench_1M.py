@@ -193,6 +193,8 @@ def run(flconn, kvs, mode, segment, params):
         read_map = {}
         write_map = {}
 
+        inconsistency = 0
+
         for i in range(15*segment, 15*segment + 15):
             cid = str(i).zfill(3)
 
@@ -223,6 +225,9 @@ def run(flconn, kvs, mode, segment, params):
             all_times.append((end - start))
             #all_times.append(scheduler_time)
             logging.info('Result is: %s' % res)
+            if not res:
+                inconsistency += 1
+        logging.info('total inconsistency is %d' % inconsistency)
         return all_times
         #print('zipf %f' % zipf)
         #utils.print_latency_stats(all_times, 'latency')
