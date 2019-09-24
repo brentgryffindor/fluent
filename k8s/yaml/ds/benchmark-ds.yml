@@ -44,7 +44,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "shim_as_client"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-2
@@ -61,7 +61,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "shim_as_client"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-3
@@ -78,7 +78,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "shim_as_client"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-4
@@ -95,6 +95,6 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_hybrid"
+          value: "shim_as_client"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY

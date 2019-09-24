@@ -35,6 +35,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_hybrid"
+      value: "shim_as_client"
   nodeSelector:
     role: general
