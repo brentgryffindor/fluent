@@ -5,6 +5,7 @@ import sys
 import zmq
 
 from . import causal_bench_1M
+from . import causal_bench_1M_parallel
 from . import utils
 
 BENCHMARK_START_PORT = 3000
@@ -50,6 +51,8 @@ def run_bench(bname, mode, segment, flconn, kvs, sckt, params):
 
     if bname == 'causal_bench_1M':
         latency = causal_bench_1M.run(flconn, kvs, mode, segment, params)
+    elif bname == 'causal_bench_1M_parallel':
+        latency = causal_bench_1M_parallel.run(flconn, kvs, mode, segment, params)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
