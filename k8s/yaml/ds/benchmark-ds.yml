@@ -98,3 +98,37 @@ spec:
           value: "shim_as_client"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
+      - name: benchmark-5
+        image: cgwu/executor
+        env: 
+        - name: SYSTEM_FUNC
+          value: benchmark
+        - name: FUNCTION_ADDR
+          value: FUNCTION_ADDR_DUMMY
+        - name: THREAD_ID
+          value: "4"
+        - name: MGMT_IP
+          value: ""
+        - name: REPO_ORG
+          value: "cw75"
+        - name: REPO_BRANCH
+          value: "shim_as_client"
+        - name: SCHED_IPS
+          value: SCHED_IPS_DUMMY
+      - name: benchmark-6
+        image: cgwu/executor
+        env: 
+        - name: SYSTEM_FUNC
+          value: benchmark
+        - name: FUNCTION_ADDR
+          value: FUNCTION_ADDR_DUMMY
+        - name: THREAD_ID
+          value: "5"
+        - name: MGMT_IP
+          value: ""
+        - name: REPO_ORG
+          value: "cw75"
+        - name: REPO_BRANCH
+          value: "shim_as_client"
+        - name: SCHED_IPS
+          value: SCHED_IPS_DUMMY
