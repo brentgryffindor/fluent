@@ -328,6 +328,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             client_respond_time = time.time()
             logging.info('client respond timestamp is %s' % client_respond_time)
 
+        print('logical clock is %s' % logical_clock)
+        logging.info('logical clock is %s' % logical_clock)
         logical_clock[0] += 1
         vector_clock = {}
         concurrent = False
