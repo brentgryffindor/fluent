@@ -257,7 +257,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, executor_id, write_cache, logical_clock)
+                                      thread_id, cache, function_result_cache, executor_id, logical_clock, write_cache)
                     del received_triggers[key]
 
                     fend = time.time()
