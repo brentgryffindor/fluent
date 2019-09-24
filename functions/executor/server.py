@@ -137,6 +137,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # map<fname, map<cid, tp(map<key, vc>, result)>>
     function_result_cache = {}
 
+    # map<key, tuple(vc, dep, set)> write cache for identifying concurrent update
+    write_cache = {}
+
     logging.info('enter warmup')
     for k in range(1, 1000001):
         warmup_key = str(k).zfill(7)
@@ -208,7 +211,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache, function_result_cache, executor_id, logical_clock)
+                                  thread_id, cache, function_result_cache, executor_id, logical_clock, write_cache)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -221,7 +224,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_conservative_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache, function_result_cache, executor_id, logical_clock, True)
+                                  thread_id, cache, function_result_cache, executor_id, logical_clock, write_cache, True)
                 del received_conservative_triggers[trkey]
                 del queue[fname][schedule.id]
 
@@ -254,7 +257,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, executor_id, logical_clock)
+                                      thread_id, cache, function_result_cache, executor_id, logical_clock, write_cache)
                     del received_triggers[key]
 
                     fend = time.time()
@@ -303,7 +306,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_conservative_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, executor_id, logical_clock, True)
+                                      thread_id, cache, function_result_cache, executor_id, logical_clock, write_cache, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
 
