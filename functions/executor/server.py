@@ -32,6 +32,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
+    executor_id = ip + ':' + str(thread_id)
+    logical_clock = [0]
+
     ctx = zmq.Context(1)
     poller = zmq.Poller()
 
@@ -205,7 +208,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache, function_result_cache)
+                                  thread_id, cache, function_result_cache, executor_id, logical_clock)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -218,7 +221,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_conservative_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache, function_result_cache, True)
+                                  thread_id, cache, function_result_cache, executor_id, logical_clock, True)
                 del received_conservative_triggers[trkey]
                 del queue[fname][schedule.id]
 
@@ -251,7 +254,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache)
+                                      thread_id, cache, function_result_cache, executor_id, logical_clock)
                     del received_triggers[key]
 
                     fend = time.time()
@@ -300,7 +303,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_conservative_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, True)
+                                      thread_id, cache, function_result_cache, executor_id, logical_clock, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
 

@@ -116,7 +116,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, function_result_cache, conservative=False):
+                      tid, cache, function_result_cache, executor_id, logical_clock, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
@@ -125,7 +125,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
-                                  triggers, function, schedule, conservative, cache, function_result_cache)
+                                  triggers, function, schedule, conservative, cache, function_result_cache, executor_id, logical_clock)
 
     #user_lib.close()
 
@@ -220,7 +220,7 @@ def _resolve_ref_normal(refs, kvs):
     return kv_pairs
 
 
-def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache, function_result_cache):
+def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache, function_result_cache, executor_id, logical_clock):
     #logging.info('exec dag causal')
     fname = schedule.target_function
     #logging.info('start processing client id %s function %s' % (schedule.client_id, fname))
@@ -324,16 +324,14 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result)
 
+        logical_clock[0] += 1
         vector_clock = {}
         if schedule.output_key in dependencies:
-            if schedule.client_id in dependencies[schedule.output_key]:
-                dependencies[schedule.output_key][schedule.client_id] += 1
-            else:
-                dependencies[schedule.output_key][schedule.client_id] = 1
+            dependencies[schedule.output_key][executor_id] = logical_clock[0]
             vector_clock.update(dependencies[schedule.output_key])
             del dependencies[schedule.output_key]
         else:
-            vector_clock = {schedule.client_id : 1}
+            vector_clock = {executor_id : logical_clock[0]}
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
         succeed = kvs.causal_put(schedule.output_key,
