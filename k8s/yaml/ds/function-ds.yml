@@ -54,7 +54,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "conservative_nolog"
+          value: "conservative_new"
         volumeMounts:
         - mountPath: /requests
           name: ipc
@@ -75,7 +75,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "conservative_nolog"
+          value: "conservative_new"
         volumeMounts:
         - mountPath: /requests
           name: ipc
@@ -96,7 +96,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "conservative_nolog"
+          value: "conservative_new"
         volumeMounts:
         - mountPath: /requests
           name: ipc
@@ -111,7 +111,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "conservative_nolog"
+          value: "conservative_new"
         volumeMounts:
         - mountPath: /requests
           name: ipc
