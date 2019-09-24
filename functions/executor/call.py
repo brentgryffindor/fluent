@@ -67,7 +67,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
         succeed = kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
     else:
         #logging.info('Causal PUT')
-        succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
+        succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, [result], '0')
 
     #logging.info('PUT done')
 

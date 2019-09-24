@@ -277,7 +277,7 @@ class IpcAnnaClient:
             dep.key = key
             dep.vector_clock.update(dependency[key])
 
-        cross_causal_value.values.extend([value])
+        cross_causal_value.values.extend(value)
 
         tp.payload = cross_causal_value.SerializeToString()
 
