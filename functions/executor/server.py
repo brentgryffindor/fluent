@@ -141,10 +141,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     write_cache = {}
 
     logging.info('enter warmup')
-    for k in range(1, 1000001):
-        warmup_key = str(k).zfill(7)
+    for k in range(1, 25001):
+        warmup_key = str(k).zfill(6)
         vc = {'base' : 1}
-        cache[warmup_key] = (vc, str(0).zfill(8))
+        cache[warmup_key] = (vc, str(0).zfill(1048576))
     logging.info('finish warmup')
 
 

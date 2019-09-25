@@ -80,7 +80,7 @@ def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 1000000
+    total_num_keys = 99996
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -144,22 +144,20 @@ def run(flconn, kvs, mode, segment, params):
         return []
 
     elif mode == 'warmup':
-        print('Warming up keys')
         logging.info('Warming up keys')
         ### CREATE DATA###
         warm_begin = time.time()
-        for k in range(1,total_num_keys+1):
+        for k in range(16666*segment+1, 16666*segment + 16666 + 1):
+            k = str(k).zfill(6)
             if k % 1000 == 0:
-                print('warmup for key %s done' % k)
-            k = str(k).zfill(len(str(total_num_keys)))
+                logging.info('warmup for key %s done' % k)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
-            ccv.values.extend([serialize_val('0'.zfill(8))])
+            ccv.values.extend([serialize_val('0'.zfill(1048576))])
             kvs.put(k, ccv)
         warm_end = time.time()
-        print('warmup took %s' % (warm_end - warm_begin))
+        logging.info('warmup took %s' % (warm_end - warm_begin))
 
-        print('Data populated')
         logging.info('Data populated')
 
     elif mode == 'zipf':

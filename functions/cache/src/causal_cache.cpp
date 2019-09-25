@@ -22,12 +22,12 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void warmup(StoreType& causal_cut_store) {
   SetLattice<string> value;
-  value.insert(string(8, '0'));
+  value.insert(string(1048576, '0'));
   CrossCausalPayload<SetLattice<string>> payload;
   payload.vector_clock.insert("base", 1);
   payload.value = value;
-  for (unsigned i = 1; i < 1000001; i++) {
-    Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
+  for (unsigned i = 1; i < 25001; i++) {
+    Key key = string(6 - std::to_string(i).length(), '0') + std::to_string(i);
     causal_cut_store[key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(payload);
   }
 }
