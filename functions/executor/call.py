@@ -326,7 +326,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         logical_clock[0] += 1
         vector_clock = {}
-        concurrent = False
+        '''concurrent = False
         if schedule.output_key in dependencies:
             if schedule.output_key in write_cache and (not executor_id in dependencies[schedule.output_key] or dependencies[schedule.output_key][executor_id] < write_cache[schedule.output_key][0][executor_id]):
                 concurrent = True
@@ -336,7 +336,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             del dependencies[schedule.output_key]
         else:
             logging.error('key write not in read set!')
-            vector_clock = {executor_id : logical_clock[0]}
+            vector_clock = {executor_id : logical_clock[0]}'''
 
         '''if concurrent:
             # merge dependency
@@ -360,7 +360,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
         #                   dependencies, result, schedule.client_id)
 
         # update write cache
-        write_cache[schedule.output_key] = (vector_clock, dependencies, result)
+        #write_cache[schedule.output_key] = (vector_clock, dependencies, result)
 
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:
@@ -453,7 +453,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 dependencies[key] = kv_pairs[key][0]
             key_vc_map[key] = kv_pairs[key][0]
         for key in keys:
-            #logging.info('cache hit for key %s' % key)
+            logging.info('cache hit for key %s' % key)
             # these are keys that are cached
             # we first update the prior_read_map since cached keys are not returned by the cache
             vk = VersionedKey()
