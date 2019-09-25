@@ -326,7 +326,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         logical_clock[0] += 1
         vector_clock = {}
-        concurrent = False
+        '''concurrent = False
         if schedule.output_key in dependencies:
             if schedule.output_key in write_cache and (not executor_id in dependencies[schedule.output_key] or dependencies[schedule.output_key][executor_id] < write_cache[schedule.output_key][0][executor_id]):
                 concurrent = True
@@ -360,7 +360,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                            dependencies, result, schedule.client_id)
 
         # update write cache
-        write_cache[schedule.output_key] = (vector_clock, dependencies, result)
+        write_cache[schedule.output_key] = (vector_clock, dependencies, result)'''
 
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:
