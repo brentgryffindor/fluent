@@ -435,6 +435,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         #logging.info('swapping args and deserializing')
         for key in kv_pairs:
             logging.info('cache miss for key %s' % key)
+            logging.info('key size is %s' % len(kv_pairs[key][1]))
             if deserialize[key]:
                 #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
@@ -462,6 +463,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             prior_read_map.extend([vk])
             
             func_args[key_index_map[key]] = cache[key][1]
+            logging.info('key size is %s' % len(cache[key][1]))
             # update dependency
             if key in dependencies:
                 dependencies[key] = sutils._merge_vector_clock(dependencies[key],
