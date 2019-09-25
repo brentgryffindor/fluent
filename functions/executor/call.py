@@ -335,8 +335,11 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             vector_clock.update(dependencies[schedule.output_key])
             del dependencies[schedule.output_key]
         else:
-            logging.error('key write not in read set!')
-            vector_clock = {executor_id : logical_clock[0]}
+            if schedule.output_key in write_cache:
+                concurrent = True
+                vector_clock.update(write_cache[schedule.output_key][0])
+            vector_clock[executor_id] = logical_clock[0]
+            #logging.error('key write not in read set!')
 
         if concurrent:
             # merge dependency
