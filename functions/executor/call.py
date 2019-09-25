@@ -349,15 +349,15 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             result.extend(write_cache[schedule.output_key][2])
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
-        succeed = kvs.causal_put(schedule.output_key,
-                                 vector_clock, dependencies,
-                                 result, schedule.client_id)
+        #succeed = kvs.causal_put(schedule.output_key,
+        #                         vector_clock, dependencies,
+        #                         result, schedule.client_id)
         #logging.info('finish causal put of key %s' % schedule.output_key)
 
-        while not succeed:
+        #while not succeed:
             #logging.info('retrying causal put')
-            kvs.causal_put(schedule.output_key, vector_clock,
-                           dependencies, result, schedule.client_id)
+        #    kvs.causal_put(schedule.output_key, vector_clock,
+        #                   dependencies, result, schedule.client_id)
 
         # update write cache
         write_cache[schedule.output_key] = (vector_clock, dependencies, result)
