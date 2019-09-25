@@ -338,7 +338,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             logging.error('key write not in read set!')
             vector_clock = {executor_id : logical_clock[0]}
 
-        if concurrent:
+        '''if concurrent:
             # merge dependency
             for dep_key in write_cache[schedule.output_key][1]:
                 if dep_key in dependencies:
@@ -346,7 +346,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 else:
                     dependencies[dep_key] = write_cache[schedule.output_key][1][dep_key]
             # merge payload
-            result.extend(write_cache[schedule.output_key][2])
+            result.extend(write_cache[schedule.output_key][2])'''
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
         #succeed = kvs.causal_put(schedule.output_key,
