@@ -148,9 +148,9 @@ def run(flconn, kvs, mode, segment, params):
         ### CREATE DATA###
         warm_begin = time.time()
         for k in range(16666*segment+1, 16666*segment + 16666 + 1):
-            k = str(k).zfill(6)
             if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
+            k = str(k).zfill(6)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
             ccv.values.extend([serialize_val('0'.zfill(1048576))])
