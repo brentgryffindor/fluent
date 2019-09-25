@@ -211,12 +211,12 @@ def run():
             logging.info('Checking hash ring...')
             check_hash_ring(client, context)
 
-            check_executor_utilization(context, executor_statuses,
-                                       departing_executors, add_push_socket)
+            #check_executor_utilization(context, executor_statuses,
+            #                           departing_executors, add_push_socket)
 
-            check_function_load(context, function_frequencies,
-                                function_runtimes, executor_statuses,
-                                latency_history)
+            #check_function_load(context, function_frequencies,
+            #                    function_runtimes, executor_statuses,
+            #                    latency_history)
 
             function_runtimes.clear()
             function_frequencies.clear()

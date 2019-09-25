@@ -326,7 +326,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         logical_clock[0] += 1
         vector_clock = {}
-        '''concurrent = False
+        concurrent = False
         if schedule.output_key in dependencies:
             if schedule.output_key in write_cache and (not executor_id in dependencies[schedule.output_key] or dependencies[schedule.output_key][executor_id] < write_cache[schedule.output_key][0][executor_id]):
                 concurrent = True
@@ -336,9 +336,9 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             del dependencies[schedule.output_key]
         else:
             logging.error('key write not in read set!')
-            vector_clock = {executor_id : logical_clock[0]}'''
+            vector_clock = {executor_id : logical_clock[0]}
 
-        '''if concurrent:
+        if concurrent:
             # merge dependency
             for dep_key in write_cache[schedule.output_key][1]:
                 if dep_key in dependencies:
@@ -346,21 +346,21 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 else:
                     dependencies[dep_key] = write_cache[schedule.output_key][1][dep_key]
             # merge payload
-            result.extend(write_cache[schedule.output_key][2])'''
+            result.extend(write_cache[schedule.output_key][2])
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
-        #succeed = kvs.causal_put(schedule.output_key,
-        #                         vector_clock, dependencies,
-        #                         result, schedule.client_id)
+        succeed = kvs.causal_put(schedule.output_key,
+                                 vector_clock, dependencies,
+                                 result, schedule.client_id)
         #logging.info('finish causal put of key %s' % schedule.output_key)
 
-        #while not succeed:
+        while not succeed:
             #logging.info('retrying causal put')
-        #    kvs.causal_put(schedule.output_key, vector_clock,
-        #                   dependencies, result, schedule.client_id)
+            kvs.causal_put(schedule.output_key, vector_clock,
+                           dependencies, result, schedule.client_id)
 
         # update write cache
-        #write_cache[schedule.output_key] = (vector_clock, dependencies, result)
+        write_cache[schedule.output_key] = (vector_clock, dependencies, result)
 
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:
@@ -434,7 +434,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
         #logging.info('swapping args and deserializing')
         for key in kv_pairs:
-            #logging.info('cache miss for key %s' % key)
+            logging.info('cache miss for key %s' % key)
             if deserialize[key]:
                 #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
