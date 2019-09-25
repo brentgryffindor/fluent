@@ -201,6 +201,8 @@ def run(flconn, kvs, mode, segment, params):
         read_map = {}
         write_map = {}
 
+        abort_count = 0
+
         for i in range(15*segment, 15*segment + 15):
             cid = str(i).zfill(3)
 
@@ -226,11 +228,16 @@ def run(flconn, kvs, mode, segment, params):
             #print("Output key is %s" % output)
 
             start = time.time()
-            scheduler_time = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
+            res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
             end = time.time()
-            all_times.append((end - start))
+            logging.info('Result is: %s' % res)
+            if res != 'abort':
+                all_times.append((end - start))
+            else:
+                abort_count += 1
             #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
+        logging.info('abort count is %d' % abort_count)
         return all_times
         #print('zipf %f' % zipf)
         #utils.print_latency_stats(all_times, 'latency')
