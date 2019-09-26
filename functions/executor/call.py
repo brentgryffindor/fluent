@@ -343,7 +343,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                     concurrent = True
                     vector_clock.update(write_cache[schedule.output_key][0])
                 vector_clock[executor_id] = logical_clock[0]
-                vector_clock['base'] = 1
+                #vector_clock['base'] = 1
                 #logging.error('key write not in read set!')
 
             if concurrent:
