@@ -19,8 +19,14 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          VersionStoreType& version_store,
                          map<string, Address>& request_id_to_address_map,
                          KvsAsyncClientInterface* client, logger log, SocketCache& pushers) {
+  auto parse_begin = std::chrono::system_clock::now();
   CausalPutRequest request;
   request.ParseFromString(serialized);
+  auto parse_end = std::chrono::system_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+                      parse_end - parse_begin)
+                      .count();
+  log->info("parse time is {}", duration);
 
   for (CausalTuple tuple : request.tuples()) {
     Key key = tuple.key();
