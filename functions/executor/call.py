@@ -325,51 +325,52 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result[0])
 
-        prob = random.uniform(0, 1)
+        logical_clock[0] += 1
+        vector_clock = {}
+        concurrent = False
+        if schedule.output_key in dependencies:
+            if schedule.output_key in write_cache and (not executor_id in dependencies[schedule.output_key] or dependencies[schedule.output_key][executor_id] < write_cache[schedule.output_key][0][executor_id]):
+                concurrent = True
+                dependencies[schedule.output_key] = sutils._merge_vector_clock(dependencies[schedule.output_key], write_cache[schedule.output_key][0])
+            dependencies[schedule.output_key][executor_id] = logical_clock[0]
+            vector_clock.update(dependencies[schedule.output_key])
+            del dependencies[schedule.output_key]
+        else:
+            if schedule.output_key in write_cache:
+                concurrent = True
+                vector_clock.update(write_cache[schedule.output_key][0])
+            vector_clock[executor_id] = logical_clock[0]
+            #vector_clock['base'] = 1
+            #logging.error('key write not in read set!')
 
-        if prob > 0.75:
-            logical_clock[0] += 1
-            vector_clock = {}
-            concurrent = False
-            if schedule.output_key in dependencies:
-                if schedule.output_key in write_cache and (not executor_id in dependencies[schedule.output_key] or dependencies[schedule.output_key][executor_id] < write_cache[schedule.output_key][0][executor_id]):
-                    concurrent = True
-                    dependencies[schedule.output_key] = sutils._merge_vector_clock(dependencies[schedule.output_key], write_cache[schedule.output_key][0])
-                dependencies[schedule.output_key][executor_id] = logical_clock[0]
-                vector_clock.update(dependencies[schedule.output_key])
-                del dependencies[schedule.output_key]
-            else:
-                if schedule.output_key in write_cache:
-                    concurrent = True
-                    vector_clock.update(write_cache[schedule.output_key][0])
-                vector_clock[executor_id] = logical_clock[0]
-                #vector_clock['base'] = 1
-                #logging.error('key write not in read set!')
+        if concurrent:
+            # merge dependency
+            for dep_key in write_cache[schedule.output_key][1]:
+                if dep_key in dependencies:
+                    dependencies[dep_key] = sutils._merge_vector_clock(dependencies[dep_key], write_cache[schedule.output_key][1][dep_key])
+                else:
+                    dependencies[dep_key] = write_cache[schedule.output_key][1][dep_key]
+            # merge payload
+            result.extend(write_cache[schedule.output_key][2])
 
-            if concurrent:
-                # merge dependency
-                for dep_key in write_cache[schedule.output_key][1]:
-                    if dep_key in dependencies:
-                        dependencies[dep_key] = sutils._merge_vector_clock(dependencies[dep_key], write_cache[schedule.output_key][1][dep_key])
-                    else:
-                        dependencies[dep_key] = write_cache[schedule.output_key][1][dep_key]
-                # merge payload
-                result.extend(write_cache[schedule.output_key][2])
+        # force concurrent...
+        if 'base' in vector_clock:
+            del vector_clock['base']
 
-            #logging.info('issuing causal put of key %s' % schedule.output_key)
-            #result = [serialize_val('0'.zfill(1048576))]
-            succeed = kvs.causal_put(schedule.output_key,
-                                     vector_clock, dependencies,
-                                     result, schedule.client_id)
-            #logging.info('finish causal put of key %s' % schedule.output_key)
+        #logging.info('issuing causal put of key %s' % schedule.output_key)
+        #result = [serialize_val('0'.zfill(1048576))]
+        succeed = kvs.causal_put(schedule.output_key,
+                                 vector_clock, dependencies,
+                                 result, schedule.client_id)
+        #logging.info('finish causal put of key %s' % schedule.output_key)
 
-            while not succeed:
-                #logging.info('retrying causal put')
-                kvs.causal_put(schedule.output_key, vector_clock,
-                               dependencies, result, schedule.client_id)
+        while not succeed:
+            #logging.info('retrying causal put')
+            kvs.causal_put(schedule.output_key, vector_clock,
+                           dependencies, result, schedule.client_id)
 
-            # update write cache
-            write_cache[schedule.output_key] = (vector_clock, dependencies, result)
+        # update write cache
+        write_cache[schedule.output_key] = (vector_clock, dependencies, result)
 
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:
