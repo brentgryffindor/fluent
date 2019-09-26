@@ -65,7 +65,7 @@ elif 'run' in msg:
 			for tid in range(NUM_THREADS):
 				sckt = ctx.socket(zmq.PUSH)
 				sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-				sckt.send_string(msg + ':' + str(index))
+				sckt.send_string(msg + ':' + str(index) + ':' + str(loop))
 				sent_msgs += 1
 				index += 1
 

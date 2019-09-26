@@ -76,7 +76,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         
     return arg_map, list(set(keys_read))
 
-def run(flconn, kvs, mode, segment, params):
+def run(flconn, kvs, mode, segment, params, loop):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
@@ -199,7 +199,7 @@ def run(flconn, kvs, mode, segment, params):
         read_map = {}
         write_map = {}
 
-        for i in range(15*segment, 15*segment + 15):
+        for i in range(90*loop + 15*segment, 90*loop + 15*segment + 15):
             cid = str(i).zfill(3)
 
             logging.info("running client %s" % cid)

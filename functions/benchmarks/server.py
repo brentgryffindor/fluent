@@ -43,8 +43,12 @@ def benchmark(flconn, tid):
         bname = splits[1]
         mode = splits[2]
         segment = None
-        if len(splits) > 3:
+        loop = None
+        if len(splits) == 4:
             segment = int(splits[3])
+        elif len(splits) == 5:
+            segment = int(splits[3])
+            loop = int(splits[4])
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
@@ -55,9 +59,9 @@ def run_bench(bname, mode, segment, flconn, kvs, sckt, params):
     logging.info('Running benchmark %s with mode %s.' % (bname, mode))
 
     if bname == 'causal_bench_1M':
-        latency = causal_bench_1M.run(flconn, kvs, mode, segment, params)
+        latency = causal_bench_1M.run(flconn, kvs, mode, segment, params, loop)
     elif bname == 'causal_bench_1M_parallel':
-        latency = causal_bench_1M_parallel.run(flconn, kvs, mode, segment, params)
+        latency = causal_bench_1M_parallel.run(flconn, kvs, mode, segment, params, loop)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
