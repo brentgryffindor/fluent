@@ -52,10 +52,10 @@ def benchmark(flconn, tid):
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
-        run_bench(bname, mode, segment, flconn, kvs, sckt, params)
+        run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop)
 
 
-def run_bench(bname, mode, segment, flconn, kvs, sckt, params):
+def run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop):
     logging.info('Running benchmark %s with mode %s.' % (bname, mode))
 
     if bname == 'causal_bench_1M':
