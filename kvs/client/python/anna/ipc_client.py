@@ -275,16 +275,17 @@ class IpcAnnaClient:
             dep.vector_clock.update(dependency[key])
 
         cross_causal_value.values.extend(value)
+        assemble_end = time.time()
 
         tp.payload = cross_causal_value.SerializeToString()
+        ccv_end = time.time()
 
         request.response_address = self.put_response_address
-        assemble_end = time.time()
-        serialize_start = time.time()
         self.put_request_socket.send(request.SerializeToString())
         serialize_end = time.time()
         logging.info('asembly took %s' % (assemble_end - assemble_start))
-        logging.info('serialize and send %s' % (serialize_end - serialize_start))
+        logging.info('ccv took %s' % (ccv_end - assemble_end))
+        logging.info('serialize and send took %s' % (serialize_end - ccv_end))
 
         try:
             msg = self.put_response_socket.recv()
