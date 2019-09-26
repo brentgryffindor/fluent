@@ -178,9 +178,9 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             sckt.send(serialize_val(consistent))
             # PUT to redis
             #logging.info('putting key %s to redis' % schedule.output_key)
-            rcv = RedisCausalValue()
-            rcv.value = b'0'.zfill(2097152)
-            rc.set(schedule.output_key, rcv.SerializeToString())
+            #rcv = RedisCausalValue()
+            #rcv.value = b'0'.zfill(2097152)
+            #rc.set(schedule.output_key, rcv.SerializeToString())
             #logging.info('PUT successful')
         else:
             logging.error('only direct response supported!')
@@ -212,12 +212,19 @@ def _resolve_ref_normal(refs, kvs, rc):
     start = time.time()
     keys = [ref.key for ref in refs]
     keys = list(set(keys))
-    result = rc.mget(keys)
 
     kv_pairs = {}
+    for key in keys:
+        val = rc.get(key)
+        kv_pairs[key] = val
 
-    for i, key in enumerate(keys):
-        kv_pairs[key] = result[i]
+    #result = {}
+    #result = rc.mget(keys)
+
+    #kv_pairs = {}
+
+    #for i, key in enumerate(keys):
+    #    kv_pairs[key] = result[i]
     #kv_pairs = kvs.get(keys)
 
     # when chaining function executions, we must wait
