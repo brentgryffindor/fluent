@@ -163,14 +163,14 @@ def run(flconn, kvs, mode, segment, params):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.0
+        params[0] = 1.5
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % params[0])
         ### CREATE ZIPF TABLE###
-        params[3] = 0.5
+        params[3] = 1.0
         params[4] = get_base(total_num_keys, params[3])
         for i in range(1, total_num_keys+1):
             params[5][i] = params[5][i - 1] + (params[4] / np.power(float(i), params[3]))
