@@ -23,7 +23,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
   CausalPutRequest request;
   request.ParseFromString(serialized);
   auto parse_end = std::chrono::system_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
                       parse_end - parse_begin)
                       .count();
   log->info("parse time is {}", duration);

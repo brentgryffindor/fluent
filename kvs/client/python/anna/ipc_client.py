@@ -260,6 +260,7 @@ class IpcAnnaClient:
             return resp.tuples[0].error == 0
 
     def causal_put(self, key, vector_clock, dependency, value, client_id):
+        assemble_start = time.time()
         request = CausalPutRequest()
 
         tp = request.tuples.add()
@@ -278,8 +279,12 @@ class IpcAnnaClient:
         tp.payload = cross_causal_value.SerializeToString()
 
         request.response_address = self.put_response_address
-
+        assemble_end = time.time()
+        serialize_start = time.time()
         self.put_request_socket.send(request.SerializeToString())
+        serialize_end = time.time()
+        logging.info('asembly took %s' % (assemble_end - assemble_start))
+        logging.info('serialize and send %s' % (serialize_end - serialize_start))
 
         try:
             msg = self.put_response_socket.recv()
