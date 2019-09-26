@@ -22,7 +22,7 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void warmup(StoreType& causal_cut_store) {
   SetLattice<string> value;
-  value.insert(string(1048576, '0'));
+  value.insert(string(2097152, '0'));
   CrossCausalPayload<SetLattice<string>> payload;
   payload.vector_clock.insert("base", 1);
   payload.value = value;
