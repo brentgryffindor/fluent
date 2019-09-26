@@ -178,9 +178,9 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             sckt.send(serialize_val(consistent))
             # PUT to redis
             #logging.info('putting key %s to redis' % schedule.output_key)
-            #rcv = RedisCausalValue()
-            #rcv.value = b'0'.zfill(2097152)
-            #rc.set(schedule.output_key, rcv.SerializeToString())
+            rcv = RedisCausalValue()
+            rcv.value = b'0'.zfill(2097152)
+            rc.set(schedule.output_key, rcv.SerializeToString())
             #logging.info('PUT successful')
         else:
             logging.error('only direct response supported!')
