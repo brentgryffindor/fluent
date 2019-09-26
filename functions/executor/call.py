@@ -357,7 +357,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 result.extend(write_cache[schedule.output_key][2])
 
             #logging.info('issuing causal put of key %s' % schedule.output_key)
-            result = [serialize_val('0'.zfill(1048576))]
+            #result = [serialize_val('0'.zfill(1048576))]
             succeed = kvs.causal_put(schedule.output_key,
                                      vector_clock, dependencies,
                                      result, schedule.client_id)
