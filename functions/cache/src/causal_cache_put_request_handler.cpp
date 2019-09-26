@@ -20,6 +20,30 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          map<string, Address>& request_id_to_address_map,
                          KvsAsyncClientInterface* client, logger log, SocketCache& pushers) {
   auto parse_begin = std::chrono::system_clock::now();
+
+  vector<string> v;
+  split(serialized, ':', v);
+  auto parse_end = std::chrono::system_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+                      parse_end - parse_begin)
+                      .count();
+  log->info("parse time is {}", duration);
+
+  CausalPutResponse resp;
+  resp.add_keys(v[0]);
+  string resp_string;
+  resp.SerializeToString(&resp_string);
+  kZmqUtil->send_string(
+      resp_string,
+      &pushers[v[1]]);
+
+  // write to KVS
+  string req_id = client->put_async(v[0], std::move(v[2]),
+                                    LatticeType::CROSSCAUSAL);
+
+  request_id_to_address_map[req_id] = v[1];
+
+  /*auto parse_begin = std::chrono::system_clock::now();
   CausalPutRequest request;
   request.ParseFromString(serialized);
   auto parse_end = std::chrono::system_clock::now();
@@ -44,7 +68,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                                       LatticeType::CROSSCAUSAL);
 
     request_id_to_address_map[req_id] = request.response_address();
-  }
+  }*/
 
   /*for (CausalTuple tuple : request.tuples()) {
     Key key = tuple.key();
