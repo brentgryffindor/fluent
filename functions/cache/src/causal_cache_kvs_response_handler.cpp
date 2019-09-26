@@ -74,13 +74,13 @@ void kvs_response_handler(
               response.tuples(0).key());
         }
       } else {
-        CausalPutResponse resp;
+        /*CausalPutResponse resp;
         resp.add_keys(key);
         string resp_string;
         resp.SerializeToString(&resp_string);
         kZmqUtil->send_string(
             resp_string,
-            &pushers[request_id_to_address_map[response.response_id()]]);
+            &pushers[request_id_to_address_map[response.response_id()]]);*/
         // GC
         request_id_to_address_map.erase(response.response_id());
       }

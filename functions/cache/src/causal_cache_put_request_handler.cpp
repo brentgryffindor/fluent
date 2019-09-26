@@ -18,10 +18,29 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          StoreType& causal_cut_store,
                          VersionStoreType& version_store,
                          map<string, Address>& request_id_to_address_map,
-                         KvsAsyncClientInterface* client, logger log) {
+                         KvsAsyncClientInterface* client, logger log, SocketCache& pushers) {
   CausalPutRequest request;
   request.ParseFromString(serialized);
+
   for (CausalTuple tuple : request.tuples()) {
+    Key key = tuple.key();
+
+    CausalPutResponse resp;
+    resp.add_keys(key);
+    string resp_string;
+    resp.SerializeToString(&resp_string);
+    kZmqUtil->send_string(
+        resp_string,
+        &pushers[request.response_address()]);
+
+    // write to KVS
+    string req_id = client->put_async(key, std::move(tuple.payload()),
+                                      LatticeType::CROSSCAUSAL);
+
+    request_id_to_address_map[req_id] = request.response_address();
+  }
+
+  /*for (CausalTuple tuple : request.tuples()) {
     Key key = tuple.key();
     //log->info("key to put is {}", key);
     auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>(
@@ -43,5 +62,5 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
     // TODO: remove this when running in non-test mode!
     //unmerged_store.erase(key);
     request_id_to_address_map[req_id] = request.response_address();
-  }
+  }*/
 }

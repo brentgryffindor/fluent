@@ -333,7 +333,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&put_puller);
       put_request_handler(serialized, unmerged_store, causal_cut_store,
                           version_store, request_id_to_address_map, client,
-                          log);
+                          log, pushers);
       //log->info("done PUT");
       //std::cout << "done PUT\n";
     }

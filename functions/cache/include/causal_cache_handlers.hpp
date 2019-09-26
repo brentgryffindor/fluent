@@ -38,7 +38,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          StoreType& causal_cut_store,
                          VersionStoreType& version_store,
                          map<string, Address>& request_id_to_address_map,
-                         KvsAsyncClientInterface* client, logger log);
+                         KvsAsyncClientInterface* client, logger log, SocketCache& pushers);
 
 void versioned_key_request_handler(const string& serialized,
                                    const VersionStoreType& version_store,
