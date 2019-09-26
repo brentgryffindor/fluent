@@ -327,7 +327,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         prob = random.uniform(0, 1)
 
-        if prob > 0.5:
+        if prob > 0.75:
             logical_clock[0] += 1
             vector_clock = {}
             concurrent = False
