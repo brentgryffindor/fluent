@@ -784,14 +784,14 @@ void merge_into_causal_cut(
   bool key_dne = false;
 
   // initiate message to be sent to all executors for caching
-  CausalGetResponse cache_response;
-  cache_response.set_error(ErrorType::NO_ERROR);
+  //CausalGetResponse cache_response;
+  //cache_response.set_error(ErrorType::NO_ERROR);
   
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
     if (vector_clock_comparison(
             VectorClock(), pair.second->reveal().vector_clock) == kCausalLess) {
-      auto tp = cache_response.add_tuples();
+      //auto tp = cache_response.add_tuples();
       // only merge when the key exists
       if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
         // key doesn't exist in causal cut store
@@ -807,22 +807,22 @@ void merge_into_causal_cut(
               causal_merge(causal_cut_store[pair.first], pair.second);
         }
       }
-      tp->set_key(pair.first);
-      tp->set_payload(serialize(*causal_cut_store[pair.first]));
+      //tp->set_key(pair.first);
+      //tp->set_payload(serialize(*causal_cut_store[pair.first]));
     } else {
       key_dne = true;
     }
   }
   //std::cout << "before send\n";
   // send
-  string resp_string;
+  /*string resp_string;
   cache_response.SerializeToString(&resp_string);
   //std::cout << "after serialization\n";
   for (unsigned tid = 0; tid < 3; tid++) {
     //std::cout << "tid is " + std::to_string(tid) + "\n";
     //std::cout << "destination address is " + cct.causal_cache_executor_connect_address(tid) + "\n";
     kZmqUtil->send_string(resp_string, &pushers[cct.causal_cache_executor_connect_address(tid)]);
-  }
+  }*/
   //std::cout << "after send\n";
 
   // notify executor and scheduler
