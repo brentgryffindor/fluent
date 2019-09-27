@@ -261,41 +261,6 @@ class IpcAnnaClient:
 
     def causal_put(self, key, vector_clock, dependency, value, client_id):
         assemble_start = time.time()
-
-        cross_causal_value = CrossCausalValue()
-        cross_causal_value.vector_clock.update(vector_clock)
-
-        for key in dependency:
-            dep = cross_causal_value.deps.add()
-            dep.key = key
-            dep.vector_clock.update(dependency[key])
-
-        cross_causal_value.values.extend(value)
-        assemble_end = time.time()
-
-        request = key + ':' + self.put_response_address + ':' + cross_causal_value.SerializeToString().decode()
-        serialize_end = time.time()
-
-        self.put_request_socket.send(request)
-        send_end = time.time()
-        logging.info('asembly took %s' % (assemble_end - assemble_start))
-        logging.info('serialize took %s' % (serialize_end - assemble_end))
-        logging.info('send took %s' % (send_end - serialize_end))
-
-        try:
-            msg = self.put_response_socket.recv()
-        except zmq.ZMQError as e:
-            if e.errno == zmq.EAGAIN:
-                logging.error("Request for %s timed out!" % (str(key)))
-            else:
-                logging.error("Unexpected ZMQ error: %s." % (str(e)))
-
-            return False
-        else:
-            return True
-
-
-        '''assemble_start = time.time()
         request = CausalPutRequest()
 
         tp = request.tuples.add()
@@ -316,11 +281,14 @@ class IpcAnnaClient:
         ccv_end = time.time()
 
         request.response_address = self.put_response_address
-        self.put_request_socket.send(request.SerializeToString())
+        serialized = request.SerializeToString()
         serialize_end = time.time()
+        self.put_request_socket.send(serialized)
+        send_end = time.time()
         logging.info('asembly took %s' % (assemble_end - assemble_start))
         logging.info('ccv took %s' % (ccv_end - assemble_end))
-        logging.info('serialize and send took %s' % (serialize_end - ccv_end))
+        logging.info('serialize took %s' % (serialize_end - ccv_end))
+        logging.info('send took %s' % (send_end - serialize_end))
 
         try:
             msg = self.put_response_socket.recv()
@@ -332,7 +300,7 @@ class IpcAnnaClient:
 
             return False
         else:
-            return True'''
+            return True
 
     def _vc_merge(self, lhs, rhs):
         result = lhs
