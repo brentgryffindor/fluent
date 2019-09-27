@@ -140,7 +140,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # map<key, tuple(vc, dep, set)> write cache for identifying concurrent update
     write_cache = {}
 
-    logging.info('enter warmup')
+    '''logging.info('enter warmup')
     warmup_start = time.time()
     for k in range(1, 1001):
         warmup_key = str(k).zfill(6)
@@ -148,7 +148,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         cache[warmup_key] = (vc, str(0).zfill(262144))
     logging.info('finish warmup')
     warmup_end = time.time()
-    logging.info('warmup time is %s' % (warmup_end - warmup_start))
+    logging.info('warmup time is %s' % (warmup_end - warmup_start))'''
 
 
     while True:
