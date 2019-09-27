@@ -119,6 +119,7 @@ void replication_response_handler(
             } else {
               process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], stored_key_map);
+              log->info("key {} size is {} after put", key, stored_key_map[key].size_);
               key_access_tracker[key].insert(now);
 
               access_count += 1;
@@ -164,6 +165,7 @@ void replication_response_handler(
             } else {
               process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], stored_key_map);
+              log->info("key {} size is {} after put", key, stored_key_map[key].size_);
               tp->set_error(0);
               tp->set_lattice_type(request.lattice_type_);
               local_changeset.insert(key);
@@ -205,6 +207,7 @@ void replication_response_handler(
           } else {
             process_put(key, gossip.lattice_type_, gossip.payload_,
                         serializers[gossip.lattice_type_], stored_key_map);
+            log->info("key {} size is {} after put", key, stored_key_map[key].size_);
           }
         }
       } else {
