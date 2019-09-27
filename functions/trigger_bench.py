@@ -58,7 +58,7 @@ elif 'run' in msg:
 
 	latency = []
 
-	for loop in range(200):
+	for loop in range(300):
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
