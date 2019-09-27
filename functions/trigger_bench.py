@@ -58,7 +58,7 @@ elif 'run' in msg:
 
 	latency = []
 
-	for loop in range(150):
+	for loop in range(300):
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
@@ -77,7 +77,7 @@ elif 'run' in msg:
 
 		sent_msgs = 0
 		end_recv = 0
-		time.sleep(1.0)
+		#time.sleep(1.0)
 	logging.info("benchmark done")
 	utils.print_latency_stats(latency, 'Causal', True)
 	utils.print_latency_stats(latency, 'Causal')
