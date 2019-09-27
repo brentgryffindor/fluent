@@ -260,7 +260,7 @@ class IpcAnnaClient:
             return resp.tuples[0].error == 0
 
     def causal_put(self, key, vector_clock, dependency, value, client_id):
-        assemble_start = time.time()
+        #assemble_start = time.time()
         request = CausalPutRequest()
 
         tp = request.tuples.add()
@@ -275,20 +275,19 @@ class IpcAnnaClient:
             dep.vector_clock.update(dependency[key])
 
         cross_causal_value.values.extend(value)
-        assemble_end = time.time()
+        #assemble_end = time.time()
 
         tp.payload = cross_causal_value.SerializeToString()
-        ccv_end = time.time()
+        #ccv_end = time.time()
 
         request.response_address = self.put_response_address
-        serialized = request.SerializeToString()
-        serialize_end = time.time()
-        self.put_request_socket.send(serialized)
-        send_end = time.time()
-        logging.info('asembly took %s' % (assemble_end - assemble_start))
-        logging.info('ccv took %s' % (ccv_end - assemble_end))
-        logging.info('serialize took %s' % (serialize_end - ccv_end))
-        logging.info('send took %s' % (send_end - serialize_end))
+        #serialize_end = time.time()
+        self.put_request_socket.send(request.SerializeToString())
+        #send_end = time.time()
+        #logging.info('asembly took %s' % (assemble_end - assemble_start))
+        #logging.info('ccv took %s' % (ccv_end - assemble_end))
+        #logging.info('serialize took %s' % (serialize_end - ccv_end))
+        #logging.info('send took %s' % (send_end - serialize_end))
 
         try:
             msg = self.put_response_socket.recv()

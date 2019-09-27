@@ -360,7 +360,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
         result = [serialize_val('0'.zfill(2097152))]
-        put_start = time.time()
+        #put_start = time.time()
         succeed = kvs.causal_put(schedule.output_key,
                                  vector_clock, dependencies,
                                  result, schedule.client_id)
@@ -370,8 +370,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #logging.info('retrying causal put')
             kvs.causal_put(schedule.output_key, vector_clock,
                            dependencies, result, schedule.client_id)
-        put_end = time.time()
-        logging.info('causal put time is %s' % (put_end - put_start))
+        #put_end = time.time()
+        #logging.info('causal put time is %s' % (put_end - put_start))
 
         # update write cache
         write_cache[schedule.output_key] = (vector_clock, dependencies, result)
@@ -448,8 +448,8 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
         #logging.info('swapping args and deserializing')
         for key in kv_pairs:
-            logging.info('cache miss for key %s' % key)
-            logging.info('key size is %s' % len(kv_pairs[key][1]))
+            #logging.info('cache miss for key %s' % key)
+            #logging.info('key size is %s' % len(kv_pairs[key][1]))
             if deserialize[key]:
                 #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
@@ -468,7 +468,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 dependencies[key] = kv_pairs[key][0]
             key_vc_map[key] = kv_pairs[key][0]
         for key in keys:
-            logging.info('cache hit for key %s' % key)
+            #logging.info('cache hit for key %s' % key)
             # these are keys that are cached
             # we first update the prior_read_map since cached keys are not returned by the cache
             vk = VersionedKey()
@@ -477,7 +477,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             prior_read_map.extend([vk])
             
             func_args[key_index_map[key]] = cache[key][1]
-            logging.info('key size is %s' % len(cache[key][1]))
+            #logging.info('key size is %s' % len(cache[key][1]))
             # update dependency
             if key in dependencies:
                 dependencies[key] = sutils._merge_vector_clock(dependencies[key],
@@ -504,7 +504,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached):
     #logging.info('resolve ref causal')
     full_read_set = schedule.full_read_set
-    get_start = time.time()
+    #get_start = time.time()
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,
                             schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
@@ -513,8 +513,8 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
         result = kvs.causal_get(keys, full_read_set,
                                 prior_version_tuples, prior_read_map,
                                 schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
-    get_end = time.time()
-    logging.info('causal get time is %s' % (get_end - get_start))
+    #get_end = time.time()
+    #logging.info('causal get time is %s' % (get_end - get_start))
     #logging.info('causal GET done')
 
     if result == KEY_DNE or result == ABORT:
