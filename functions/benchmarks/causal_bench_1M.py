@@ -87,7 +87,7 @@ def run(flconn, kvs, mode, segment, params, loop):
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b):
-            return '0'.zfill(8)
+            return ''
             '''result = ''
             for i, char in enumerate(a):
                 if i % 3 == 0:
@@ -124,7 +124,7 @@ def run(flconn, kvs, mode, segment, params, loop):
         strmnp_test1 = cloud_strmnp1(*refs).get()
         strmnp_test2 = cloud_strmnp2(*refs).get()
         strmnp_test3 = cloud_strmnp3(*refs).get()
-        if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
+        if strmnp_test1 != '' or strmnp_test2 != '' or strmnp_test3 != '':
             logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
             sys.exit(1)
 
