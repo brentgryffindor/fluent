@@ -233,6 +233,7 @@ def run(flconn, kvs, mode, segment, params, loop):
             all_times.append((end - start))
             #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
+        logging.info('loop is %d' % loop)
         utils.print_latency_stats(all_times, 'latency', True)
         return all_times
         #print('zipf %f' % zipf)
