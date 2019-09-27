@@ -22,7 +22,7 @@
 const unsigned kCausalCacheReportThreshold = 1;
 
 // period to migrate keys from unmerged store to causal cut store
-const unsigned kMigrateThreshold = 250;
+const unsigned kMigrateThreshold = 350;
 
 // macros used for vector clock comparison
 const unsigned kCausalGreaterOrEqual = 0;
