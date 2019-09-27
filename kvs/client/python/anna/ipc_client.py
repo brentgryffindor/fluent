@@ -23,6 +23,7 @@ from .functions_pb2 import *
 from .kvs_pb2 import *
 from .lattices import *
 import zmq
+import sys
 
 import time
 
@@ -193,6 +194,7 @@ class IpcAnnaClient:
                     val.ParseFromString(tp.payload)
 
                     # for now, we just take the first value in the setlattice
+                    logging.info('value size is %s' % sys.getsizeof(val.values))
                     kv_pairs[tp.key] = (val.vector_clock, val.values[0])
                     # construct VersionedKey for keys read
                     if not conservative:
