@@ -153,7 +153,7 @@ def run(flconn, kvs, mode, segment, params, loop):
             k = str(k).zfill(6)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
-            ccv.values.extend([serialize_val('0'.zfill(2097152))])
+            ccv.values.extend([serialize_val('0'.zfill(1048576))])
             kvs.put(k, ccv)
         warm_end = time.time()
         logging.info('warmup took %s' % (warm_end - warm_begin))
@@ -218,8 +218,8 @@ def run(flconn, kvs, mode, segment, params, loop):
             #    print("read set contains %s" % key)
 
             output = sample(total_num_keys, base_write, sum_probs_write)
-            #output = int(np.random.uniform(1,total_num_keys,1)[0])
-            output = str(output).zfill(6)
+            output = int(np.random.uniform(1,total_num_keys,1)[0])
+            #output = str(output).zfill(6)
 
             #output = random.choice(read_set)
             if output not in write_map:
