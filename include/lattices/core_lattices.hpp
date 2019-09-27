@@ -62,7 +62,13 @@ class SetLattice : public Lattice<set<T>> {
 
   SetLattice(const set<T> &e) : Lattice<set<T>>(e) {}
 
-  MaxLattice<unsigned> size() const { return this->element.size(); }
+  MaxLattice<unsigned> size() const {
+    unsigned size = 0;
+    for (const auto& e : this->element) {
+      size += e.size();
+    }
+    return size;
+  }
 
   void insert(T e) { this->element.insert(std::move(e)); }
 

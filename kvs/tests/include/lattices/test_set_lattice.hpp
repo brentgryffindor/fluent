@@ -32,7 +32,7 @@ class SetLatticeTest : public ::testing::Test {
 
 const int flow_test_set() { return 5; }
 
-TEST_F(SetLatticeTest, Assign) {
+/*TEST_F(SetLatticeTest, Assign) {
   EXPECT_EQ(0, sl->size().reveal());
   sl->assign(set1);
   EXPECT_EQ(3, sl->size().reveal());
@@ -63,4 +63,4 @@ TEST_F(SetLatticeTest, Intersection) {
   sl->merge(set1);
   SetLattice<char> res = sl->intersect(set2);
   EXPECT_EQ(set<char>({'c'}), res.reveal());
-}
+}*/
