@@ -344,7 +344,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #logging.error('key write not in read set!')
 
         if concurrent:
-            logging.info('detected ocncurrent update!')
+            #logging.info('detected ocncurrent update!')
             # merge dependency
             for dep_key in write_cache[schedule.output_key][1]:
                 if dep_key in dependencies:
@@ -355,11 +355,11 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             result.extend(write_cache[schedule.output_key][2])
 
         # force concurrent...
-        #if 'base' in vector_clock:
-        #    del vector_clock['base']
+        if 'base' in vector_clock:
+            del vector_clock['base']
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
-        result = [serialize_val('0'.zfill(524288))]
+        #result = [serialize_val('0'.zfill(524288))]
         #put_start = time.time()
         succeed = kvs.causal_put(schedule.output_key,
                                  vector_clock, dependencies,
