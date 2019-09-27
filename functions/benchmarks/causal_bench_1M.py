@@ -217,8 +217,8 @@ def run(flconn, kvs, mode, segment, params, loop):
             #for key in read_set:
             #    print("read set contains %s" % key)
 
-            #output = sample(total_num_keys, base_write, sum_probs_write)
-            output = int(np.random.uniform(1,total_num_keys,1)[0])
+            output = sample(total_num_keys, base_write, sum_probs_write)
+            #output = int(np.random.uniform(1,total_num_keys,1)[0])
             output = str(output).zfill(6)
 
             #output = random.choice(read_set)

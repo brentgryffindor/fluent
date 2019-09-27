@@ -100,7 +100,7 @@ void user_request_handler(
           } else {
             process_put(key, tuple.lattice_type(), payload,
                         serializers[tuple.lattice_type()], stored_key_map);
-            log->info("key {} size is {} after put", key, stored_key_map[key].size_);
+            //log->info("key {} size is {} after put", key, stored_key_map[key].size_);
 
             local_changeset.insert(key);
             tp->set_error(0);
