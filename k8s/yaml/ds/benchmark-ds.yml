@@ -44,7 +44,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "elasticache_performance"
+          value: "anna_performance"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-2
@@ -61,7 +61,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "elasticache_performance"
+          value: "anna_performance"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-3
@@ -78,7 +78,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "elasticache_performance"
+          value: "anna_performance"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-4
@@ -95,7 +95,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "elasticache_performance"
+          value: "anna_performance"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-5
@@ -112,7 +112,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "elasticache_performance"
+          value: "anna_performance"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-6
@@ -129,6 +129,6 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "elasticache_performance"
+          value: "anna_performance"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY

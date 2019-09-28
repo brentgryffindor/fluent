@@ -116,12 +116,12 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, function_result_cache, rc, conservative=False):
+                      tid, cache, function_result_cache, anna_kvs, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule, rc)
+                                  triggers, function, schedule, anna_kvs)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
@@ -130,7 +130,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     #user_lib.close()
 
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, rc):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, anna_kvs):
     #logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
@@ -143,7 +143,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         prior_read_map += list(trigger.prior_read_map)
 
     fargs = _process_args(fargs)
-    result, versions = _exec_func_normal(kvs, function, fargs, rc)
+    result, versions = _exec_func_normal(kvs, function, fargs, anna_kvs)
 
     prior_read_map += versions
 
@@ -178,19 +178,19 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             sckt.send(serialize_val(consistent))
             # PUT to redis
             #logging.info('putting key %s to redis' % schedule.output_key)
-            rcv = RedisCausalValue()
-            rcv.value = b'0'.zfill(262144)
-            rc.set(schedule.output_key, rcv.SerializeToString())
+            #rcv = RedisCausalValue()
+            #rcv.value = b'0'.zfill(262144)
+            #rc.set(schedule.output_key, rcv.SerializeToString())
             #logging.info('PUT successful')
         else:
             logging.error('only direct response supported!')
 
 
-def _exec_func_normal(kvs, func, args, rc=None):
+def _exec_func_normal(kvs, func, args, anna_kvs=None):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
 
     if refs:
-        refs = _resolve_ref_normal(refs, kvs, rc)
+        refs = _resolve_ref_normal(refs, kvs, anna_kvs)
     end = time.time()
 
     func_args = ()
@@ -208,15 +208,18 @@ def _exec_func_normal(kvs, func, args, rc=None):
     return (res, versions)
 
 
-def _resolve_ref_normal(refs, kvs, rc):
+def _resolve_ref_normal(refs, kvs, anna_kvs):
     start = time.time()
     keys = [ref.key for ref in refs]
     keys = list(set(keys))
 
     kv_pairs = {}
     for key in keys:
-        val = rc.get(key)
-        kv_pairs[key] = val
+        kv_pairs[key] = anna_kvs.get(key)
+
+    for ref in refs:
+        if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
+            kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
 
     #result = {}
     #result = rc.mget(keys)

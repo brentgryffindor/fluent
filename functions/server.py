@@ -44,7 +44,8 @@ def run():
     else:
         schedulers = os.environ['SCHED_IPS'].split(' ')
         thread_id = int(os.environ['THREAD_ID'])
-        executor(ip, mgmt_ip, schedulers, thread_id)
+        flconn = flclient.FluentConnection(schedulers[thread_id % 3], ip, thread_id)
+        executor(ip, mgmt_ip, schedulers, thread_id, flconn.kvs_client)
 
 
 if __name__ == '__main__':

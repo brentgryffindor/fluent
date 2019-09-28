@@ -146,21 +146,18 @@ def run(flconn, kvs, mode, segment, params):
         return [[], 0]
 
     elif mode == 'warmup':
-        logging.info('Connecting to redis')
-        startup_nodes = [{"host": "hydro.kvm9la.clustercfg.use1.cache.amazonaws.com", "port": "6379"}]
-        rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True, skip_full_coverage_check=True)
-        logging.info('Connected')
         ### CREATE DATA###
         logging.info('Warming up keys')
         warm_begin = time.time()
         block_size = int(total_num_keys/6)
+        val = b'0'.zfill(2097152)
         for k in range(block_size*segment+1,block_size*segment + block_size+1):
             if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
-            k = str(k).zfill(len(str(total_num_keys)))
-            rcv = RedisCausalValue()
-            rcv.value = b'0'.zfill(262144)
-            rc.set(k, rcv.SerializeToString())
+            k = str(k).zfill(6)
+
+            body = LWWPairLattice(0, serialize_val(val))
+            kvs.put(k, body)
         warm_end = time.time()
         #print('warmup took %s' % (warm_end - warm_begin))
 

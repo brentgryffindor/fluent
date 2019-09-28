@@ -30,6 +30,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "elasticache_performance"
+      value: "anna_performance"
   nodeSelector:
     role: general
