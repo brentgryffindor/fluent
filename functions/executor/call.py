@@ -116,12 +116,12 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, function_result_cache, rc, conservative=False):
+                      tid, cache, function_result_cache, rc, executor_id, logical_clock, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule, rc)
+                                  triggers, function, schedule, rc, executor_id, logical_clock)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
@@ -130,7 +130,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     #user_lib.close()
 
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, rc):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, rc, executor_id, logical_clock):
     #logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
@@ -174,14 +174,13 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         if schedule.HasField('response_address'):
             # PUT to redis
             #logging.info('putting key %s to redis' % schedule.output_key)
+            logical_clock[0] += 1
             vc = {}
             for vk in prior_read_map:
                 if vk.key == schedule.output_key:
                     vc.update(vk.vector_clock)
                     break
-            if not schedule.client_id in vc:
-                vc[schedule.client_id] = 0
-            vc[schedule.client_id] += 1
+            vc[executor_id] = logical_clock[0]
             rcv = RedisCausalValue()
             rcv.vector_clock.update(vc)
             rcv.value = result

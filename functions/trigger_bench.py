@@ -60,7 +60,7 @@ elif 'run' in msg:
 
 	total_inconsistency = 0
 
-	for loop in range(20):
+	for loop in range(200):
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
@@ -81,7 +81,9 @@ elif 'run' in msg:
 
 		sent_msgs = 0
 		end_recv = 0
-		time.sleep(0.5)
+		utils.print_latency_stats(latency, 'Causal')
+		print('total inconsistency is %d' % total_inconsistency)
+		#time.sleep(0.5)
 	logging.info("benchmark done")
 	utils.print_latency_stats(latency, 'Causal', True)
 	utils.print_latency_stats(latency, 'Causal')

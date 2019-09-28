@@ -27,7 +27,12 @@ def benchmark(flconn, tid):
     sum_probs = {}
     sum_probs[0] = 0.0
 
-    params = [zipf, base, sum_probs]
+    zipf_write = 0
+    base_write = 0
+    sum_probs_write = {}
+    sum_probs_write[0] = 0.0
+
+    params = [zipf, base, sum_probs, zipf_write, base_write, sum_probs_write]
 
     while True:
         msg = benchmark_start_socket.recv_string()

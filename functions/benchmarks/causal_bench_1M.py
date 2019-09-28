@@ -66,7 +66,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         while not to_generate == 0:
             # sample key from zipf
             key = sample(num_keys, base, sum_probs)
-            key = str(key).zfill(len(str(num_keys)))
+            key = str(key).zfill(6)
 
             if key not in keys_chosen:
                 keys_chosen.append(key)
@@ -82,7 +82,7 @@ def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 999996
+    total_num_keys = 9996
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -157,7 +157,7 @@ def run(flconn, kvs, mode, segment, params):
         for k in range(block_size*segment+1,block_size*segment + block_size+1):
             if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
-            k = str(k).zfill(len(str(total_num_keys)))
+            k = str(k).zfill(6)
             rcv = RedisCausalValue()
             rcv.value = b'0'.zfill(8)
             rc.set(k, rcv.SerializeToString())
@@ -176,6 +176,14 @@ def run(flconn, kvs, mode, segment, params):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % params[0])
+
+        ### CREATE ZIPF TABLE###
+        params[3] = 1.5
+        params[4] = get_base(total_num_keys, params[3])
+        for i in range(1, total_num_keys+1):
+            params[5][i] = params[5][i - 1] + (params[4] / np.power(float(i), params[3]))
+
+        logging.info("Created Probability Table with zipf %f" % params[3])
         return [[], 0]
 
     elif mode == 'run':
