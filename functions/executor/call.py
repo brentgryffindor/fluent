@@ -242,13 +242,13 @@ def _resolve_ref_normal(refs, kvs, anna_kvs):
 
     kv_pairs = {}
     for key in keys:
-        kv_pairs[key] = anna_kvs.get(key)
+        kv_pairs[key] = anna_kvs.get(key).reveal()[1]
 
     #deser_start = time.time()
 
-    for ref in refs:
+    '''for ref in refs:
         if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
-            kv_pairs[ref.key] = kv_pairs[ref.key].reveal()[1]
+            kv_pairs[ref.key] = kv_pairs[ref.key].reveal()[1]'''
 
     #deser_end = time.time()
     #logging.info('deser payload took %s' % (deser_end - deser_start))
