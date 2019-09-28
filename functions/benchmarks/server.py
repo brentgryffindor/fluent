@@ -42,8 +42,11 @@ def benchmark(flconn, tid):
         bname = splits[1]
         mode = splits[2]
         segment = None
-        if len(splits) > 3:
+        if len(splits) == 4:
             segment = int(splits[3])
+        elif len(splits) == 5:
+            segment = int(splits[4])
+            params[3] = float(splits[3])
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
