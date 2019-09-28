@@ -82,7 +82,7 @@ elif 'run' in msg:
 		sent_msgs = 0
 		end_recv = 0
 		utils.print_latency_stats(latency, 'Causal')
-		#time.sleep(0.5)
+		time.sleep(0.5)
 	logging.info("benchmark done")
 	utils.print_latency_stats(latency, 'Causal', True)
 	utils.print_latency_stats(latency, 'Causal')
