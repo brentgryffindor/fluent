@@ -149,7 +149,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   // warmup
   log->info("warmup begin");
   //std::cout << "warmup start\n";
-  warmup(local_lww_cache, key_type_map);
+  //warmup(local_lww_cache, key_type_map);
   //std::cout << "warmup done\n";
   log->info("warmup end");
 
