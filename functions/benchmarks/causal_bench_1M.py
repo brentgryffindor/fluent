@@ -64,7 +64,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         while not to_generate == 0:
             # sample key from zipf
             key = sample(num_keys, base, sum_probs)
-            key = str(key).zfill(6)
+            key = str(key).zfill(7)
 
             if key not in keys_chosen:
                 keys_chosen.append(key)
@@ -80,7 +80,7 @@ def run(flconn, kvs, mode, segment, params, loop):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 9996
+    total_num_keys = 999996
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -163,7 +163,7 @@ def run(flconn, kvs, mode, segment, params, loop):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.25
+        params[0] = 1.5
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
