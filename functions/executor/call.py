@@ -116,12 +116,12 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, function_result_cache, anna_kvs, conservative=False):
+                      tid, cache, function_result_cache, anna_kvs, executor_id, logical_clock, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule, anna_kvs)
+                                  triggers, function, schedule, anna_kvs, executor_id, logical_clock)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
@@ -130,7 +130,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     #user_lib.close()
 
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, anna_kvs):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, anna_kvs, executor_id, logical_clock):
     #logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
@@ -172,16 +172,34 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, a
     if is_sink:
         #result = serialize_val(result)
         if schedule.HasField('response_address'):
-            # respond to client
+            # put to anna
+            logical_clock[0] += 1
+            vc = {}
+            for vk in prior_read_map:
+                if vk.key == schedule.output_key:
+                    vc.update(vk.vector_clock)
+                    break
+            vc[executor_id] = logical_clock[0]
+            rcv = RedisCausalValue()
+            rcv.vector_clock.update(vc)
+            rcv.value = result
+            anna_kvs.put(schedule.output_key, LWWPairLattice(0, rcv.SerializeToString()))
+            # then respond to client
+            key_version_map = {}
+            for vk in prior_read_map:
+                if not vk.key in key_version_map:
+                    key_version_map[vk.key] = []
+                vc = {}
+                vc.update(vk.vector_clock)
+                key_version_map[vk.key].append(vc)
+
             consistent = True
+            for key in key_version_map:
+                consistent = all(vc == key_version_map[key][0] for vc in key_version_map[key])
+                if not consistent:
+                    break
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(serialize_val(consistent))
-            # PUT to redis
-            #logging.info('putting key %s to redis' % schedule.output_key)
-            #rcv = RedisCausalValue()
-            #rcv.value = b'0'.zfill(262144)
-            #rc.set(schedule.output_key, rcv.SerializeToString())
-            #logging.info('PUT successful')
         else:
             logging.error('only direct response supported!')
 
@@ -205,6 +223,15 @@ def _exec_func_normal(kvs, func, args, anna_kvs=None):
 
     versions = []
 
+    # parse vector clock out of payload
+    for key in refs:
+        rcv = RedisCausalValue()
+        rcv.ParseFromString(refs[key])
+        vk = VersionedKey()
+        vk.key = key
+        vk.vector_clock.update(rcv.vector_clock)
+        versions.append(vk)
+
     return (res, versions)
 
 
@@ -215,13 +242,13 @@ def _resolve_ref_normal(refs, kvs, anna_kvs):
 
     kv_pairs = {}
     for key in keys:
-        kv_pairs[key] = anna_kvs.get(key, False)
+        kv_pairs[key] = anna_kvs.get(key)
 
     #deser_start = time.time()
 
-    '''for ref in refs:
+    for ref in refs:
         if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
-            kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])'''
+            kv_pairs[ref.key] = kv_pairs[ref.key].reveal()[1]
 
     #deser_end = time.time()
     #logging.info('deser payload took %s' % (deser_end - deser_start))

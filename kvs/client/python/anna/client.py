@@ -54,7 +54,7 @@ class AnnaClient():
 
         self.rid = 0
 
-    def get(self, key, deser=True):
+    def get(self, key):
         worker_address = self._get_worker_address(key)
 
         if not worker_address:
@@ -79,10 +79,7 @@ class AnnaClient():
             self._invalidate_cache(tup.key, tup.addresses)
 
         if tup.error == 0:
-            if deser:
                 return self._deserialize(tup)
-            else:
-                return tup
         elif tup.error == 1:
             return None # key does not exist
         else:

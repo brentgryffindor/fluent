@@ -173,6 +173,14 @@ def run(flconn, kvs, mode, segment, params):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % params[0])
+
+        ### CREATE ZIPF TABLE###
+        #params[3] = 1.5
+        params[4] = get_base(total_num_keys, params[3])
+        for i in range(1, total_num_keys+1):
+            params[5][i] = params[5][i - 1] + (params[4] / np.power(float(i), params[3]))
+
+        logging.info("Created Probability Table with zipf %f" % params[3])
         return [[], 0]
 
     elif mode == 'run':
@@ -182,6 +190,10 @@ def run(flconn, kvs, mode, segment, params):
         zipf = params[0]
         base = params[1]
         sum_probs = params[2]
+
+        zipf_write = params[3]
+        base_write = params[4]
+        sum_probs_write = params[5]
 
         #request_num = 500
 
@@ -212,7 +224,11 @@ def run(flconn, kvs, mode, segment, params):
             #for key in read_set:
             #    print("read set contains %s" % key)
 
-            output = random.choice(read_set)
+            output = sample(total_num_keys, base_write, sum_probs_write)
+
+            output = str(output).zfill(6)
+
+            #output = random.choice(read_set)
             if output not in write_map:
                 write_map[output] = 0
             write_map[output] += 1
