@@ -170,7 +170,7 @@ def run(flconn, kvs, mode, segment, params, loop):
 
         logging.info("Created Probability Table with zipf %f" % params[0])
         ### CREATE ZIPF TABLE###
-        params[3] = 1.0
+        params[3] = 0.5
         params[4] = get_base(total_num_keys, params[3])
         for i in range(1, total_num_keys+1):
             params[5][i] = params[5][i - 1] + (params[4] / np.power(float(i), params[3]))
@@ -217,8 +217,8 @@ def run(flconn, kvs, mode, segment, params, loop):
             #for key in read_set:
             #    print("read set contains %s" % key)
 
-            #output = sample(total_num_keys, base_write, sum_probs_write)
-            output = int(np.random.uniform(1,total_num_keys,1)[0])
+            output = sample(total_num_keys, base_write, sum_probs_write)
+            #output = int(np.random.uniform(1,total_num_keys,1)[0])
 
             output = str(output).zfill(6)
 
