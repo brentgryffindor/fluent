@@ -87,7 +87,7 @@ def run(flconn, kvs, mode, segment, params, loop):
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b):
-            return ''
+            return '0'.zfill(8)
             '''result = ''
             for i, char in enumerate(a):
                 if i % 3 == 0:
@@ -124,7 +124,7 @@ def run(flconn, kvs, mode, segment, params, loop):
         strmnp_test1 = cloud_strmnp1(*refs).get()
         strmnp_test2 = cloud_strmnp2(*refs).get()
         strmnp_test3 = cloud_strmnp3(*refs).get()
-        if strmnp_test1 != '' or strmnp_test2 != '' or strmnp_test3 != '':
+        if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
             logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
             sys.exit(1)
 
@@ -153,7 +153,7 @@ def run(flconn, kvs, mode, segment, params, loop):
             k = str(k).zfill(6)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
-            ccv.values.extend([serialize_val('0'.zfill(1048576))])
+            ccv.values.extend([serialize_val('0'.zfill(524288))])
             kvs.put(k, ccv)
         warm_end = time.time()
         logging.info('warmup took %s' % (warm_end - warm_begin))
@@ -217,8 +217,8 @@ def run(flconn, kvs, mode, segment, params, loop):
             #for key in read_set:
             #    print("read set contains %s" % key)
 
-            output = sample(total_num_keys, base_write, sum_probs_write)
-            #output = int(np.random.uniform(1,total_num_keys,1)[0])
+            #output = sample(total_num_keys, base_write, sum_probs_write)
+            output = int(np.random.uniform(1,total_num_keys,1)[0])
 
             output = str(output).zfill(6)
 
