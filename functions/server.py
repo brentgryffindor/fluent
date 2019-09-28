@@ -37,8 +37,9 @@ def run():
     if sys_func == 'benchmark':
         function_addr = os.environ['FUNCTION_ADDR']
         thread_id = int(os.environ['THREAD_ID'])
+        schedulers = os.environ['SCHED_IPS'].split(' ')
 
-        flconn = flclient.FluentConnection(function_addr, ip, thread_id)
+        flconn = flclient.FluentConnection(schedulers[thread_id % 3], ip, thread_id)
         benchmark(flconn, thread_id)
     else:
         schedulers = os.environ['SCHED_IPS'].split(' ')
