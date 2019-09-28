@@ -215,7 +215,7 @@ def _resolve_ref_normal(refs, kvs, anna_kvs):
 
     kv_pairs = {}
     for key in keys:
-        kv_pairs[key] = anna_kvs.get(key)
+        kv_pairs[key] = anna_kvs.get(key, False)
 
     #deser_start = time.time()
 

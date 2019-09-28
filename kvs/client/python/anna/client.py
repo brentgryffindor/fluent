@@ -54,7 +54,7 @@ class AnnaClient():
 
         self.rid = 0
 
-    def get(self, key):
+    def get(self, key, deser=True):
         worker_address = self._get_worker_address(key)
 
         if not worker_address:
@@ -79,11 +79,10 @@ class AnnaClient():
             self._invalidate_cache(tup.key, tup.addresses)
 
         if tup.error == 0:
-            return tup
-            #res = self._deserialize(tup)
-            #deser_end = time.time()
-            #logging.info('deser to lattice took %s' % (deser_end - deser_start))
-            #return res
+            if deser:
+                return self._deserialize(tup)
+            else:
+                return tup
         elif tup.error == 1:
             return None # key does not exist
         else:
