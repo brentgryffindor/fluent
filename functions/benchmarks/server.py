@@ -5,7 +5,6 @@ import sys
 import zmq
 
 from . import causal_bench_1M
-from . import causal_bench_1M_parallel
 from . import utils
 
 BENCHMARK_START_PORT = 3000
