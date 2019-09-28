@@ -155,9 +155,9 @@ def run(flconn, kvs, mode, segment, params):
             if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
             k = str(k).zfill(6)
-
-            body = LWWPairLattice(0, serialize_val(val))
-            kvs.put(k, body)
+            rcv = RedisCausalValue()
+            rcv.value = b'0'.zfill(8)
+            kvs.put(k, LWWPairLattice(0, rcv.SerializeToString()))
         warm_end = time.time()
         #print('warmup took %s' % (warm_end - warm_begin))
 
