@@ -16,6 +16,8 @@ import os
 import random
 import socket
 import zmq
+import logging
+import time
 
 from .lattices import *
 from .common import *
@@ -63,10 +65,13 @@ class AnnaClient():
         req, _ = self._prepare_data_request(key)
         req.type = GET
 
+        send_time = time.time()
         send_request(req, send_sock)
         response = recv_response([req.request_id], self.response_puller,
                 KeyResponse)[0]
-
+        receive_time = time.time()
+        logging.info('time to fetch is %s' % (receive_time - send_time))
+        deser_start = time.time()
         # we currently only support single key operations
         tup = response.tuples[0]
 
@@ -74,7 +79,10 @@ class AnnaClient():
             self._invalidate_cache(tup.key, tup.addresses)
 
         if tup.error == 0:
-            return self._deserialize(tup)
+            res = self._deserialize(tup)
+            deser_end = time.time()
+            logging.info('deser to lattice took %s' % (deser_end - deser_start))
+            return res
         elif tup.error == 1:
             return None # key does not exist
         else:
