@@ -28,8 +28,7 @@ void warmup(StoreType& unmerged_store, StoreType& causal_cut_store) {
   payload.value = value;
   for (unsigned i = 1; i < 1000001; i++) {
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
-    unmerged_store[key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(payload);
-    causal_cut_store[key] = unmerged_store[key];
+    causal_cut_store[key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(payload);
   }
 }
 
