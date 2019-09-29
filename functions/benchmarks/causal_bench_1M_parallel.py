@@ -229,12 +229,19 @@ def run(flconn, kvs, mode, segment, params):
 
             start = time.time()
             res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
+            retry_count = 1
+            while res == 'abort':
+                abort_count += 1
+                logging.info('Retry count is: %s' % retry_count)
+                retry_cid = (cid + ':' + str(retry_count))
+                res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, retry_cid)
+                retry_count += 1
             end = time.time()
-            logging.info('Result is: %s' % res)
-            if res != 'abort':
+            all_times.append((end - start))
+            '''if res != 'abort':
                 all_times.append((end - start))
             else:
-                abort_count += 1
+                abort_count += 1'''
             #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
         logging.info('abort count is %d' % abort_count)
