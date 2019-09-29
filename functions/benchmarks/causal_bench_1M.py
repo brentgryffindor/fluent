@@ -222,7 +222,7 @@ def run(flconn, kvs, mode, segment, params):
             abort = False
             while res == 'abort':
                 abort = True
-                logging.info('Retry count is: %s' % retry_count)
+                #logging.info('Retry count is: %s' % retry_count)
                 retry_cid = (cid + ':' + str(retry_count))
                 res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, retry_cid)
                 retry_count += 1
