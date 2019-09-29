@@ -308,6 +308,10 @@ void get_request_handler(
                 save_versions(cid_function_pair, key, key, version_store,
                               causal_cut_store, full_read_set, observed_keys);
               }
+              // hack: if key not in unmerged store, put it in so that kvs can gossip to it
+              if (unmerged_store.find(key) == unmerged_store.end()) {
+                unmerged_store[key] = causal_cut_store[key];
+              }
             }
             // follow same logic as before...
             // it's not possible to read different versions of the same key in
