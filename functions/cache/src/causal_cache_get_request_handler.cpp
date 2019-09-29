@@ -300,10 +300,11 @@ void get_request_handler(
             set<Key> full_read_set;
             for (const string& key : request.full_read_set()) {
               full_read_set.insert(key);
+              client->get_async(key);
               // hack: if key not in unmerged store, put it in so that kvs can gossip to it
-              if (unmerged_store.find(key) == unmerged_store.end()) {
+              /*if (unmerged_store.find(key) == unmerged_store.end()) {
                 unmerged_store[key] = causal_cut_store[key];
-              }
+              }*/
             }
             for (const string& key : read_set) {
               set<Key> observed_keys;
