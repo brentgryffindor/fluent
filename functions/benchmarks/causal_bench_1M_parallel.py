@@ -152,7 +152,7 @@ def run(flconn, kvs, mode, segment, params):
 
         #print("Successfully created the DAG")
         logging.info("Successfully created the DAG")
-        return []
+        return [[], 0]
 
     elif mode == 'warmup':
         print('Warming up keys')
@@ -182,7 +182,7 @@ def run(flconn, kvs, mode, segment, params):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % params[0])
-        return []
+        return [[], 0]
 
     elif mode == 'run':
         ### RUN DAG ###
@@ -245,7 +245,7 @@ def run(flconn, kvs, mode, segment, params):
             #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
         logging.info('abort count is %d' % abort_count)
-        return all_times
+        return [all_times, abort_count]
         #print('zipf %f' % zipf)
         #utils.print_latency_stats(all_times, 'latency')
         #print('read map size is %d' % len(read_map))
