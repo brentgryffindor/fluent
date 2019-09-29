@@ -3,6 +3,7 @@ import logging
 import sys
 import time
 import zmq
+from collections import Counter
 
 from benchmarks import utils
 
@@ -57,10 +58,11 @@ elif 'run' in msg:
 	end_recv = 0
 
 	latency = []
+	retry_count_list = []
 
-	total_abort = 0
+	#total_abort = 0
 
-	for loop in range(100):
+	for loop in range(30):
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
@@ -77,16 +79,19 @@ elif 'run' in msg:
 			end_recv += 1
 			result = cp.loads(payload)
 			latency += result[0]
-			total_abort += result[1]
+			retry_count_list += result[1]
 
 		sent_msgs = 0
 		end_recv = 0
 		time.sleep(0.5)
 		utils.print_latency_stats(latency, 'Causal')
-		print('total abort is %d' % total_abort)
+		#print('total abort is %d' % total_abort)
 	logging.info("benchmark done")
 	utils.print_latency_stats(latency, 'Causal', True)
 	utils.print_latency_stats(latency, 'Causal')
+	counts = Counter(retry_count_list)
+	for c in counts:
+		print(str(c) + ':' + str(100* counts[c]/len(retry_count_list)))
 	sys.exit(0)
 
 end_recv = 0

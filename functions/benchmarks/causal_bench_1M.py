@@ -141,7 +141,7 @@ def run(flconn, kvs, mode, segment, params):
 
         #print("Successfully created the DAG")
         logging.info("Successfully created the DAG")
-        return [[], 0]
+        return [[], []]
 
     elif mode == 'warmup':
         print('Warming up keys')
@@ -171,7 +171,7 @@ def run(flconn, kvs, mode, segment, params):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % params[0])
-        return [[], 0]
+        return [[], []]
 
     elif mode == 'run':
         ### RUN DAG ###
@@ -190,6 +190,7 @@ def run(flconn, kvs, mode, segment, params):
         read_map = {}
         write_map = {}
 
+        retry_count_list = []
         abort_count = 0
 
         for i in range(15*segment, 15*segment + 15):
@@ -218,17 +219,18 @@ def run(flconn, kvs, mode, segment, params):
 
             start = time.time()
             res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
-            retry_count = 1
+            retry_count = 0
             abort = False
             while res == 'abort':
                 abort = True
+                retry_count += 1
                 #logging.info('Retry count is: %s' % retry_count)
                 retry_cid = (cid + ':' + str(retry_count))
                 res = flconn.call_dag(dag_name, arg_map, True, CROSS, output, retry_cid)
-                retry_count += 1
             end = time.time()
             if abort:
                 abort_count += 1
+            retry_count_list.append(retry_count)
             all_times.append((end - start))
             '''if res != 'abort':
                 all_times.append((end - start))
@@ -237,7 +239,7 @@ def run(flconn, kvs, mode, segment, params):
             #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
         logging.info('abort count is %d' % abort_count)
-        return [all_times, abort_count]
+        return [all_times, retry_count_list]
         #print('zipf %f' % zipf)
         #utils.print_latency_stats(all_times, 'latency')
         #print('read map size is %d' % len(read_map))
