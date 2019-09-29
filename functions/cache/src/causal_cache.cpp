@@ -491,9 +491,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     if (duration >= kCausalCacheReportThreshold) {
       KeySet set;
 
-      for (const auto& pair : unmerged_store) {
+      /*for (const auto& pair : unmerged_store) {
         set.add_keys(pair.first);
-      }
+      }*/
 
       string serialized;
       set.SerializeToString(&serialized);
