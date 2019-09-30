@@ -325,6 +325,21 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result[0])
 
+        # log the diff between prior read map and dependency
+        logging.info('cid %s' % schedule.client_id)
+        if len(dependencies) != len(prior_read_map):
+            logging.info('detected mismatch between dependency and prior read map!')
+            logging.info('printing dependency')
+            for dep_key in dependencies:
+                logging.info('dep key %s vc %s' % (dep_key, dependencies[dep_key]))
+            logging.info('printing prior read map')
+            for vk in prior_read_map:
+                logging.info('read key %s vc %s' % (vk.key, vk.vector_clock))
+            logging.info('conservative flag is %s' % conservative)
+        else:
+            logging.info('match')
+
+
         logical_clock[0] += 1
         vector_clock = {}
         concurrent = False
@@ -350,16 +365,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             result.extend(write_cache[schedule.output_key][2])
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
-
-        # log the diff between prior read map and dependency
-        logging.info('cid %s' % schedule.client_id)
-        logging.info('printing dependency')
-        for dep_key in dependencies:
-            logging.info('dep key %s vc %s' % (dep_key, dependencies[dep_key]))
-        logging.info('printing prior read map')
-        for vk in prior_read_map:
-            logging.info('read key %s vc %s' % (vk.key, vk.vector_clock))
-
 
         # for benchmark
         # randomly sample 3 if len(dependencies) > 3
