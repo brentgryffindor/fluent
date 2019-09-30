@@ -351,6 +351,16 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         #logging.info('issuing causal put of key %s' % schedule.output_key)
 
+        # log the diff between prior read map and dependency
+        logging.info('cid %s' % schedule.client_id)
+        logging.info('printing dependency')
+        for dep_key in dependencies:
+            logging.info('dep key %s vc %s' % (dep_key, dependencies[dep_key]))
+        logging.info('printing prior read map')
+        for vk in prior_read_map:
+            logging.info('read key %s vc %s' % (vk.key, vk.vector_clock))
+
+
         # for benchmark
         # randomly sample 3 if len(dependencies) > 3
         if len(dependencies) > 3:
@@ -463,10 +473,11 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             #logging.info('cache hit for key %s' % key)
             # these are keys that are cached
             # we first update the prior_read_map since cached keys are not returned by the cache
-            vk = VersionedKey()
-            vk.key = key
-            vk.vector_clock.update(cache[key][0])
-            prior_read_map.extend([vk])
+            if not conservative:
+                vk = VersionedKey()
+                vk.key = key
+                vk.vector_clock.update(cache[key][0])
+                prior_read_map.extend([vk])
             
             func_args[key_index_map[key]] = cache[key][1]
             # update dependency
