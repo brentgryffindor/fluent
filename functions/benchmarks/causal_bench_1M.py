@@ -147,7 +147,7 @@ def run(flconn, kvs, mode, segment, params):
             refs += (FluentReference(k, True, CROSSCAUSAL),)
 
         for i in range(num_functions):
-            strmnp_test = cloud_strmnp[i](*refs).get()
+            strmnp_test = cloud_funcs[i](*refs).get()
             if strmnp_test != '0'.zfill(8):
                 logging.error('Unexpected result from strmnp(): %s' % (str(strmnp_test)))
                 sys.exit(1)
