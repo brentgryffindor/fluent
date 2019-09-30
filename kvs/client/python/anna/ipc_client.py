@@ -156,7 +156,7 @@ class IpcAnnaClient:
 
         if not conservative:
             request.prior_version_tuples.extend(prior_version_tuples)
-            request.prior_read_map.extend(list(prior_read_map))
+            request.prior_read_map.extend(prior_read_map)
             request.full_read_set.extend(full_read_set)
 
         request.response_address = self.get_response_address
