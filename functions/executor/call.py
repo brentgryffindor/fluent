@@ -237,7 +237,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     fargs = list(schedule.arguments[fname].args)
 
     prior_version_tuples = []
-    prior_read_map = []
+    prior_read_map = set()
 
     dependencies = {}
 
@@ -250,7 +250,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             # combine prior_version_tuples
             prior_version_tuples += list(trigger.prior_version_tuples)
             # combine prior_read_map
-            prior_read_map += list(trigger.prior_read_map)
+            prior_read_map = prior_read_map.union(set(trigger.prior_read_map))
 
         # combine dependencies from previous func
         for dep in trigger.dependencies:
@@ -300,7 +300,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                                     result)))
 
             new_trigger.prior_version_tuples.extend(prior_version_tuples)
-            new_trigger.prior_read_map.extend(prior_read_map)
+            new_trigger.prior_read_map.extend(list(prior_read_map))
 
             for key in dependencies:
                 dep = new_trigger.dependencies.add()
@@ -482,7 +482,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 vk = VersionedKey()
                 vk.key = key
                 vk.vector_clock.update(cache[key][0])
-                prior_read_map.extend([vk])
+                prior_read_map.add(vk)
             
             func_args[key_index_map[key]] = cache[key][1]
             # update dependency
@@ -527,7 +527,7 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
 
     if not conservative:
         prior_version_tuples.extend(result[0])
-        prior_read_map.extend(result[1])
+        prior_read_map = prior_read_map.union(set(result[1]))
         # debug print
         #for prior_version_tuple in prior_version_tuples:
         #    logging.info('function name is %s' % prior_version_tuple.function_name)
