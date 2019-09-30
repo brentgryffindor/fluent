@@ -70,7 +70,7 @@ void scheduler_key_shipping_request_handler(
     key_shipping_request.SerializeToString(&req_string);
     kZmqUtil->send_string(
         req_string, &pushers[per_cache_function_key_pair.cache_address()]);
-    std::cout << "cid" + request.client_id() + "sent key shipping request to cache " + per_cache_function_key_pair.cache_address() + "\n";
+    //std::cout << "cid" + request.client_id() + "sent key shipping request to cache " + per_cache_function_key_pair.cache_address() + "\n";
   }
   // check if no remote read
   if (pending_key_shipping_map[request.client_id()].first.size() == 0) {

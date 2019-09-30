@@ -9,7 +9,7 @@ from benchmarks import utils
 logging.basicConfig(filename='log_trigger.txt', level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-NUM_THREADS = 1
+NUM_THREADS = 6
 
 ips = []
 with open('bench_ips.txt', 'r') as f:
@@ -58,7 +58,7 @@ elif 'run' in msg:
 
 	latency = []
 
-	for loop in range(200):
+	for loop in range(50):
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
