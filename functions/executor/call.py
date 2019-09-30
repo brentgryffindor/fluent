@@ -533,6 +533,8 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
     if not conservative:
         prior_version_tuples.extend(result[0])
         keys_read = set()
+        for vk in prior_read_map:
+            keys_read.add(vk.key)
         for vk in result[1]:
             if vk.key not in keys_read:
                 prior_read_map.append(vk)
