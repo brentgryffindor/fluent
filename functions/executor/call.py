@@ -418,12 +418,12 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         if conservative and cached[0]:
             #logging.info('function result cache hit')
             # update dependency before returning
-            for key in keys:
+            '''for key in keys:
                 if key in dependencies:
                     dependencies[key] = sutils._merge_vector_clock(dependencies[key],
                                                             function_result_cache[schedule.target_function][schedule.client_id][0][key])
                 else:
-                    dependencies[key] = function_result_cache[schedule.target_function][schedule.client_id][0][key]
+                    dependencies[key] = function_result_cache[schedule.target_function][schedule.client_id][0][key]'''
             return function_result_cache[schedule.target_function][schedule.client_id][1]
 
         #logging.info('function result cache miss')
@@ -446,11 +446,11 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
             keys.remove(key)
             # update dependency
-            if key in dependencies:
+            '''if key in dependencies:
                 dependencies[key] = sutils._merge_vector_clock(dependencies[key],
                                                         kv_pairs[key][0])
             else:
-                dependencies[key] = kv_pairs[key][0]
+                dependencies[key] = kv_pairs[key][0]'''
             key_vc_map[key] = kv_pairs[key][0]
         for key in keys:
             #logging.info('cache hit for key %s' % key)
@@ -463,11 +463,11 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             
             func_args[key_index_map[key]] = cache[key][1]
             # update dependency
-            if key in dependencies:
+            '''if key in dependencies:
                 dependencies[key] = sutils._merge_vector_clock(dependencies[key],
                                                         cache[key][0])
             else:
-                dependencies[key] = cache[key][0]
+                dependencies[key] = cache[key][0]'''
             key_vc_map[key] = cache[key][0]
 
     # execute the function
