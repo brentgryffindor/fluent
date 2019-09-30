@@ -250,7 +250,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             # combine prior_version_tuples
             prior_version_tuples += list(trigger.prior_version_tuples)
             # combine prior_read_map
-            prior_read_map += list(trigger.prior_read_map)
+            prior_read_map += list(trigger.dependencies)
 
         # combine dependencies from previous func
         for dep in trigger.dependencies:
@@ -300,11 +300,11 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                                     result)))
 
             new_trigger.prior_version_tuples.extend(prior_version_tuples)
-            keys_read = set()
+            '''keys_read = set()
             for vk in prior_read_map:
                 if vk.key not in keys_read:
                     new_trigger.prior_read_map.append(vk)
-                    keys_read.add(vk.key)
+                    keys_read.add(vk.key)'''
             #new_trigger.prior_read_map.extend(prior_read_map)
 
             for key in dependencies:
@@ -331,7 +331,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             sckt.send(result[0])
 
         # log the diff between prior read map and dependency
-        logging.info('cid %s' % schedule.client_id)
+        '''logging.info('cid %s' % schedule.client_id)
         if len(dependencies) != len(prior_read_map):
             logging.info('detected mismatch between dependency and prior read map!')
             logging.info('printing dependency')
@@ -342,7 +342,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 logging.info('read key %s vc %s' % (vk.key, vk.vector_clock))
             logging.info('conservative flag is %s' % conservative)
         else:
-            logging.info('match')
+            logging.info('match')'''
 
 
         logical_clock[0] += 1
@@ -480,19 +480,19 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 dependencies[key] = kv_pairs[key][0]
             key_vc_map[key] = kv_pairs[key][0]
 
-        keys_read = set()
+        '''keys_read = set()
         for vk in prior_read_map:
-            keys_read.add(vk.key)
+            keys_read.add(vk.key)'''
         for key in keys:
             #logging.info('cache hit for key %s' % key)
             # these are keys that are cached
             # we first update the prior_read_map since cached keys are not returned by the cache
-            if not conservative:
+            '''if not conservative:
                 if key not in keys_read:
                     vk = VersionedKey()
                     vk.key = key
                     vk.vector_clock.update(cache[key][0])
-                    prior_read_map.extend([vk])
+                    prior_read_map.extend([vk])'''
             
             func_args[key_index_map[key]] = cache[key][1]
             # update dependency
@@ -537,13 +537,13 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
 
     if not conservative:
         prior_version_tuples.extend(result[0])
-        keys_read = set()
+        '''keys_read = set()
         for vk in prior_read_map:
             keys_read.add(vk.key)
         for vk in result[1]:
             if vk.key not in keys_read:
                 prior_read_map.append(vk)
-                keys_read.add(vk.key)
+                keys_read.add(vk.key)'''
         #prior_read_map.extend(result[1])
         # debug print
         #for prior_version_tuple in prior_version_tuples:
