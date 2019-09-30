@@ -374,16 +374,21 @@ def scheduler(ip, mgmt_ip, route_addr):
                             per_cache_message_map = {}
                             pending_conservative_response[response.client_id] = (versioned_key_map[response.client_id].schedule, [])
                             scheduler_response_address = utils._get_scheduler_key_shipping_response_address(ip)
+                            # map<source_cache, map<target_cache, PerCacheFunctionKeyPair>>
+                            cache_to_remote_cache_map = {}
                             for fname in versioned_key_map[response.client_id].func_location:
                                 #logging.info('checking function %s' % fname)
                                 cache_ip = versioned_key_map[response.client_id].func_location[fname][0]
                                 cache_address = utils._get_cache_scheduler_key_shipping_request_address(cache_ip)
                                 if cache_address not in per_cache_message_map:
+                                    # this is a new cache address
                                     pending_conservative_response[response.client_id][1].append(cache_address)
 
                                     per_cache_message_map[cache_address] = SchedulerKeyShippingRequest()
                                     per_cache_message_map[cache_address].client_id = response.client_id
                                     per_cache_message_map[cache_address].response_address = scheduler_response_address
+                                    # initiate cache_to_remote_cache_map
+                                    cache_to_remote_cache_map[cache_address] = {}
                                 per_function_readset = PerFunctionReadSet()
                                 per_function_readset.function_name = fname
                                 per_function_readset.keys.extend(versioned_key_map[response.client_id].per_func_read_set[fname])
@@ -391,7 +396,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                 # compute if it needs to fetch keys from other caches
                                 #logging.info('computing remote fetch')
                                 # a map from remote cache ip to PerCacheFunctionKeyPair
-                                remote_cache_map = {}
+                                #remote_cache_map = {}
                                 for key in per_function_readset.keys:
                                     target_vc = versioned_key_map[response.client_id].global_causal_cut[key]
                                     vc = {}
@@ -412,18 +417,20 @@ def scheduler(ip, mgmt_ip, route_addr):
                                                 function_key_pair.key = key
 
                                                 target_cache_address = utils._get_cache_key_shipping_request_address(versioned_key_map[response.client_id].func_location[tp[1]][0])
-                                                if target_cache_address not in remote_cache_map:
-                                                    remote_cache_map[target_cache_address] = PerCacheFunctionKeyPair()
-                                                    remote_cache_map[target_cache_address].cache_address = target_cache_address
-                                                remote_cache_map[target_cache_address].function_key_pairs.extend([function_key_pair])
+                                                if target_cache_address not in cache_to_remote_cache_map[cache_address]:
+                                                    cache_to_remote_cache_map[cache_address][target_cache_address] = PerCacheFunctionKeyPair()
+                                                    cache_to_remote_cache_map[cache_address][target_cache_address].cache_address = target_cache_address
+                                                cache_to_remote_cache_map[cache_address][target_cache_address].function_key_pairs.extend([function_key_pair])
 
                                                 if sutils._compare_vector_clock(vc, target_vc) == sutils.CausalComp.GreaterOrEqual:
                                                     break
-                                for remote_cache_address in remote_cache_map:
-                                    per_cache_message_map[cache_address].per_cache_function_key_pairs.extend([remote_cache_map[remote_cache_address]])
+                                #for remote_cache_address in remote_cache_map:
+                                #    per_cache_message_map[cache_address].per_cache_function_key_pairs.extend([remote_cache_map[remote_cache_address]])
                             # send message to caches
                             #logging.info('sending key shipping request to cache')
                             for cache_addr in per_cache_message_map:
+                                for remote_cache_address in cache_to_remote_cache_map[cache_addr]:
+                                    per_cache_message_map[cache_addr].per_cache_function_key_pairs.extend([cache_to_remote_cache_map[cache_addr][remote_cache_address]])
                                 sckt = pusher_cache.get(cache_addr)
                                 sckt.send(per_cache_message_map[cache_addr].SerializeToString())
                         # GC
