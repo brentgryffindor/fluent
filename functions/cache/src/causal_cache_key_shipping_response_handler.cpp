@@ -22,6 +22,7 @@ void key_shipping_response_handler(
     const CausalCacheThread& cct, SocketCache& pushers) {
   KeyShippingResponse response;
   response.ParseFromString(serialized);
+  std::cout << "cid" + response.client_id() + "received key shipping response from cache " + response.cache_address() + "\n";
   for (const auto& function_causal_tuple_pair :
        response.function_causal_tuple_pairs()) {
     // merge into conservative store
