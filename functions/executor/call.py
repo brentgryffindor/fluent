@@ -488,7 +488,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             # these are keys that are cached
             # we first update the prior_read_map since cached keys are not returned by the cache
             if not conservative:
-                if vk.key not in keys_read:
+                if key not in keys_read:
                     vk = VersionedKey()
                     vk.key = key
                     vk.vector_clock.update(cache[key][0])
