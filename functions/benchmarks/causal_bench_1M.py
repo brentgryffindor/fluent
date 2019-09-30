@@ -81,7 +81,7 @@ def run(flconn, kvs, mode, segment, params):
 
     num_functions = 3
 
-    functions = []
+    '''functions = []
     connections = []
     for i in range(num_functions):
         functions.append('strmnp' + str(i+1))
@@ -89,11 +89,11 @@ def run(flconn, kvs, mode, segment, params):
             connections.append(('strmnp' + str(i+1), 'strmnp' + str(i+2)))
 
     logging.info(functions)
-    logging.info(connections)
+    logging.info(connections)'''
 
 
-    #functions = ['strmnp1', 'strmnp2', 'strmnp3']
-    #connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
+    functions = ['strmnp1', 'strmnp2', 'strmnp3']
+    connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
     total_num_keys = 1000000
 
     if mode == 'create':
@@ -112,7 +112,7 @@ def run(flconn, kvs, mode, segment, params):
                     result += c[i]
             return result'''
 
-        cloud_funcs = []
+        '''cloud_funcs = []
 
         for i in range(num_functions):
             cloud_strmnp = flconn.register(strmnp, ('strmnp' + str(i+1)))
@@ -121,9 +121,9 @@ def run(flconn, kvs, mode, segment, params):
             else:
                 logging.info('Error registering %s.' % ('strmnp' + str(i+1)))
                 sys.exit(1)
-            cloud_funcs.append(cloud_strmnp)
+            cloud_funcs.append(cloud_strmnp)'''
 
-        '''cloud_strmnp1 = flconn.register(strmnp, 'strmnp1')
+        cloud_strmnp1 = flconn.register(strmnp, 'strmnp1')
         cloud_strmnp2 = flconn.register(strmnp, 'strmnp2')
         cloud_strmnp3 = flconn.register(strmnp, 'strmnp3')
 
@@ -131,7 +131,7 @@ def run(flconn, kvs, mode, segment, params):
             logging.info('Successfully registered the string manipulation function.')
         else:
             logging.info('Error registering functions.')
-            sys.exit(1)'''
+            sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
         refs = ()
@@ -146,18 +146,18 @@ def run(flconn, kvs, mode, segment, params):
 
             refs += (FluentReference(k, True, CROSSCAUSAL),)
 
-        for i in range(num_functions):
+        '''for i in range(num_functions):
             strmnp_test = cloud_funcs[i](*refs).get()
             if strmnp_test != '0'.zfill(8):
                 logging.error('Unexpected result from strmnp(): %s' % (str(strmnp_test)))
-                sys.exit(1)
+                sys.exit(1)'''
 
-        '''strmnp_test1 = cloud_strmnp1(*refs).get()
+        strmnp_test1 = cloud_strmnp1(*refs).get()
         strmnp_test2 = cloud_strmnp2(*refs).get()
         strmnp_test3 = cloud_strmnp3(*refs).get()
         if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
             logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
-            sys.exit(1)'''
+            sys.exit(1)
 
         #print('Successfully tested functions!')
         logging.info('Successfully tested functions!')
