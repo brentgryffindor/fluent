@@ -92,7 +92,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         full_read_set = set()
         versioned_key_map[schedule.client_id] = sutils.DagConsistencyMetadata(call.name)
 
-    chosen_node = set()
+    chosen_thread = set()
 
     for fname in dag.functions:
         locations = func_locations[fname].copy()
@@ -102,9 +102,9 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                     map(lambda arg: get_serializer(arg.type).load(arg.body),
                         args)))
         # remove previously selected nodes
-        locations = set(filter(lambda loc: loc[0] not in chosen_node, locations))
+        locations = set(filter(lambda loc: loc not in chosen_thread, locations))
         loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
-        chosen_node.add(loc[0])
+        chosen_thread.add(loc)
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         #logging.info('cid %s function %s scheduled on node %s tid %d' % (call.client_id, fname, loc[0], loc[1]))

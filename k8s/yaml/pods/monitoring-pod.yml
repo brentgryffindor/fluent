@@ -30,6 +30,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "atomicity_nolog"
+      value: "scalability"
   nodeSelector:
     role: general
