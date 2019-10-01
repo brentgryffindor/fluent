@@ -295,6 +295,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     is_sink = True
     for conn in schedule.dag.connections:
         if conn.source == fname:
+            logging.info('non sink for func %s' % fname)
+            non_sink_start = time.time()
             is_sink = False
             new_trigger = DagTrigger()
             new_trigger.id = schedule.id
@@ -331,8 +333,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             else:
                 sckt = pusher_cache.get(sutils._get_dag_conservative_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
+            non_sink_end = time.time()
+            logging.info('non sink logic for func %s took %s seconds' % (fname, (non_sink_end - non_sink_start)))
 
     if is_sink:
+        logging.info('sink for func %s' % fname)
+        sink_start = time.time()
         result = [serialize_val(result)]
         if schedule.HasField('response_address'):
             #logging.info('direct response')
@@ -429,6 +435,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 #logging.info('schedule GC address is %s' % gc_addr)
                 sckt = pusher_cache.get(gc_addr)
                 sckt.send(gc_req.SerializeToString())
+        sink_end = time.time()
+        logging.info('sink logic for func %s took %s seconds' % (fname, (sink_end - sink_start)))
     # GC function cache
     if conservative and schedule.target_function in function_result_cache and schedule.client_id in function_result_cache[schedule.target_function]:
         del function_result_cache[schedule.target_function][schedule.client_id]
