@@ -67,12 +67,15 @@ void versioned_key_request_handler(const string& serialized,
 
 void versioned_key_response_handler(
     const string& serialized, StoreType& causal_cut_store,
-    const VersionStoreType& version_store,
+    VersionStoreType& version_store,
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
     ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map,
-    StoreType& unmerged_store) {
+    StoreType& unmerged_store, InPreparationType& in_preparation,
+    map<Key, set<Key>>& to_fetch_map,
+    map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
+        cover_map, KvsAsyncClientInterface* client) {
   VersionedKeyResponse response;
   response.ParseFromString(serialized);
 
@@ -119,7 +122,7 @@ void versioned_key_response_handler(
     if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() ==
         0) {
       // EXPERIMANTAL: merge result_ to unmerged_store to sync between caches
-      /*for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
+      for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
         Key key = pair.first;
         if (unmerged_store.find(key) == unmerged_store.end()) {
           unmerged_store[key] = pair.second;
@@ -131,7 +134,25 @@ void versioned_key_response_handler(
             unmerged_store[key] = causal_merge(unmerged_store[key], pair.second);
           }
         }
-      }*/
+        // and trigger migration HERE
+        if (causal_cut_store.find(key) == causal_cut_store.end() ||
+             causal_comparison(causal_cut_store[key], unmerged_store[key]) !=
+                 kCausalGreaterOrEqual) {
+          //std::cout << "merging key " + pair.first + "\n";
+          to_fetch_map[key] = set<Key>();
+          in_preparation[key].second[key] = unmerged_store[key];
+          recursive_dependency_check(key, unmerged_store[key], in_preparation,
+                                     causal_cut_store, unmerged_store, to_fetch_map,
+                                     cover_map, client, log);
+          if (to_fetch_map[key].size() == 0) {
+            // all dependency met
+            merge_into_causal_cut(key, causal_cut_store, in_preparation,
+                                  version_store, pending_cross_metadata, pushers,
+                                  cct, log, unmerged_store, protocol_matadata_map);
+            to_fetch_map.erase(key);
+          }
+        }
+      }
       // if no more remote read, first check protocol metadata
       if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
         log->error("cid function pair entry not in protocol metadata map.");

@@ -404,7 +404,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(serialized, causal_cut_store,
                                      version_store, pending_cross_metadata, cct,
-                                     pushers, kZmqUtil, log, protocol_matadata_map, unmerged_store);
+                                     pushers, kZmqUtil, log, protocol_matadata_map, unmerged_store, in_preparation, to_fetch_map, cover_map, client);
       //log->info("done version key response");
       //std::cout << "done version key response\n";
     }

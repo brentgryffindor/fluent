@@ -47,12 +47,15 @@ void versioned_key_request_handler(const string& serialized,
 
 void versioned_key_response_handler(
     const string& serialized, StoreType& causal_cut_store,
-    const VersionStoreType& version_store,
+    VersionStoreType& version_store,
     std::unordered_map<ClientIdFunctionPair, PendingClientMetadata, PairHash>&
         pending_cross_metadata,
     const CausalCacheThread& cct, SocketCache& pushers,
     ZmqUtilInterface* kZmqUtil, logger log, std::unordered_map<ClientIdFunctionPair, ProtocolMetadata, PairHash>& protocol_matadata_map,
-    StoreType& unmerged_store);
+    StoreType& unmerged_store, InPreparationType& in_preparation,
+    map<Key, set<Key>>& to_fetch_map,
+    map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
+        cover_map, KvsAsyncClientInterface* client);
 
 void kvs_response_handler(
     const KeyResponse& response, StoreType& unmerged_store,
