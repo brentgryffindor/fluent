@@ -230,12 +230,12 @@ def _resolve_ref_normal(refs, kvs):
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, conservative, cache, function_result_cache, executor_id, logical_clock, write_cache):
     #logging.info('exec dag causal')
     fname = schedule.target_function
-    #logging.info('start processing client id %s function %s' % (schedule.client_id, fname))
+    logging.info('start processing client id %s function %s' % (schedule.client_id, fname))
     # first check if we need to abort
     for trname in schedule.triggers:
         trigger = triggers[trname]
         if trigger.HasField('abort') and trigger.abort:
-            #logging.info('abort due to upstream')
+            logging.info('abort due to upstream')
             _abort_dag(fname, schedule, pusher_cache)
             return
 
@@ -250,6 +250,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     cached = [True]
 
     for trname in schedule.triggers:
+        logging.info('processing trigger %s' % trname)
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
         if not conservative:
@@ -260,6 +261,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         # combine dependencies from previous func
         for dep in trigger.dependencies:
+            logging.info('dependency key is %s' % dep.key)
             if dep.key in dependencies:
                 dependencies[dep.key] = sutils._merge_vector_clock(
                       dependencies[dep.key], dep.vector_clock)
@@ -272,7 +274,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             cached[0] = False
 
     if not conservative and len(schedule.triggers) > 1 and _executor_check_parallel_flow(prior_version_tuples, prior_read_map):
-        #logging.info('abort due to parallel flow check failure')
+        logging.info('abort due to parallel flow check failure')
         _abort_dag(fname, schedule, pusher_cache)
         return
 
@@ -295,7 +297,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     is_sink = True
     for conn in schedule.dag.connections:
         if conn.source == fname:
-            #logging.info('non sink for func %s' % fname)
+            logging.info('non sink for func %s' % fname)
             #non_sink_start = time.time()
             is_sink = False
             new_trigger = DagTrigger()
@@ -319,6 +321,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #new_trigger.prior_read_map.extend(prior_read_map)
 
             for key in dependencies:
+                logging.info('adding key %s to dependency to send to downstream' % key)
                 dep = new_trigger.dependencies.add()
                 dep.key = key
                 dep.vector_clock.update(dependencies[key])
@@ -337,7 +340,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #logging.info('non sink logic for func %s took %s seconds' % (fname, (non_sink_end - non_sink_start)))
 
     if is_sink:
-        #logging.info('sink for func %s' % fname)
+        logging.info('sink for func %s' % fname)
         #sink_start = time.time()
         result = [serialize_val(result)]
         if schedule.HasField('response_address'):
@@ -473,9 +476,10 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         #logging.info('resolve ref for func %s took %s seconds' % (schedule.target_function, (resolve_end - resolve_start)))
         # check if it is conservative protocol and cached
         if conservative and cached[0]:
-            #logging.info('function result cache hit')
+            logging.info('function result cache hit')
             # update dependency before returning
             for key in keys:
+                logging.info('adding key %s to dependency' % key)
                 if key in dependencies:
                     dependencies[key] = sutils._merge_vector_clock(dependencies[key],
                                                             function_result_cache[schedule.target_function][schedule.client_id][0][key])
@@ -503,6 +507,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 #logging.info('value is %s' % kv_pairs[key][1].decode('ascii'))
             keys.remove(key)
             # update dependency
+            logging.info('adding key %s to dependency' % key)
             if key in dependencies:
                 dependencies[key] = sutils._merge_vector_clock(dependencies[key],
                                                         kv_pairs[key][0])
@@ -526,6 +531,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
             
             func_args[key_index_map[key]] = cache[key][1]
             # update dependency
+            logging.info('adding key %s to dependency' % key)
             if key in dependencies:
                 dependencies[key] = sutils._merge_vector_clock(dependencies[key],
                                                         cache[key][0])

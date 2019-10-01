@@ -9,7 +9,7 @@ from benchmarks import utils
 logging.basicConfig(filename='log_trigger.txt', level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-NUM_THREADS = 6
+NUM_THREADS = 1
 
 ips = []
 with open('bench_ips.txt', 'r') as f:
