@@ -93,7 +93,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
         keys = [ref.key for ref in to_resolve]
         #logging.info('enter causal get')
         kv_pairs = {}
-        get_start = time.time()
+        #get_start = time.time()
         result = kvs.causal_get(keys, keys,
                                 [], [],
                                 CROSS, '0', fname, {}, False, kv_pairs)
@@ -102,8 +102,8 @@ def _exec_single_func_causal(kvs, fname, func, args):
             result = kvs.causal_get(keys, keys,
                                 [], [],
                                 CROSS, '0', fname, {}, False, kv_pairs)
-        get_end = time.time()
-        logging.info('invoking ipc client for func %s took %s seconds' % (fname, (get_end - get_start)))
+        #get_end = time.time()
+        #logging.info('invoking ipc client for func %s took %s seconds' % (fname, (get_end - get_start)))
 
         #logging.info('causal get done')
 
@@ -123,7 +123,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                       tid, cache, function_result_cache, executor_id, logical_clock, write_cache, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
-    exec_start = time.time()
+    #exec_start = time.time()
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
                                   triggers, function, schedule)
@@ -133,8 +133,8 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                                   triggers, function, schedule, conservative, cache, function_result_cache, executor_id, logical_clock, write_cache)
 
     #user_lib.close()
-    exec_end = time.time()
-    logging.info('function %s took %s seconds to execute' % (schedule.target_function, (exec_end - exec_start)))
+    #exec_end = time.time()
+    #logging.info('function %s took %s seconds to execute' % (schedule.target_function, (exec_end - exec_start)))
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
@@ -280,12 +280,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
     kv_pairs = {}
     abort = [False]
-    exec_func_causal_start = time.time()
+    #exec_func_causal_start = time.time()
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache, function_result_cache, cached)
     #logging.info('finish executing function')
-    exec_func_causal_end = time.time()
-    logging.info('call to _exec_func_causal for func %s took %s seconds' % (schedule.target_function, (exec_func_causal_end - exec_func_causal_start)))
+    #exec_func_causal_end = time.time()
+    #logging.info('call to _exec_func_causal for func %s took %s seconds' % (schedule.target_function, (exec_func_causal_end - exec_func_causal_start)))
 
     if abort[0]:
         #logging.info('abort due to resolve ref')
@@ -295,8 +295,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     is_sink = True
     for conn in schedule.dag.connections:
         if conn.source == fname:
-            logging.info('non sink for func %s' % fname)
-            non_sink_start = time.time()
+            #logging.info('non sink for func %s' % fname)
+            #non_sink_start = time.time()
             is_sink = False
             new_trigger = DagTrigger()
             new_trigger.id = schedule.id
@@ -333,12 +333,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             else:
                 sckt = pusher_cache.get(sutils._get_dag_conservative_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
-            non_sink_end = time.time()
-            logging.info('non sink logic for func %s took %s seconds' % (fname, (non_sink_end - non_sink_start)))
+            #non_sink_end = time.time()
+            #logging.info('non sink logic for func %s took %s seconds' % (fname, (non_sink_end - non_sink_start)))
 
     if is_sink:
-        logging.info('sink for func %s' % fname)
-        sink_start = time.time()
+        #logging.info('sink for func %s' % fname)
+        #sink_start = time.time()
         result = [serialize_val(result)]
         if schedule.HasField('response_address'):
             #logging.info('direct response')
@@ -394,7 +394,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
         # only keep dependency for the top 5 keys
         remove_set = set()
         for key in dependencies:
-            if int(key) > 5:
+            if int(key) > 3:
                 remove_set.add(key)
         for key in remove_set:
             del dependencies[key]
@@ -435,8 +435,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                 #logging.info('schedule GC address is %s' % gc_addr)
                 sckt = pusher_cache.get(gc_addr)
                 sckt.send(gc_req.SerializeToString())
-        sink_end = time.time()
-        logging.info('sink logic for func %s took %s seconds' % (fname, (sink_end - sink_start)))
+        #sink_end = time.time()
+        #logging.info('sink logic for func %s took %s seconds' % (fname, (sink_end - sink_start)))
     # GC function cache
     if conservative and schedule.target_function in function_result_cache and schedule.client_id in function_result_cache[schedule.target_function]:
         del function_result_cache[schedule.target_function][schedule.client_id]
@@ -463,12 +463,12 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     key_vc_map = {}
 
     if len(to_resolve) > 0:
-        resolve_start = time.time()
+        #resolve_start = time.time()
         error = _resolve_ref_causal(keys, kvs, kv_pairs,
                             schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached)
         #logging.info('Done resolving reference')
-        resolve_end = time.time()
-        logging.info('resolve ref for func %s took %s seconds' % (schedule.target_function, (resolve_end - resolve_start)))
+        #resolve_end = time.time()
+        #logging.info('resolve ref for func %s took %s seconds' % (schedule.target_function, (resolve_end - resolve_start)))
         # check if it is conservative protocol and cached
         if conservative and cached[0]:
             #logging.info('function result cache hit')
@@ -549,7 +549,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached):
     #logging.info('resolve ref causal')
     full_read_set = schedule.full_read_set
-    get_start = time.time()
+    #get_start = time.time()
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,
                             schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
@@ -559,8 +559,8 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
                                 prior_version_tuples, prior_read_map,
                                 schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
     #logging.info('causal GET done')
-    get_end = time.time()
-    logging.info('invoking ipc client for func %s took %s seconds' % (schedule.target_function, (get_end - get_start)))
+    #get_end = time.time()
+    #logging.info('invoking ipc client for func %s took %s seconds' % (schedule.target_function, (get_end - get_start)))
 
     if result == KEY_DNE or result == ABORT:
         #logging.info('dne or abort')

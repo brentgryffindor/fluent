@@ -623,7 +623,7 @@ void optimistic_protocol(
       for (auto& vc_payload_pair : causal_frontier[key]) {
         if (vector_clock_comparison(vc, vc_payload_pair.first) !=
             kCausalGreaterOrEqual) {
-          log->info("setting remote read flag of key {} to be true", key);
+          /*log->info("setting remote read flag of key {} to be true", key);
           log->info("local vc is");
           for (const auto& vc_pair : vc.reveal()) {
             log->info("{} : {}", vc_pair.first, vc_pair.second.reveal());
@@ -631,7 +631,7 @@ void optimistic_protocol(
           log->info("causal cut vc is");
           for (const auto& vc_pair : vc_payload_pair.first.reveal()) {
             log->info("{} : {}", vc_pair.first, vc_pair.second.reveal());
-          }
+          }*/
           // set remote read flag to true
           vc_payload_pair.second.first = true;
           vc.merge(vc_payload_pair.first);

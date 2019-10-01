@@ -116,7 +116,7 @@ class IpcAnnaClient:
     def causal_get(self, keys, full_read_set,
                    prior_version_tuples, prior_read_map, consistency, client_id, fname, dependencies, conservative, kv_pairs, cache = {}, function_result_cache = {}, cached=[False]):
         #logging.info('Entering causal GET')
-        prepare_start = time.time()
+        #prepare_start = time.time()
         if type(keys) != set:
             keys = set(keys)
 
@@ -162,16 +162,15 @@ class IpcAnnaClient:
 
         request.response_address = self.get_response_address
         #logging.info('sending GET')
-        serialized = request.SerializeToString()
-        send_time = time.time()
-        logging.info('prepare msg for func %s took %s seconds' % (fname, (send_time - prepare_start)))
-        self.get_request_socket.send(serialized)
+        #send_time = time.time()
+        #logging.info('prepare msg for func %s took %s seconds' % (fname, (send_time - prepare_start)))
+        self.get_request_socket.send(request.SerializeToString())
 
 
         try:
             msg = self.get_response_socket.recv()
-            receive_time = time.time()
-            logging.info('cache roundtrip for func %s took %s seconds' % (fname, (receive_time - send_time)))
+            #receive_time = time.time()
+            #logging.info('cache roundtrip for func %s took %s seconds' % (fname, (receive_time - send_time)))
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
@@ -180,7 +179,7 @@ class IpcAnnaClient:
             return None
         else:
             #logging.info('parsing response')
-            parse_start = time.time()
+            #parse_start = time.time()
             resp = CausalGetResponse()
             resp.ParseFromString(msg)
             #logging.info('parsed')
@@ -213,8 +212,8 @@ class IpcAnnaClient:
                 # set cached
                 if conservative and not resp.cached:
                     cached[0] = False
-                parse_end = time.time()
-                logging.info('parsing response for func %s took %s seconds' % (fname, (parse_end - parse_start)))
+                #parse_end = time.time()
+                #logging.info('parsing response for func %s took %s seconds' % (fname, (parse_end - parse_start)))
                 return (resp.prior_version_tuples, versioned_key_read)
 
     def put(self, key, value):

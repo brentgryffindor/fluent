@@ -314,18 +314,18 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
       //std::cout << "received GET\n";
-      log->info("received GET");
-      auto get_start = std::chrono::system_clock::now();
+      //log->info("received GET");
+      //auto get_start = std::chrono::system_clock::now();
       string serialized = kZmqUtil->recv_string(&get_puller);
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
                           pending_single_metadata, pending_cross_metadata,
                           to_fetch_map, cover_map, pushers, client, log, cct,
                           conservative_store, protocol_matadata_map);
-      auto get_end = std::chrono::system_clock::now();
-      auto get_time = std::chrono::duration_cast<std::chrono::microseconds>(get_end - get_start).count();
-      log->info("get took {} micro seconds", get_time);
-      log->info("done GET");
+      //auto get_end = std::chrono::system_clock::now();
+      //auto get_time = std::chrono::duration_cast<std::chrono::microseconds>(get_end - get_start).count();
+      //log->info("get took {} micro seconds", get_time);
+      //log->info("done GET");
       //std::cout << "done GET\n";
     }
 
@@ -344,14 +344,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // handle updates received from the KVS
     if (pollitems[2].revents & ZMQ_POLLIN) {
       //std::cout << "received KVS update\n";
-      log->info("received KVS update");
+      //log->info("received KVS update");
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
       updates.ParseFromString(serialized);
 
       for (const KeyTuple& tuple : updates.tuples()) {
         Key key = tuple.key();
-        log->info("key is {}", key);
+        //log->info("key is {}", key);
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
         /*if (key_set.find(key) == key_set.end()) {
@@ -366,7 +366,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                          pending_single_metadata, pending_cross_metadata,
                          to_fetch_map, cover_map, pushers, client, log, cct, protocol_matadata_map);
       }
-      log->info("done KVS update");
+      //log->info("done KVS update");
       //std::cout << "done KVS update\n";
     }
 
