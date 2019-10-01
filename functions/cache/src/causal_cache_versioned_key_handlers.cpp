@@ -135,14 +135,14 @@ void versioned_key_response_handler(
           }
         }
         // and trigger migration HERE
-        /*if (causal_cut_store.find(key) == causal_cut_store.end() ||
+        if (causal_cut_store.find(key) == causal_cut_store.end() ||
              causal_comparison(causal_cut_store[key], unmerged_store[key]) !=
                  kCausalGreaterOrEqual) {
           //std::cout << "merging key " + pair.first + "\n";
-          log->info("version response merging key {}", key);
+          /*log->info("version response merging key {}", key);
           for (const auto& vc_pair : unmerged_store[key]->reveal().vector_clock.reveal()) {
             log->info("vc_pair is {} and {}", vc_pair .first, vc_pair.second.reveal());
-          }
+          }*/
           to_fetch_map[key] = set<Key>();
           in_preparation[key].second[key] = unmerged_store[key];
           recursive_dependency_check(key, unmerged_store[key], in_preparation,
@@ -150,15 +150,13 @@ void versioned_key_response_handler(
                                      cover_map, client, log);
           if (to_fetch_map[key].size() == 0) {
             // all dependency met
-            log->info("key {} all dependency met in version response routine", key);
+            //log->info("key {} all dependency met in version response routine", key);
             merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                   version_store, pending_cross_metadata, pushers,
                                   cct, log, unmerged_store, protocol_matadata_map);
             to_fetch_map.erase(key);
-          } else {
-            log->info("key {} cannot be merged directly, fetching its dependency", key);
           }
-        }*/
+        }
       }
       // if no more remote read, first check protocol metadata
       if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
