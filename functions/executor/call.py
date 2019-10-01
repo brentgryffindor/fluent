@@ -120,6 +120,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                       tid, cache, function_result_cache, executor_id, logical_clock, write_cache, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
+    exec_start = time.time()
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
                                   triggers, function, schedule)
@@ -129,6 +130,8 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                                   triggers, function, schedule, conservative, cache, function_result_cache, executor_id, logical_clock, write_cache)
 
     #user_lib.close()
+    exec_end = time.time()
+    logging.info('function %s took %s seconds to execute' % (schedule.target_function, (exec_end - exec_start)))
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):

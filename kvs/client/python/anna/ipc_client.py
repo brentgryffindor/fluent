@@ -161,11 +161,15 @@ class IpcAnnaClient:
 
         request.response_address = self.get_response_address
         #logging.info('sending GET')
-        self.get_request_socket.send(request.SerializeToString())
+        serialized = request.SerializeToString()
+        send_time = time.time()
+        self.get_request_socket.send(serialized)
 
 
         try:
             msg = self.get_response_socket.recv()
+            receive_time = time.time()
+            logging.info('causal get took %s seconds' % (receive_time - send_time))
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
