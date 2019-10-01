@@ -119,7 +119,7 @@ void versioned_key_response_handler(
     if (pending_cross_metadata[cid_function_pair].remote_read_tracker_.size() ==
         0) {
       // EXPERIMANTAL: merge result_ to unmerged_store to sync between caches
-      for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
+      /*for (const auto& pair : pending_cross_metadata[cid_function_pair].result_) {
         Key key = pair.first;
         if (unmerged_store.find(key) == unmerged_store.end()) {
           unmerged_store[key] = pair.second;
@@ -131,7 +131,7 @@ void versioned_key_response_handler(
             unmerged_store[key] = causal_merge(unmerged_store[key], pair.second);
           }
         }
-      }
+      }*/
       // if no more remote read, first check protocol metadata
       if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
         log->error("cid function pair entry not in protocol metadata map.");
