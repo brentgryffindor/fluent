@@ -33,6 +33,13 @@ void get_request_handler(
   CausalGetRequest request;
   request.ParseFromString(serialized);
 
+  // for benchmark
+  for (const Key& key : request.keys()) {
+    if (causal_cut_store.find(key) != causal_cut_store.end() && unmerged_store.find(key) == unmerged_store.end()) {
+      unmerged_store[key] = causal_cut_store[key];
+    }
+  }
+
   //std::cout << "response address is " + request.response_address() + "\n";
 
   if (request.consistency() == ConsistencyType::SINGLE) {
