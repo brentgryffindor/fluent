@@ -20,7 +20,7 @@
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
-void warmup(StoreType& causal_cut_store) {
+void warmup(StoreType& unmerged_store, StoreType& causal_cut_store) {
   SetLattice<string> value;
   value.insert(string(8, '0'));
   CrossCausalPayload<SetLattice<string>> payload;
@@ -29,6 +29,9 @@ void warmup(StoreType& causal_cut_store) {
   for (unsigned i = 1; i < 1000001; i++) {
     Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
     causal_cut_store[key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(payload);
+    if (i < 50000) {
+      unmerged_store[key] = causal_cut_store[key];
+    }
   }
 }
 
@@ -214,7 +217,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   // warm up for benchmark
   log->info("warmup begin");
   //warmup(version_store);
-  warmup(causal_cut_store);
+  warmup(unmerged_store, causal_cut_store);
   log->info("warmup end");
 
   map<Key, set<Key>> to_fetch_map;
