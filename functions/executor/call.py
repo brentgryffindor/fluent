@@ -373,8 +373,9 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
         # for benchmark
         # randomly sample 3 if len(dependencies) > 3
-        if len(dependencies) > 3:
-            dependencies = dict(random.sample(dependencies.items(), 3))
+        '''if len(dependencies) > 3:
+            dependencies = dict(random.sample(dependencies.items(), 3))'''
+        dependencies = {}
 
         succeed = kvs.causal_put(schedule.output_key,
                                  vector_clock, dependencies,
