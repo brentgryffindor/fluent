@@ -158,7 +158,7 @@ def run(flconn, kvs, mode, segment, params):
 
 
         refs = ()
-        for _ in range(3):
+        for _ in range(9):
             val = '0'.zfill(8)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
