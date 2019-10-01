@@ -135,7 +135,7 @@ void versioned_key_response_handler(
           }
         }
         // and trigger migration HERE
-        if (causal_cut_store.find(key) == causal_cut_store.end() ||
+        /*if (causal_cut_store.find(key) == causal_cut_store.end() ||
              causal_comparison(causal_cut_store[key], unmerged_store[key]) !=
                  kCausalGreaterOrEqual) {
           //std::cout << "merging key " + pair.first + "\n";
@@ -158,7 +158,7 @@ void versioned_key_response_handler(
           } else {
             log->info("key {} cannot be merged directly, fetching its dependency", key);
           }
-        }
+        }*/
       }
       // if no more remote read, first check protocol metadata
       if (protocol_matadata_map.find(cid_function_pair) == protocol_matadata_map.end()) {
