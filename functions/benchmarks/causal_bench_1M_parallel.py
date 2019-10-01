@@ -89,7 +89,7 @@ def run(flconn, kvs, mode, segment, params):
     connections = []
     for i in range(fanout):
         functions.append('strmnp_leaf' + str(i+1))
-        connections.append(('strmnp' + str(i+1), 'strmnp_root'))
+        connections.append(('strmnp_leaf' + str(i+1), 'strmnp_root'))
     functions.append('strmnp_root')
 
     logging.info(functions)
