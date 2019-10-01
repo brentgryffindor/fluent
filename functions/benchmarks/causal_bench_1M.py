@@ -79,7 +79,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
 def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
 
-    num_functions = 12
+    num_functions = 15
 
     functions = []
     connections = []
@@ -196,7 +196,7 @@ def run(flconn, kvs, mode, segment, params):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.0
+        params[0] = 1.25
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
