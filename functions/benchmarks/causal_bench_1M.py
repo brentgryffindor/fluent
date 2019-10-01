@@ -79,7 +79,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
 def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
 
-    num_functions = 12
+    num_functions = 3
 
     functions = []
     connections = []
