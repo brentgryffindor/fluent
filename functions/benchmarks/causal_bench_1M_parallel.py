@@ -108,7 +108,7 @@ def run(flconn, kvs, mode, segment, params):
             time.sleep(0.10)
             return '0'.zfill(8)
 
-        def strmnp_root(a,b,c):
+        def strmnp_root(a,b,c,d,e,f,g,h,i):
             return '0'.zfill(8)
 
         cloud_funcs = []
