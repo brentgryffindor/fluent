@@ -253,10 +253,10 @@ def run(flconn, kvs, mode, segment, params):
                     if ref.key not in read_map:
                         read_map[ref.key] = 0
                     read_map[ref.key] += 1
-                    #print("key of reference is %s" % ref.key)
+                    logging.info("key of reference is %s" % ref.key)
 
-            #for key in read_set:
-            #    print("read set contains %s" % key)
+            '''for key in read_set:
+                logging.info("read set contains %s" % key)'''
 
             output = random.choice(read_set)
             if output not in write_map:
