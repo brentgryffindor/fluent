@@ -375,11 +375,11 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
         # randomly sample 3 if len(dependencies) > 3
         '''if len(dependencies) > 3:
             dependencies = dict(random.sample(dependencies.items(), 3))'''
-            
+
         # only keep dependency for the top 5 keys
         remove_set = set()
         for key in dependencies:
-            if int(key) > 5:
+            if int(key) > 10:
                 remove_set.add(key)
         for key in remove_set:
             del dependencies[key]
