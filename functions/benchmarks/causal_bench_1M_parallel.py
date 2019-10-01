@@ -58,10 +58,10 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
             if conn[1] == func:
                 num_parents += 1
 
-        if num_parents == 2:
-            to_generate = 1
-        else:
+        if num_parents == 0:
             to_generate = 2
+        else:
+            to_generate = 1
 
         refs = ()
         keys_chosen = []
@@ -82,21 +82,49 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
 
 def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
-    functions = ['strmnp1', 'strmnp2', 'strmnp3']
-    connections = [('strmnp1', 'strmnp3'), ('strmnp2', 'strmnp3')]
+
+    fanout = 2
+
+    functions = []
+    connections = []
+    for i in range(fanout):
+        functions.append('strmnp_leaf' + str(i+1))
+        connections.append(('strmnp' + str(i+1), 'strmnp_root'))
+    functions.append('strmnp_root')
+
+    logging.info(functions)
+    logging.info(connections)
+
+    #functions = ['strmnp1', 'strmnp2', 'strmnp3']
+    #connections = [('strmnp1', 'strmnp3'), ('strmnp2', 'strmnp3')]
     total_num_keys = 1000000
 
     if mode == 'create':
         #print("Creating functions and DAG")
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
-        def strmnp1(a,b):
+        def strmnp_leaf(a,b):
+            import time
+            time.sleep(0.10)
             return '0'.zfill(8)
 
-        def strmnp2(a,b,c):
+        def strmnp_root(a,b,c):
             return '0'.zfill(8)
 
-        cloud_strmnp1 = flconn.register(strmnp1, 'strmnp1')
+        cloud_funcs = []
+
+        for i in range(fanout):
+            cloud_strmnp = flconn.register(strmnp_leaf, ('strmnp_leaf' + str(i+1)))
+            if cloud_strmnp:
+                logging.info('Successfully registered %s.' % ('strmnp_leaf' + str(i+1)))
+            else:
+                logging.info('Error registering %s.' % ('strmnp_leaf' + str(i+1)))
+                sys.exit(1)
+            cloud_funcs.append(cloud_strmnp)
+
+        root_funcs = flconn.register(strmnp_root, ('strmnp_root'))
+
+        '''cloud_strmnp1 = flconn.register(strmnp1, 'strmnp1')
         cloud_strmnp2 = flconn.register(strmnp1, 'strmnp2')
         cloud_strmnp3 = flconn.register(strmnp2, 'strmnp3')
 
@@ -104,7 +132,7 @@ def run(flconn, kvs, mode, segment, params):
             logging.info('Successfully registered the string manipulation function.')
         else:
             logging.info('Error registering functions.')
-            sys.exit(1)
+            sys.exit(1)'''
 
         ### TEST REGISTERED FUNCTIONS ###
         refs = ()
@@ -119,8 +147,14 @@ def run(flconn, kvs, mode, segment, params):
 
             refs += (FluentReference(k, True, CROSSCAUSAL),)
 
-        strmnp_test1 = cloud_strmnp1(*refs).get()
-        strmnp_test2 = cloud_strmnp2(*refs).get()
+        for i in range(fanout):
+            strmnp_test = cloud_funcs[i](*refs).get()
+            if strmnp_test != '0'.zfill(8):
+                logging.error('Unexpected result from strmnp(): %s' % (str(strmnp_test)))
+                sys.exit(1)
+
+        '''strmnp_test1 = cloud_strmnp1(*refs).get()
+        strmnp_test2 = cloud_strmnp2(*refs).get()'''
 
 
         refs = ()
@@ -134,10 +168,15 @@ def run(flconn, kvs, mode, segment, params):
             kvs.put(k, ccv)
 
             refs += (FluentReference(k, True, CROSSCAUSAL),)
-        strmnp_test3 = cloud_strmnp3(*refs).get()
-        if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
-            logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
+        root_test = root_funcs(*refs).get()
+
+        if root_test != '0'.zfill(8):
+            logging.error('Unexpected result from strmnp(): %s' % (str(root_test)))
             sys.exit(1)
+
+        '''if strmnp_test1 != '0'.zfill(8) or strmnp_test2 != '0'.zfill(8) or strmnp_test3 != '0'.zfill(8):
+            logging.error('Unexpected result from strmnp(v1, v2, v3): %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3)))
+            sys.exit(1)'''
 
         #print('Successfully tested functions!')
         logging.info('Successfully tested functions!')
@@ -176,7 +215,7 @@ def run(flconn, kvs, mode, segment, params):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.5
+        params[0] = 1.0
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
