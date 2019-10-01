@@ -105,7 +105,7 @@ def run(flconn, kvs, mode, segment, params):
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp_leaf(a,b):
             import time
-            time.sleep(0.10)
+            time.sleep(0.05)
             return '0'.zfill(8)
 
         def strmnp_root(a,b,c,d,e,f,g,h,i):
@@ -253,7 +253,7 @@ def run(flconn, kvs, mode, segment, params):
                     if ref.key not in read_map:
                         read_map[ref.key] = 0
                     read_map[ref.key] += 1
-                    logging.info("key of reference is %s" % ref.key)
+                    #logging.info("key of reference is %s" % ref.key)
 
             '''for key in read_set:
                 logging.info("read set contains %s" % key)'''
