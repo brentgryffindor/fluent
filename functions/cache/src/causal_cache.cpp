@@ -341,7 +341,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // handle updates received from the KVS
     if (pollitems[2].revents & ZMQ_POLLIN) {
       //std::cout << "received KVS update\n";
-      //log->info("received KVS update");
+      log->info("received KVS update");
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
       updates.ParseFromString(serialized);
@@ -363,7 +363,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                          pending_single_metadata, pending_cross_metadata,
                          to_fetch_map, cover_map, pushers, client, log, cct, protocol_matadata_map);
       }
-      //log->info("done KVS update");
+      log->info("done KVS update");
       //std::cout << "done KVS update\n";
     }
 
@@ -491,9 +491,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     if (duration >= kCausalCacheReportThreshold) {
       KeySet set;
 
-      for (const auto& pair : unmerged_store) {
+      /*for (const auto& pair : unmerged_store) {
         set.add_keys(pair.first);
-      }
+      }*/
 
       string serialized;
       set.SerializeToString(&serialized);
@@ -513,12 +513,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // check if any key in unmerged_store is newer and migrate
     if (duration >= kMigrateThreshold) {
       //std::cout << "enter periodic migration\n";
-      //log->info("enter periodic migration");
+      log->info("enter periodic migration");
       periodic_migration_handler(unmerged_store, in_preparation,
                                  causal_cut_store, version_store,
                                  pending_cross_metadata, to_fetch_map,
                                  cover_map, pushers, client, cct, log, protocol_matadata_map);
-      //log->info("exit periodic migration");
+      log->info("exit periodic migration");
       //std::cout << "exit periodic migration\n";
       migrate_start = std::chrono::system_clock::now();
     }

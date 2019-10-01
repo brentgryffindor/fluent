@@ -31,6 +31,10 @@ void periodic_migration_handler(
              kCausalGreaterOrEqual) &&
         find_lattice_from_in_preparation(in_preparation, pair.first) ==
             nullptr) {
+      log->info("merging key {}", pair.first);
+      for (const auto& vc_pair : pair.second->reveal().vector_clock.reveal()) {
+        log->info("vc_pair is {} and {}", vc_pair .first, vc_pair.second.reveal());
+      }
       //std::cout << "merging key " + pair.first + "\n";
       to_fetch_map[pair.first] = set<Key>();
       in_preparation[pair.first].second[pair.first] = pair.second;
@@ -39,10 +43,13 @@ void periodic_migration_handler(
                                  cover_map, client, log);
       if (to_fetch_map[pair.first].size() == 0) {
         // all dependency met
+        log->info("key {} all dependency met in migration routine", pair.first);
         merge_into_causal_cut(pair.first, causal_cut_store, in_preparation,
                               version_store, pending_cross_metadata, pushers,
                               cct, log, unmerged_store, protocol_matadata_map);
         to_fetch_map.erase(pair.first);
+      } else {
+        log->info("key {} cannot be merged directly, fetching its dependency", pair.first);
       }
     }
   }

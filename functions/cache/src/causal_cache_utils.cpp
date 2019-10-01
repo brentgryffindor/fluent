@@ -108,15 +108,17 @@ void recursive_dependency_check(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     KvsAsyncClientInterface* client, logger log) {
-  //log->info("enter recursive dependency check, head key {}", head_key);
+  log->info("enter recursive dependency check, head key {}", head_key);
   for (const auto& pair : lattice->reveal().dependency.reveal()) {
     Key dep_key = pair.first;
+    log->info("checking dependency key {}", dep_key);
     // first, check if the dependency is already satisfied in the causal cut
     if (causal_cut_store.find(dep_key) != causal_cut_store.end() &&
         vector_clock_comparison(
             causal_cut_store.at(dep_key)->reveal().vector_clock,
             lattice->reveal().dependency.reveal().at(dep_key)) ==
             kCausalGreaterOrEqual) {
+      log->info("dependency already satisfied in causal cut store");
       continue;
     }
     // then, check if the dependency is already satisfied in the in_preparation
@@ -124,8 +126,10 @@ void recursive_dependency_check(
         in_preparation, dep_key,
         lattice->reveal().dependency.reveal().at(dep_key));
     if (target_lattice != nullptr) {
+      log->info("dependency already in in_preparation");
       if (populate_in_preparation(head_key, dep_key, target_lattice,
                                   in_preparation)) {
+        log->info("not dominated");
         recursive_dependency_check(head_key, target_lattice, in_preparation,
                                    causal_cut_store, unmerged_store,
                                    to_fetch_map, cover_map, client, log);
@@ -139,9 +143,11 @@ void recursive_dependency_check(
               unmerged_store.at(dep_key)->reveal().vector_clock,
               lattice->reveal().dependency.reveal().at(dep_key)) ==
               kCausalGreaterOrEqual) {
+        log->info("dependency already in unmerged store");
         if (populate_in_preparation(head_key, dep_key,
                                     unmerged_store.at(dep_key),
                                     in_preparation)) {
+          log->info("not dominated");
           recursive_dependency_check(head_key, unmerged_store.at(dep_key),
                                      in_preparation, causal_cut_store,
                                      unmerged_store, to_fetch_map, cover_map,
@@ -152,7 +158,7 @@ void recursive_dependency_check(
         to_fetch_map[head_key].insert(dep_key);
         cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
             .insert(head_key);
-        //log->info("firing get request for key {} in recursive dependency check", dep_key);
+        log->info("firing get request for key {} in recursive dependency check", dep_key);
         client->get_async(dep_key);
       }
     }
@@ -439,6 +445,7 @@ void process_response(
             unmerged_store, to_fetch_map, cover_map, client, log);
         if (to_fetch_map[head_key].size() == 0) {
           // all dependency is met
+          log->info("key {} all dependency met in process response routine", head_key);
           merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
                                 version_store, pending_cross_metadata, pushers,
                                 cct, log, unmerged_store, protocol_matadata_map);
