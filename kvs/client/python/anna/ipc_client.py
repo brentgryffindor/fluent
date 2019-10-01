@@ -169,7 +169,7 @@ class IpcAnnaClient:
         try:
             msg = self.get_response_socket.recv()
             receive_time = time.time()
-            logging.info('causal get took %s seconds' % (receive_time - send_time))
+            logging.info('cache roundtrip for func %s took %s seconds' % (fname, (receive_time - send_time)))
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))

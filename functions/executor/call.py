@@ -93,6 +93,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
         keys = [ref.key for ref in to_resolve]
         #logging.info('enter causal get')
         kv_pairs = {}
+        get_start = time.time()
         result = kvs.causal_get(keys, keys,
                                 [], [],
                                 CROSS, '0', fname, {}, False, kv_pairs)
@@ -101,6 +102,8 @@ def _exec_single_func_causal(kvs, fname, func, args):
             result = kvs.causal_get(keys, keys,
                                 [], [],
                                 CROSS, '0', fname, {}, False, kv_pairs)
+        get_end = time.time()
+        logging.info('invoking ipc client for func %s took %s seconds' % (fname, (get_end - get_start)))
 
         #logging.info('causal get done')
 
@@ -277,9 +280,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
     kv_pairs = {}
     abort = [False]
+    exec_func_causal_start = time.time()
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache, function_result_cache, cached)
     #logging.info('finish executing function')
+    exec_func_causal_end = time.time()
+    logging.info('call to _exec_func_causal for func %s took %s seconds' % (schedule.target_function, (exec_func_causal_end - exec_func_causal_start)))
 
     if abort[0]:
         #logging.info('abort due to resolve ref')
@@ -449,9 +455,12 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     key_vc_map = {}
 
     if len(to_resolve) > 0:
+        resolve_start = time.time()
         error = _resolve_ref_causal(keys, kvs, kv_pairs,
                             schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached)
         #logging.info('Done resolving reference')
+        resolve_end = time.time()
+        logging.info('resolve ref for func %s took %s seconds' % (schedule.target_function, (resolve_end - resolve_start)))
         # check if it is conservative protocol and cached
         if conservative and cached[0]:
             #logging.info('function result cache hit')
@@ -532,6 +541,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached):
     #logging.info('resolve ref causal')
     full_read_set = schedule.full_read_set
+    get_start = time.time()
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,
                             schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
@@ -541,6 +551,8 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
                                 prior_version_tuples, prior_read_map,
                                 schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
     #logging.info('causal GET done')
+    get_end = time.time()
+    logging.info('invoking ipc client for func %s took %s seconds' % (schedule.target_function, (get_end - get_start)))
 
     if result == KEY_DNE or result == ABORT:
         #logging.info('dne or abort')
