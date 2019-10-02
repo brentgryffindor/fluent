@@ -83,7 +83,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
 def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
 
-    fanout = 4
+    fanout = 5
 
     functions = []
     connections = []
@@ -108,7 +108,7 @@ def run(flconn, kvs, mode, segment, params):
             time.sleep(0.05)
             return '0'.zfill(8)
 
-        def strmnp_root(a,b,c,d,e):
+        def strmnp_root(a,b,c,d,e,f):
             return '0'.zfill(8)
 
         cloud_funcs = []
@@ -158,7 +158,7 @@ def run(flconn, kvs, mode, segment, params):
 
 
         refs = ()
-        for _ in range(5):
+        for _ in range(6):
             val = '0'.zfill(8)
             ccv = CrossCausalValue()
             ccv.vector_clock['base'] = 1
