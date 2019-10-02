@@ -22,7 +22,7 @@ spec:
   restartPolicy: Never
   containers:
   - name: kops-container
-    image: fluentproject/kops
+    image: cgwu/kops
     env:
     - name: AWS_ACCESS_KEY_ID
       value: ACCESS_KEY_ID_DUMMY
@@ -35,6 +35,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_baseline"
+      value: "centralized"
   nodeSelector:
     role: general

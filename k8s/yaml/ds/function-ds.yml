@@ -38,7 +38,7 @@ spec:
       hostIPC: true
       containers:
       - name: function-1
-        image: fluentproject/executor
+        image: cgwu/executor
         imagePullPolicy: Always
         env:
         - name: ROUTE_ADDR
@@ -54,12 +54,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_baseline"
+          value: "centralized"
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: function-2
-        image: fluentproject/executor
+        image: cgwu/executor
         imagePullPolicy: Always
         env:
         - name: ROUTE_ADDR
@@ -75,12 +75,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_baseline"
+          value: "centralized"
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: function-3
-        image: fluentproject/executor
+        image: cgwu/executor
         imagePullPolicy: Always
         env:
         - name: ROUTE_ADDR
@@ -96,12 +96,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_baseline"
+          value: "centralized"
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: cache-container
-        image: fluentproject/cache
+        image: cgwu/cache
         imagePullPolicy: Always
         env:
         - name: ROUTE_ADDR
@@ -111,7 +111,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_baseline"
+          value: "centralized"
         volumeMounts:
         - mountPath: /requests
           name: ipc

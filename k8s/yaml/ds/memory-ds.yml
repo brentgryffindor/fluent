@@ -32,7 +32,7 @@ spec:
       hostNetwork: true
       containers:
       - name: memory-container
-        image: fluentproject/annakvs
+        image: cgwu/annakvs
         imagePullPolicy: Always
         env: 
         - name: SERVER_TYPE
@@ -48,4 +48,4 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "causal_baseline"
+          value: "centralized"

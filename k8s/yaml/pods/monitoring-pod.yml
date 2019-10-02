@@ -21,7 +21,7 @@ metadata:
 spec:
   containers:
   - name: monitoring-container
-    image: fluentproject/annakvs
+    image: cgwu/annakvs
     env: 
     - name: SERVER_TYPE
       value: mn
@@ -30,6 +30,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "causal_baseline"
+      value: "centralized"
   nodeSelector:
     role: general
