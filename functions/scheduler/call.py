@@ -96,23 +96,37 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
     logging.info('picking threads for cid %s' % schedule.client_id)
 
+    locations = None
+    cache_ip = None
+    first = True
+    tid = 0
+
     for fname in dag.functions:
-        locations = func_locations[fname].copy()
+        if first:
+            locations = func_locations[fname].copy()
+            executors = set(locations)
+            cache_ips = [e[0] for e in executors]
+            cache_ip = sys_random.choice(cache_ips)
+            first = False
+        #locations = func_locations[fname].copy()
         args = call.function_args[fname].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
                     map(lambda arg: get_serializer(arg.type).load(arg.body),
                         args)))
         # remove previously selected nodes
-        if fname != 'strmnp_root':
+        '''if fname != 'strmnp_root':
             locations = set(filter(lambda loc: loc not in chosen_thread, locations))
             loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
             chosen_thread.add(loc)
             logging.info('location for function %s is %s' % (fname, loc))
         else:
             loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
-            logging.info('location for function %s is %s' % (fname, loc))
-        schedule.locations[fname] = loc[0] + ':' + str(loc[1])
+            logging.info('location for function %s is %s' % (fname, loc))'''
+        #schedule.locations[fname] = loc[0] + ':' + str(loc[1])
+        schedule.locations[fname] = cache_ip + ':' + str(tid%3)
+        tid += 1
+        logging.info('location for function %s is %s' % (fname, schedule.locations[fname]))
 
         #logging.info('cid %s function %s scheduled on node %s tid %d' % (call.client_id, fname, loc[0], loc[1]))
 
