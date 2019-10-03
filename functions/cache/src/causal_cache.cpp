@@ -20,6 +20,18 @@
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
+void warmup(StoreType& causal_cut_store) {
+  SetLattice<string> value;
+  value.insert(string(8, '0'));
+  CrossCausalPayload<SetLattice<string>> payload;
+  payload.vector_clock.insert("base", 1);
+  payload.value = value;
+  for (unsigned i = 1; i < 1000001; i++) {
+    Key key = string(7 - std::to_string(i).length(), '0') + std::to_string(i);
+    causal_cut_store[key] = std::make_shared<CrossCausalLattice<SetLattice<string>>>(payload);
+  }
+}
+
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   string log_file = "causal_cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "causal_cache_log_" + std::to_string(thread_id);
@@ -56,6 +68,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   InPreparationType in_preparation;
   StoreType causal_cut_store;
   VersionStoreType version_store;
+
+  // warm up for benchmark
+  log->info("warmup begin");
+  //warmup(version_store);
+  warmup(causal_cut_store);
+  log->info("warmup end");
 
   map<Key, set<Key>> to_fetch_map;
   map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>

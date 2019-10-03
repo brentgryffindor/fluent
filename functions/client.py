@@ -158,11 +158,11 @@ class FluentConnection():
 
         if output_key:
             dc.output_key = output_key
-            print('output key is %s' % dc.output_key)
+            #print('output key is %s' % dc.output_key)
 
         if client_id:
             dc.client_id = client_id
-            print('client id is %s' % dc.client_id)
+            #print('client id is %s' % dc.client_id)
 
         for fname in arg_map:
             args = [serialize_val(arg, serialize=False) for arg in
@@ -179,9 +179,9 @@ class FluentConnection():
         r = GenericResponse()
         r.ParseFromString(self.dag_call_sock.recv())
         receive_time = time.time()
-        print('send time is %s' % send_time)
-        print('receive time is %s' % receive_time)
-        print('took %s to get response from scheduler' % (receive_time - send_time))
+        #print('send time is %s' % send_time)
+        #print('receive time is %s' % receive_time)
+        #print('took %s to get response from scheduler' % (receive_time - send_time))
         
         if direct_response:
             try:
@@ -189,7 +189,6 @@ class FluentConnection():
                 return deserialize_val(result)
             except zmq.ZMQError as e:
                 if e.errno == zmq.EAGAIN:
-                    print('Timeout')
                     return None
                 else:
                     raise e
