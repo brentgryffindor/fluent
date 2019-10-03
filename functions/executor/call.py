@@ -134,7 +134,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
 
     #user_lib.close()
     exec_end = time.time()
-    logging.info('cid %s function %s took %s seconds to execute' % (schedule.target_function.client_id, schedule.target_function, (exec_end - exec_start)))
+    logging.info('cid %s function %s took %s seconds to execute' % (schedule.client_id, schedule.target_function, (exec_end - exec_start)))
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
