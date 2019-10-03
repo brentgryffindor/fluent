@@ -125,7 +125,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
             logging.info('location for function %s is %s' % (fname, loc))'''
         #schedule.locations[fname] = loc[0] + ':' + str(loc[1])
         schedule.locations[fname] = cache_ip + ':' + str(tid%3)
-        tid += 1
         logging.info('location for function %s is %s' % (fname, schedule.locations[fname]))
 
         #logging.info('cid %s function %s scheduled on node %s tid %d' % (call.client_id, fname, loc[0], loc[1]))
@@ -140,7 +139,9 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
                 read_set[fname] = set(ref.key for ref in refs)
                 full_read_set = full_read_set.union(read_set[fname])
                 versioned_key_map[schedule.client_id].per_func_read_set[fname] = read_set[fname]
-                versioned_key_map[schedule.client_id].func_location[fname] = (loc[0], loc[1])
+                #versioned_key_map[schedule.client_id].func_location[fname] = (loc[0], loc[1])
+                versioned_key_map[schedule.client_id].func_location[fname] = (cache_ip, tid%3)
+        tid += 1
 
     if schedule.consistency == CROSS:
         schedule.full_read_set.extend(full_read_set)
