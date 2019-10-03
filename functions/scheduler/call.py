@@ -94,6 +94,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
     chosen_thread = set()
 
+    logging.info('picking threads for cid %s' % schedule.client_id)
+
     for fname in dag.functions:
         locations = func_locations[fname].copy()
         args = call.function_args[fname].args
@@ -106,8 +108,10 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
             locations = set(filter(lambda loc: loc not in chosen_thread, locations))
             loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
             chosen_thread.add(loc)
+            logging.info('location for function %s is %s' % (fname, loc))
         else:
             loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
+            logging.info('location for function %s is %s' % (fname, loc))
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         #logging.info('cid %s function %s scheduled on node %s tid %d' % (call.client_id, fname, loc[0], loc[1]))
