@@ -67,7 +67,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=CROSS):
         succeed = kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
     else:
         #logging.info('Causal PUT')
-        succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
+        succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, [result], '0')
 
     #logging.info('PUT done')
 
@@ -111,7 +111,7 @@ def _exec_single_func_causal(kvs, fname, func, args):
     return  func(*tuple(func_args))
 
 
-def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid, cache):
+def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid, cache, executor_id, logical_clock, write_cache):
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
@@ -119,7 +119,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid, 
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
-                                  triggers, function, schedule, cache)
+                                  triggers, function, schedule, cache, executor_id, logical_clock, write_cache)
 
     #user_lib.close()
 
@@ -214,7 +214,7 @@ def _resolve_ref_normal(refs, kvs):
     return kv_pairs
 
 
-def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, cache):
+def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, cache, executor_id, logical_clock, write_cache):
     #logging.info('exec dag causal')
     fname = schedule.target_function
 
@@ -243,13 +243,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
     #exec_end = time.time()
     #logging.info('_exec_func_causal took %s' % (exec_end - exec_begin))
     #logging.info('finish executing function')
-
-    for key in kv_pairs:
-        if key in dependencies:
-            dependencies[key] = sutils._merge_vector_clock(dependencies[key],
-                                                    kv_pairs[key][0])
-        else:
-            dependencies[key] = kv_pairs[key][0]
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -280,34 +273,45 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
             #logging.info('took %s to send trigger' % (send_end - send_start))
 
     if is_sink:
-        # for testing only
-        result = '0'
-        result = serialize_val(result)
+        result = [serialize_val(result)]
         if schedule.HasField('response_address'):
             #logging.info('direct respond')
             sckt = pusher_cache.get(schedule.response_address)
-            sckt.send(result)
+            sckt.send(result[0])
+
+        logical_clock[0] += 1
+        vector_clock = {}
+        concurrent = False
+        if schedule.output_key in dependencies:
+            if schedule.output_key in write_cache and (not executor_id in dependencies[schedule.output_key] or dependencies[schedule.output_key][executor_id] < write_cache[schedule.output_key][0][executor_id]):
+                concurrent = True
+                dependencies[schedule.output_key] = sutils._merge_vector_clock(dependencies[schedule.output_key], write_cache[schedule.output_key][0])
+            dependencies[schedule.output_key][executor_id] = logical_clock[0]
+            vector_clock.update(dependencies[schedule.output_key])
+            del dependencies[schedule.output_key]
         else:
-            #logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
-            #        (schedule.dag.name, schedule.id, schedule.output_key))
+            logging.error('key write not in read set!')
+            vector_clock = {executor_id : logical_clock[0]}
 
-            vector_clock = {}
-            if schedule.output_key in dependencies:
-                if schedule.client_id in dependencies[schedule.output_key]:
-                    dependencies[schedule.output_key][schedule.client_id] += 1
+        if concurrent:
+            # merge dependency
+            for dep_key in write_cache[schedule.output_key][1]:
+                if dep_key in dependencies:
+                    dependencies[dep_key] = sutils._merge_vector_clock(dependencies[dep_key], write_cache[schedule.output_key][1][dep_key])
                 else:
-                    dependencies[schedule.output_key][schedule.client_id] = 1
-                vector_clock.update(dependencies[schedule.output_key])
-                del dependencies[schedule.output_key]
-            else:
-                vector_clock = {schedule.client_id : 1}
+                    dependencies[dep_key] = write_cache[schedule.output_key][1][dep_key]
+            # merge payload
+            result.extend(write_cache[schedule.output_key][2])
 
-            succeed = kvs.causal_put(schedule.output_key,
-                                     vector_clock, dependencies,
-                                     result, schedule.client_id)
-            while not succeed:
-                kvs.causal_put(schedule.output_key, vector_clock,
-                               dependencies, result, schedule.client_id)
+        succeed = kvs.causal_put(schedule.output_key,
+                                 vector_clock, dependencies,
+                                 result, schedule.client_id)
+        while not succeed:
+            kvs.causal_put(schedule.output_key, vector_clock,
+                           dependencies, result, schedule.client_id)
+
+        # update write cache
+        write_cache[schedule.output_key] = (vector_clock, dependencies, result)
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
                       schedule, dependencies, sink, cache):
@@ -346,11 +350,23 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
-                func_args[key_index_map[key]] = kv_pairs[key][1].decode('ascii')
+                func_args[key_index_map[key]] = kv_pairs[key][1]
             keys.remove(key)
+            # update dependency
+            if key in dependencies:
+                dependencies[key] = sutils._merge_vector_clock(dependencies[key],
+                                                        kv_pairs[key][0])
+            else:
+                dependencies[key] = kv_pairs[key][0]
         for key in keys:
             #logging.info('cache hit for key %s' % key)
             func_args[key_index_map[key]] = cache[key][1]
+            # update dependency
+            if key in dependencies:
+                dependencies[key] = sutils._merge_vector_clock(dependencies[key],
+                                                        cache[key][0])
+            else:
+                dependencies[key] = cache[key][0]
         #deser_end = time.time()
         #logging.info('deser took %s' % (deser_end - deser_start))
 

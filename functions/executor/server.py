@@ -32,6 +32,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
+    executor_id = ip + ':' + str(thread_id)
+    logical_clock = [0]
+
     ctx = zmq.Context(1)
     poller = zmq.Poller()
 
@@ -116,6 +119,16 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # map from key to tuple(vectorclock, deserialized payload)
     cache = {}
 
+    # map<key, tuple(vc, dep, set)> write cache for identifying concurrent update
+    write_cache = {}
+
+    logging.info('enter warmup')
+    for k in range(1, 1000001):
+        warmup_key = str(k).zfill(7)
+        vc = {'base' : 1}
+        cache[warmup_key] = (vc, str(0).zfill(8))
+    logging.info('finish warmup')
+
     while True:
         socks = dict(poller.poll(timeout=1000))
 
@@ -183,7 +196,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache)
+                                  thread_id, cache, executor_id, logical_clock, write_cache)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -219,7 +232,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache)
+                                      thread_id, cache, executor_id, logical_clock, write_cache)
                     #exec_end = time.time()
                     #logging.info('function %s took %s to execute' % (fname, (exec_end - exec_start)))
                     del received_triggers[key]

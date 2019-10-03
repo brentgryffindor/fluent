@@ -139,30 +139,10 @@ class IpcAnnaClient:
                 vk.vector_clock.update(cache[key][0])
                 request.cached_keys.extend([vk])
 
-        #for k in request.keys:
-        #    logging.info('key to GET is %s' % k)
-
         request.response_address = self.get_response_address
 
-        #logging.info('sending GET')
-        #send_start = time.time()
-        '''if consistency == CROSS:
-            kv_pairs = {}
-            for k in keys:
-                kv_pairs[k] = None
-            return kv_pairs'''
         self.get_request_socket.send(request.SerializeToString())
-        #send_end = time.time()
-        #receive_start = time.time()
         msg = self.get_response_socket.recv()
-        #send_end = time.time()
-        #receive_end = time.time()
-        #logging.info('took %s to send to cache' % (send_end - send_start))
-        #logging.info('took %s to receive from cache' % (receive_end - send_start))
-        #logging.info('send start %s' % send_start)
-        #logging.info('send end %s' % send_end)
-        #logging.info('receive end %s' % receive_end)
-        #parse_start = time.time()
         resp = CausalGetResponse()
         resp.ParseFromString(msg)
 
@@ -172,50 +152,8 @@ class IpcAnnaClient:
             val.ParseFromString(tp.payload)
             # for now, we just take the first value in the setlattice
             kv_pairs[tp.key] = (val.vector_clock, val.values[0])
-        #parse_end = time.time()
-        #logging.info('parsing took %s' % (parse_end - parse_start))
-        '''if consistency == SINGLE:
-            for tp in resp.tuples:
-                val = CrossCausalValue()
-                val.ParseFromString(tp.payload)
-                # for now, we just take the first value in the setlattice
-                kv_pairs[tp.key] = (val.vector_clock, val.values[0])
-        else:
-            for tp in resp.tuples:
-                kv_pairs[tp.key] = None'''
+
         return kv_pairs
-
-        '''try:
-            msg = self.get_response_socket.recv()
-            send_end = time.time()
-            logging.info('took %s to receive response from cache' % (send_end - send_start))
-            #logging.info('received response')
-        except zmq.ZMQError as e:
-            if e.errno == zmq.EAGAIN:
-                logging.error("Request for %s timed out!" % (str(keys)))
-            else:
-                logging.error("Unexpected ZMQ error: %s." % (str(e)))
-            return None
-        else:
-            #logging.info('parsing response')
-            #parse_start = time.time()
-            resp = CausalGetResponse()
-            resp.ParseFromString(msg)
-            #logging.info('parsed')
-
-            #logging.info('GET successful')
-            kv_pairs = {}
-            for tp in resp.tuples:
-                #logging.info('key is %s', tp.key)
-                val = CrossCausalValue()
-                val.ParseFromString(tp.payload)
-
-                # for now, we just take the first value in the setlattice
-                kv_pairs[tp.key] = (val.vector_clock, val.values[0])
-            #logging.info('returning from causal GET')
-            #parse_end = time.time()
-            #logging.info('parsing took %s' % (parse_end - parse_start))
-            return kv_pairs'''
 
     def put(self, key, value):
         request = KeyRequest()
@@ -282,7 +220,7 @@ class IpcAnnaClient:
             dep.key = key
             dep.vector_clock.update(dependency[key])
 
-        cross_causal_value.values.extend([value])
+        cross_causal_value.values.extend(value)
 
         tp.payload = cross_causal_value.SerializeToString()
 
