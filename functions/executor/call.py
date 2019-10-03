@@ -557,7 +557,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached):
     #logging.info('resolve ref causal')
     full_read_set = schedule.full_read_set
-    #get_start = time.time()
+    get_start = time.time()
     result = kvs.causal_get(keys, full_read_set,
                             prior_version_tuples, prior_read_map,
                             schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
@@ -567,8 +567,8 @@ def _resolve_ref_causal(keys, kvs, kv_pairs, schedule, prior_version_tuples, pri
                                 prior_version_tuples, prior_read_map,
                                 schedule.consistency, schedule.client_id, schedule.target_function, dependencies, conservative, kv_pairs, cache, function_result_cache, cached)
     #logging.info('causal GET done')
-    #get_end = time.time()
-    #logging.info('invoking ipc client for func %s took %s seconds' % (schedule.target_function, (get_end - get_start)))
+    get_end = time.time()
+    logging.info('invoking ipc client for func %s took %s seconds' % (schedule.target_function, (get_end - get_start)))
 
     if result == KEY_DNE or result == ABORT:
         #logging.info('dne or abort')
