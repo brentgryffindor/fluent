@@ -121,9 +121,9 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                       tid, cache, function_result_cache, executor_id, logical_clock, write_cache, conservative=False):
-    #logging.info('conservative flag is %s' % conservative)
+    logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
-    #exec_start = time.time()
+    exec_start = time.time()
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
                                   triggers, function, schedule)
@@ -133,8 +133,8 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                                   triggers, function, schedule, conservative, cache, function_result_cache, executor_id, logical_clock, write_cache)
 
     #user_lib.close()
-    #exec_end = time.time()
-    #logging.info('function %s took %s seconds to execute' % (schedule.target_function, (exec_end - exec_start)))
+    exec_end = time.time()
+    logging.info('cid %s function %s took %s seconds to execute' % (schedule.target_function.client_id, schedule.target_function, (exec_end - exec_start)))
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
@@ -282,12 +282,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
 
     kv_pairs = {}
     abort = [False]
-    #exec_func_causal_start = time.time()
+    exec_func_causal_start = time.time()
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, prior_version_tuples, prior_read_map, dependencies, conservative, abort, cache, function_result_cache, cached)
     #logging.info('finish executing function')
-    #exec_func_causal_end = time.time()
-    #logging.info('call to _exec_func_causal for func %s took %s seconds' % (schedule.target_function, (exec_func_causal_end - exec_func_causal_start)))
+    exec_func_causal_end = time.time()
+    logging.info('call to _exec_func_causal for func %s took %s seconds' % (schedule.target_function, (exec_func_causal_end - exec_func_causal_start)))
 
     if abort[0]:
         #logging.info('abort due to resolve ref')
@@ -468,12 +468,12 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     key_vc_map = {}
 
     if len(to_resolve) > 0:
-        #resolve_start = time.time()
+        resolve_start = time.time()
         error = _resolve_ref_causal(keys, kvs, kv_pairs,
                             schedule, prior_version_tuples, prior_read_map, dependencies, conservative, cache, function_result_cache, cached)
         #logging.info('Done resolving reference')
-        #resolve_end = time.time()
-        #logging.info('resolve ref for func %s took %s seconds' % (schedule.target_function, (resolve_end - resolve_start)))
+        resolve_end = time.time()
+        logging.info('resolve ref for func %s took %s seconds' % (schedule.target_function, (resolve_end - resolve_start)))
         # check if it is conservative protocol and cached
         if conservative and cached[0]:
             #logging.info('function result cache hit')
