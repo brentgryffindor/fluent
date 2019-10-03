@@ -404,7 +404,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
         for key in remove_set:
             del dependencies[key]
 
-        succeed = kvs.causal_put(schedule.output_key,
+        '''succeed = kvs.causal_put(schedule.output_key,
                                  vector_clock, dependencies,
                                  result, schedule.client_id)
         #logging.info('finish causal put of key %s' % schedule.output_key)
@@ -415,7 +415,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule, c
                            dependencies, result, schedule.client_id)
 
         # update write cache
-        write_cache[schedule.output_key] = (vector_clock, dependencies, result)
+        write_cache[schedule.output_key] = (vector_clock, dependencies, result)'''
 
         # if optimistic protocol, issue requests to GC the version store and schedule
         if not conservative:
