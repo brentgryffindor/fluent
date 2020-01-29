@@ -192,19 +192,23 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         if schedule.HasField('response_address'):
             new_val = '0'.zfill(8)
             query = "update benchmark set value = '" + new_val + "' WHERE key = '" + schedule.output_key + "'"
-            response = rds.execute_statement(
-                        resourceArn = metadata[0], 
-                        secretArn = metadata[1], 
-                        database = 'kvs', 
-                        sql = query,
-                        transactionId = txid)
-            cr = rds.commit_transaction(
-                 resourceArn = metadata[0], 
-                 secretArn = metadata[1], 
-                 transactionId = txid)
-            # respond to client
-            sckt = pusher_cache.get(schedule.response_address)
-            sckt.send(serialize_val(cr['transactionStatus']))
+            try:
+                response = rds.execute_statement(
+                            resourceArn = metadata[0], 
+                            secretArn = metadata[1], 
+                            database = 'kvs', 
+                            sql = query,
+                            transactionId = txid)
+                cr = rds.commit_transaction(
+                     resourceArn = metadata[0], 
+                     secretArn = metadata[1], 
+                     transactionId = txid)
+                # respond to client
+                sckt = pusher_cache.get(schedule.response_address)
+                sckt.send(serialize_val(cr['transactionStatus']))
+            except Exception as e:
+                sckt = pusher_cache.get(schedule.response_address)
+                sckt.send(serialize_val('Abort'))
         else:
             logging.error('only direct response supported!')
 
