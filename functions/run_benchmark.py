@@ -10,11 +10,9 @@ import uuid
 import numpy as np
 import random
 
-from anna.functions_pb2 import *
-from anna.kvs_pb2 import *
+from functions_pb2 import *
 from include.serializer import *
 from include.shared import *
-from . import utils
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 

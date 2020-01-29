@@ -137,7 +137,7 @@ def run(flconn, kvs, mode, segment, params):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.0
+        params[0] = 1.5
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
@@ -153,16 +153,11 @@ def run(flconn, kvs, mode, segment, params):
         base = params[1]
         sum_probs = params[2]
 
-        #request_num = 500
-
         total_time = []
 
         all_times = []
 
-        read_map = {}
-        write_map = {}
-
-        inconsistency = 0
+        abort = 0
 
         for i in range(300*segment, 300*segment + 300):
             cid = str(i).zfill(4)
@@ -171,38 +166,15 @@ def run(flconn, kvs, mode, segment, params):
 
             arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
 
-            for func in arg_map:
-                #logging.info("function is %s" % func)
-                for ref in arg_map[func]:
-                    if ref.key not in read_map:
-                        read_map[ref.key] = 0
-                    read_map[ref.key] += 1
-                    #print("key of reference is %s" % ref.key)
-
-            #for key in read_set:
-            #    print("read set contains %s" % key)
-
             output = random.choice(read_set)
-            if output not in write_map:
-                write_map[output] = 0
-            write_map[output] += 1
-            #print("Output key is %s" % output)
 
             start = time.time()
             res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
+            while not res == 'Transaction Committed':
+                abort += 1
+                res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
+
             end = time.time()
             all_times.append((end - start))
-            #all_times.append(scheduler_time)
-            logging.info('Result is: %s' % res)
-            if not res:
-                inconsistency += 1
-        logging.info('total inconsistency is %d' % inconsistency)
-        return [all_times, inconsistency]
-        #print('zipf %f' % zipf)
-        #utils.print_latency_stats(all_times, 'latency')
-        #print('read map size is %d' % len(read_map))
-        #print(sorted(read_map.items(), key=lambda x: x[1], reverse=True))
-        #print(sum(read_map.values()))
-        #print('write map size is %d' % len(write_map))
-        #print(sorted(write_map.items(), key=lambda x: x[1], reverse=True))
-        #print(sum(write_map.values()))
+        logging.info('total abort is %d' % abort)
+        return [all_times, abort]

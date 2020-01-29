@@ -49,7 +49,7 @@ elif 'run' in msg:
 
 	latency = []
 
-	total_inconsistency = 0
+	total_abort = 0
 
 	for loop in range(1):
 		print('loop is %d' % loop)
@@ -68,14 +68,14 @@ elif 'run' in msg:
 			end_recv += 1
 			result = cp.loads(payload)
 			latency += result[0]
-			total_inconsistency += result[1]
+			total_abort += result[1]
 
 		sent_msgs = 0
 		end_recv = 0
 	logging.info("benchmark done")
 	utils.print_latency_stats(latency, 'Causal', True)
 	utils.print_latency_stats(latency, 'Causal')
-	print('total inconsistency is %d' % total_inconsistency)
+	print('total abort is %d' % total_abort)
 	sys.exit(0)
 
 end_recv = 0
