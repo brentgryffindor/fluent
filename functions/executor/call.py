@@ -162,6 +162,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
                 txid = tr['transactionId']
                 loop = False
             except Exception as e:
+                logging.info('exception in begin txn')
+                logging.info(e)
                 loop = True
 
 
@@ -205,8 +207,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
                             secretArn = metadata[1], 
                             database = 'kvs', 
                             sql = query,
-                            transactionId = txid,
-                            continueAfterTimeout = True)
+                            transactionId = txid)
                 cr = rds.commit_transaction(
                      resourceArn = metadata[0], 
                      secretArn = metadata[1], 
@@ -215,6 +216,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
                 sckt = pusher_cache.get(schedule.response_address)
                 sckt.send(serialize_val(cr['transactionStatus']))
             except Exception as e:
+                logging.info('exception in insert or commit')
+                logging.info(e)
                 sckt = pusher_cache.get(schedule.response_address)
                 sckt.send(serialize_val('Abort'))
         else:
@@ -255,8 +258,7 @@ def _resolve_ref_normal(refs, kvs, rds, metadata, txid):
              secretArn = metadata[1], 
              database = 'kvs', 
              sql = query, 
-             transactionId = txid,
-             continueAfterTimeout = True)
+             transactionId = txid)
         kv_pairs[key] = response['records'][0][0]['stringValue']
 
     return kv_pairs
