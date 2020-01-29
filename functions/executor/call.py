@@ -155,7 +155,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         tr = rds.begin_transaction(
              resourceArn = metadata[0],
              secretArn = metadata[1],
-             database = 'kvs')
+             database = 'kvs',
+             continueAfterTimeout = True)
         txid = tr['transactionId']
 
 
@@ -198,11 +199,13 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
                             secretArn = metadata[1], 
                             database = 'kvs', 
                             sql = query,
-                            transactionId = txid)
+                            transactionId = txid,
+                            continueAfterTimeout = True)
                 cr = rds.commit_transaction(
                      resourceArn = metadata[0], 
                      secretArn = metadata[1], 
-                     transactionId = txid)
+                     transactionId = txid,
+                     continueAfterTimeout = True)
                 # respond to client
                 sckt = pusher_cache.get(schedule.response_address)
                 sckt.send(serialize_val(cr['transactionStatus']))
@@ -247,7 +250,8 @@ def _resolve_ref_normal(refs, kvs, rds, metadata, txid):
              secretArn = metadata[1], 
              database = 'kvs', 
              sql = query, 
-             transactionId = txid)
+             transactionId = txid,
+             continueAfterTimeout = True)
         kv_pairs[key] = response['records'][0][0]['stringValue']
 
     return kv_pairs
