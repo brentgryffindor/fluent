@@ -218,6 +218,11 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             except Exception as e:
                 logging.info('exception in insert or commit')
                 logging.info(e)
+                cr = rds.rollback_transaction(
+                     resourceArn = metadata[0], 
+                     secretArn = metadata[1], 
+                     transactionId = txid)
+                logging.info('rolled back')
                 sckt = pusher_cache.get(schedule.response_address)
                 sckt.send(serialize_val('Abort'))
         else:
