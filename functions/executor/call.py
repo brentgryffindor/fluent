@@ -152,12 +152,18 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
 
     # issue transaction begin request
     if begin:
-        tr = rds.begin_transaction(
-             resourceArn = metadata[0],
-             secretArn = metadata[1],
-             database = 'kvs',
-             continueAfterTimeout = True)
-        txid = tr['transactionId']
+        loop = True
+        while loop:
+            try:
+                tr = rds.begin_transaction(
+                     resourceArn = metadata[0],
+                     secretArn = metadata[1],
+                     database = 'kvs')
+                txid = tr['transactionId']
+                loop = False
+            except Exception as e:
+                loop = True
+
 
 
     fargs = _process_args(fargs)
@@ -204,8 +210,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
                 cr = rds.commit_transaction(
                      resourceArn = metadata[0], 
                      secretArn = metadata[1], 
-                     transactionId = txid,
-                     continueAfterTimeout = True)
+                     transactionId = txid)
                 # respond to client
                 sckt = pusher_cache.get(schedule.response_address)
                 sckt.send(serialize_val(cr['transactionStatus']))
