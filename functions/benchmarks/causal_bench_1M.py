@@ -12,8 +12,6 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-from rediscluster import RedisCluster
-
 zipf = 0
 base = 0
 sum_probs = {}
@@ -82,23 +80,14 @@ def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 9996
+    total_num_keys = 10000
 
     if mode == 'create':
         #print("Creating functions and DAG")
         logging.info("Creating functions and DAG")
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp(a,b):
-            return b'0'.zfill(8)
-            '''result = ''
-            for i, char in enumerate(a):
-                if i % 3 == 0:
-                    result += a[i]
-                elif i % 3 == 1:
-                    result += b[i]
-                else:
-                    result += c[i]
-            return result'''
+            return '0'.zfill(8)
 
         cloud_strmnp1 = flconn.register(strmnp, 'strmnp1')
         cloud_strmnp2 = flconn.register(strmnp, 'strmnp2')
@@ -145,28 +134,6 @@ def run(flconn, kvs, mode, segment, params):
         logging.info("Successfully created the DAG")
         return [[], 0]
 
-    elif mode == 'warmup':
-        logging.info('Connecting to redis')
-        startup_nodes = [{"host": "hydro.kvm9la.clustercfg.use1.cache.amazonaws.com", "port": "6379"}]
-        rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True, skip_full_coverage_check=True)
-        logging.info('Connected')
-        ### CREATE DATA###
-        logging.info('Warming up keys')
-        warm_begin = time.time()
-        block_size = int(total_num_keys/6)
-        for k in range(block_size*segment+1,block_size*segment + block_size+1):
-            if k % 1000 == 0:
-                logging.info('warmup for key %s done' % k)
-            k = str(k).zfill(len(str(total_num_keys)))
-            rcv = RedisCausalValue()
-            rcv.value = b'0'.zfill(262144)
-            rc.set(k, rcv.SerializeToString())
-        warm_end = time.time()
-        #print('warmup took %s' % (warm_end - warm_begin))
-
-        logging.info('Data populated')
-        return [[], 0]
-
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
@@ -197,15 +164,15 @@ def run(flconn, kvs, mode, segment, params):
 
         inconsistency = 0
 
-        for i in range(15*segment, 15*segment + 15):
-            cid = str(i).zfill(3)
+        for i in range(300*segment, 300*segment + 300):
+            cid = str(i).zfill(4)
 
             logging.info("running client %s" % cid)
 
             arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
 
             for func in arg_map:
-                logging.info("function is %s" % func)
+                #logging.info("function is %s" % func)
                 for ref in arg_map[func]:
                     if ref.key not in read_map:
                         read_map[ref.key] = 0

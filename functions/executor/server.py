@@ -25,7 +25,7 @@ from include import server_utils as sutils
 from include.shared import *
 from . import utils
 
-from rediscluster import RedisCluster
+import boto3
 
 REPORT_THRESH = 5
 
@@ -88,9 +88,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
     client = IpcAnnaClient(ctx, thread_id)
 
-    startup_nodes = [{"host": "hydro.kvm9la.clustercfg.use1.cache.amazonaws.com", "port": "6379"}]
+    rdsData = boto3.client('rds-data')
 
-    rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=False, skip_full_coverage_check=True)
+    aurora_metadata = ['dummy', 'dummy']
 
     status = ThreadStatus()
     status.ip = ip
@@ -211,7 +211,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache, function_result_cache, rc)
+                                  thread_id, cache, function_result_cache, rds, metadata)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -246,7 +246,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, rc)
+                                      thread_id, cache, function_result_cache, rds, metadata)
                     del received_triggers[key]
 
                     fend = time.time()
@@ -295,7 +295,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_conservative_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, rc, True)
+                                      thread_id, cache, function_result_cache, rds, metadata, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
 

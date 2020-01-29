@@ -44,15 +44,6 @@ elif 'zipf' in msg:
 			sckt.send_string(msg)
 			sent_msgs += 1
 			index += 1
-elif 'warmup' in msg:
-	index = 0
-	for ip in ips:
-		for tid in range(NUM_THREADS):
-			sckt = ctx.socket(zmq.PUSH)
-			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-			sckt.send_string(msg + ':' + str(index))
-			sent_msgs += 1
-			index += 1
 elif 'run' in msg:
 	end_recv = 0
 
@@ -60,7 +51,7 @@ elif 'run' in msg:
 
 	total_inconsistency = 0
 
-	for loop in range(20):
+	for loop in range(1):
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
@@ -81,7 +72,6 @@ elif 'run' in msg:
 
 		sent_msgs = 0
 		end_recv = 0
-		time.sleep(0.5)
 	logging.info("benchmark done")
 	utils.print_latency_stats(latency, 'Causal', True)
 	utils.print_latency_stats(latency, 'Causal')

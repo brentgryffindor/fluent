@@ -116,12 +116,12 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, function_result_cache, rc, conservative=False):
+                      tid, cache, function_result_cache, rds, metadata, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule, rc)
+                                  triggers, function, schedule, rds, metadata)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
@@ -130,20 +130,37 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     #user_lib.close()
 
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, rc):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, rds, metadata):
     #logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
     prior_read_map = []
 
+    begin = False
+
+    txid = None
+
     for trname in schedule.triggers:
+        if trname == 'BEGIN':
+            begin = True
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
         prior_read_map += list(trigger.prior_read_map)
+        if trigger.HasField('txid'):
+            txid = trigger.txid
+
+    # issue transaction begin request
+    if begin:
+        tr = rds.begin_transaction(
+             resourceArn = metadata[0],
+             secretArn = metadata[1],
+             database = 'kvs')
+        txid = tr['transactionId']
+
 
     fargs = _process_args(fargs)
-    result, versions = _exec_func_normal(kvs, function, fargs, rc)
+    result, versions = _exec_func_normal(kvs, function, fargs, rds, metadata, txid)
 
     prior_read_map += versions
 
@@ -155,6 +172,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             new_trigger.id = schedule.id
             new_trigger.target_function = conn.sink
             new_trigger.source = fname
+            new_trigger.txid = txid
 
             new_trigger.prior_read_map.extend(prior_read_map)
 
@@ -172,25 +190,30 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
     if is_sink:
         #result = serialize_val(result)
         if schedule.HasField('response_address'):
+            new_val = '0'.zfill(8)
+            query = "update benchmark set value = '" + new_val + "' WHERE key = '" + schedule.output_key + "'"
+            response = rds.execute_statement(
+                        resourceArn = metadata[0], 
+                        secretArn = metadata[1], 
+                        database = 'kvs', 
+                        sql = query,
+                        transactionId = txid)
+            cr = rds.commit_transaction(
+                 resourceArn = metadata[0], 
+                 secretArn = metadata[1], 
+                 transactionId = txid)
             # respond to client
-            consistent = True
             sckt = pusher_cache.get(schedule.response_address)
-            sckt.send(serialize_val(consistent))
-            # PUT to redis
-            #logging.info('putting key %s to redis' % schedule.output_key)
-            rcv = RedisCausalValue()
-            rcv.value = b'0'.zfill(262144)
-            rc.set(schedule.output_key, rcv.SerializeToString())
-            #logging.info('PUT successful')
+            sckt.send(serialize_val(cr['transactionStatus']))
         else:
             logging.error('only direct response supported!')
 
 
-def _exec_func_normal(kvs, func, args, rc=None):
+def _exec_func_normal(kvs, func, args, rds=None, metadata=None, txid=None):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
 
     if refs:
-        refs = _resolve_ref_normal(refs, kvs, rc)
+        refs = _resolve_ref_normal(refs, kvs, rds, metadata, txid)
     end = time.time()
 
     func_args = ()
@@ -208,35 +231,21 @@ def _exec_func_normal(kvs, func, args, rc=None):
     return (res, versions)
 
 
-def _resolve_ref_normal(refs, kvs, rc):
-    start = time.time()
+def _resolve_ref_normal(refs, kvs, rds, metadata, txid):
     keys = [ref.key for ref in refs]
     keys = list(set(keys))
 
     kv_pairs = {}
     for key in keys:
-        val = rc.get(key)
-        kv_pairs[key] = val
+        query = "select value from benchmark where key = '" + key + "'"
+        response = rds.execute_statement(
+             resourceArn = metadata[0], 
+             secretArn = metadata[1], 
+             database = 'kvs', 
+             sql = query, 
+             transactionId = txid)
+        kv_pairs[key] = response['records'][0][0]['stringValue']
 
-    #result = {}
-    #result = rc.mget(keys)
-
-    #kv_pairs = {}
-
-    #for i, key in enumerate(keys):
-    #    kv_pairs[key] = result[i]
-    #kv_pairs = kvs.get(keys)
-
-    # when chaining function executions, we must wait
-    #num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
-    #while num_nulls > 0:
-    #    kv_pairs = kvs.get(keys)
-
-    #for ref in refs:
-    #    if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
-    #        kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
-
-    end = time.time()
     return kv_pairs
 
 
