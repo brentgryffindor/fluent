@@ -80,7 +80,7 @@ def run(flconn, kvs, mode, segment, params):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 10000
+    total_num_keys = 1000000
 
     if mode == 'create':
         #print("Creating functions and DAG")
