@@ -90,7 +90,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
     rdsData = boto3.client('rds-data')
 
-    aurora_metadata = ['dummy', 'dummy']
+    aurora_metadata = ['arn:aws:rds:us-east-1:021738868884:cluster:cgwu-bench-1', 'arn:aws:secretsmanager:us-east-1:021738868884:secret:cgwu-bench-1-X0hZLX']
 
     status = ThreadStatus()
     status.ip = ip
