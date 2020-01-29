@@ -211,7 +211,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache, function_result_cache, rds, metadata)
+                                  thread_id, cache, function_result_cache, rdsData, aurora_metadata)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -246,7 +246,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, rds, metadata)
+                                      thread_id, cache, function_result_cache, rdsData, aurora_metadata)
                     del received_triggers[key]
 
                     fend = time.time()
@@ -295,7 +295,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_conservative_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, rds, metadata, True)
+                                      thread_id, cache, function_result_cache, rdsData, aurora_metadata, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
 
