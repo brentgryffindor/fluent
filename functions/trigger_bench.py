@@ -51,7 +51,7 @@ elif 'run' in msg:
 
 	total_abort = 0
 
-	for loop in range(1):
+	for loop in range(10):
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
