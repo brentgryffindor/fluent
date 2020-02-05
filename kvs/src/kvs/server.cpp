@@ -651,6 +651,43 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                                  pushers[addr_request.first]);
       }
 
+      std::vector<unsigned> total_sizes;
+      unsigned max_size = 0;
+      for (const auto& pair : stored_key_map) {
+        if (pair.second.type_ == LatticeType::CROSSCAUSAL) {
+          Key key = pair.first;
+          unsigned err_num = 0;
+          string serialized = serializers[LatticeType::CROSSCAUSAL]->get(key, err_num);
+          CrossCausalValue ccv = deserialize_cross_causal(serialized);
+          unsigned total_size = 0;
+          unsigned vc_size = 0;
+          unsigned dep_size = 0;
+          unsigned vc_entry = 0;
+          unsigned dep_entry = 0;
+          for (const auto& pair : ccv.vector_clock()) {
+            vc_entry += 1;
+            vc_size += 12;
+          }
+          for (const auto& dependency : ccv.deps()) {
+            dep_entry += 1;
+            dep_size += 8;
+            for (const auto& pair : dependency.vector_clock()) {
+              dep_size += 12;
+            }
+          }
+          total_size = vc_size + dep_size;
+          total_sizes.push_back(total_size);
+          if (total_size > max_size) {
+            max_size = total_size;
+          }
+        }
+      }
+      size_t n = total_sizes.size() / 2;
+      std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
+      unsigned median = total_sizes[n];
+      log->info("median metadata size is {}", median);
+      log->info("max metadata size is {}", max_size);
+
       // reset stats tracked in memory
       working_time = 0;
       access_count = 0;
