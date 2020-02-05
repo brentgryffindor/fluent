@@ -682,11 +682,15 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           }
         }
       }
-      size_t n = total_sizes.size() / 2;
-      std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
-      unsigned median = total_sizes[n];
-      log->info("median metadata size is {}", median);
-      log->info("max metadata size is {}", max_size);
+      if (total_sizes.size() == 0) {
+        log->info("no causal data available");
+      } else {
+        size_t n = total_sizes.size() / 2;
+        std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
+        unsigned median = total_sizes[n];
+        log->info("median metadata size is {}", median);
+        log->info("max metadata size is {}", max_size);
+      }
 
       // reset stats tracked in memory
       working_time = 0;
