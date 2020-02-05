@@ -652,7 +652,11 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       std::vector<unsigned> total_sizes;
+      std::vector<unsigned> vc_lengths;
+      std::vector<unsigned> dep_lengths;
       unsigned max_size = 0;
+      unsigned max_vc_length = 0;
+      unsigned max_dep_length = 0;
       for (const auto& pair : stored_key_map) {
         if (pair.second.type_ == LatticeType::CROSSCAUSAL) {
           Key key = pair.first;
@@ -677,8 +681,16 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           }
           total_size = vc_size + dep_size;
           total_sizes.push_back(total_size);
+          vc_lengths.push_back(vc_entry);
+          dep_lengths.push_back(dep_entry);
           if (total_size > max_size) {
             max_size = total_size;
+          }
+          if (vc_entry > max_vc_length) {
+            max_vc_length = vc_entry;
+          }
+          if (dep_entry > max_dep_length) {
+            max_dep_length = dep_entry;
           }
         }
       }
@@ -686,10 +698,17 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         log->info("no causal data available");
       } else {
         size_t n = total_sizes.size() / 2;
+        
         std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
-        unsigned median = total_sizes[n];
-        log->info("median metadata size is {}", median);
+        std::nth_element(vc_lengths.begin(), vc_lengths.begin()+n, vc_lengths.end());
+        std::nth_element(dep_lengths.begin(), dep_lengths.begin()+n, dep_lengths.end());
+
+        log->info("median metadata size is {}", total_sizes[n]);
+        log->info("median vc length is {}", vc_lengths[n]);
+        log->info("median dep length is {}", dep_lengths[n]);
         log->info("max metadata size is {}", max_size);
+        log->info("max vc length is {}", max_vc_length);
+        log->info("max dep length is {}", max_dep_length);
       }
 
       // reset stats tracked in memory
