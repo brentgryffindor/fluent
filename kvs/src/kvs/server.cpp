@@ -222,6 +222,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // the set of changes made on this thread since the last round of gossip
   set<Key> local_changeset;
 
+  map<unsigned, std::vector<unsigned>> total_size_map;
+  map<unsigned, std::vector<unsigned>> vc_lengths_map;
+  map<unsigned, std::vector<unsigned>> dep_lengths_map;
+
   // keep track of the key stat
   // the first entry is the size of the key,
   // the second entry is its lattice type.
@@ -262,6 +266,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   zmq::socket_t cache_ip_response_puller(context, ZMQ_PULL);
   cache_ip_response_puller.bind(wt.cache_ip_response_bind_address());
 
+  // responsible for receiving metadata storage info (thread 0 only)
+  zmq::socket_t storage_metadata_puller(context, ZMQ_PULL);
+  storage_metadata_puller.bind(wt.storage_metadata_bind_address());
+
   //  Initialize poll set
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(join_puller), 0, ZMQ_POLLIN, 0},
@@ -271,7 +279,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       {static_cast<void*>(gossip_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(replication_response_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(replication_change_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void*>(cache_ip_response_puller), 0, ZMQ_POLLIN, 0}};
+      {static_cast<void*>(cache_ip_response_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(storage_metadata_puller), 0, ZMQ_POLLIN, 0}};
 
   auto gossip_start = std::chrono::system_clock::now();
   auto gossip_end = std::chrono::system_clock::now();
@@ -407,6 +416,29 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                               .count();
       working_time += time_elapsed;
       working_time_map[7] += time_elapsed;
+    }
+
+    // Receive storage metadata update.
+    if (pollitems[8].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&storage_metadata_puller);
+      StorageMetadata sm;
+      sm.ParseFromString(serialized);
+      unsigned sender_tid = sm.tid();
+
+      total_size_map[sender_tid].clear();
+      for (const auto& e : sm.total_sizes()) {
+        total_size_map[sender_tid].push_back(e);
+      }
+
+      vc_lengths_map[sender_tid].clear();
+      for (const auto& e : sm.vc_lengths()) {
+        vc_lengths_map[sender_tid].push_back(e);
+      }
+
+      dep_lengths_map[sender_tid].clear();
+      for (const auto& e : sm.dep_lengths()) {
+        dep_lengths_map[sender_tid].push_back(e);
+      }
     }
 
     // gossip updates to other threads
@@ -697,18 +729,67 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       if (total_sizes.size() == 0) {
         log->info("no causal data available");
       } else {
-        size_t n = total_sizes.size() / 2;
-        
-        std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
-        std::nth_element(vc_lengths.begin(), vc_lengths.begin()+n, vc_lengths.end());
-        std::nth_element(dep_lengths.begin(), dep_lengths.begin()+n, dep_lengths.end());
+        if (thread_id != 0) {
+          StorageMetadata sm;
+          sm.set_tid(thread_id);
+          for (const unsigned& e : total_sizes) {
+            sm.add_total_sizes(e);
+          }
+          for (const unsigned& e : vc_lengths) {
+            sm.add_vc_lengths(e);
+          }
+          for (const unsigned& e : dep_lengths) {
+            sm.add_dep_lengths(e);
+          }
+          string serialized_storage_metadata;
+          sm.SerializeToString(&serialized_storage_metadata);
+          log->info("sending storage metadata to thread 0");
+          kZmqUtil->send_string(serialized_storage_metadata, &pushers[ServerThread(public_ip, private_ip, 0).storage_metadata_connect_address()]);
+        } else {
+          // accumulate results from all threads
+          for (const auto& pair : total_size_map) {
+            total_sizes.insert(total_sizes.end(), pair.second.begin(), pair.second.end());
+          }
+          for (const auto& pair : vc_lengths_map) {
+            vc_lengths.insert(vc_lengths.end(), pair.second.begin(), pair.second.end());
+          }
+          for (const auto& pair : dep_lengths_map) {
+            dep_lengths.insert(dep_lengths.end(), pair.second.begin(), pair.second.end());
+          }
+          size_t n = total_sizes.size() / 2;
+          
+          std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
+          std::nth_element(vc_lengths.begin(), vc_lengths.begin()+n, vc_lengths.end());
+          std::nth_element(dep_lengths.begin(), dep_lengths.begin()+n, dep_lengths.end());
 
-        log->info("median metadata size is {}", total_sizes[n]);
-        log->info("median vc length is {}", vc_lengths[n]);
-        log->info("median dep length is {}", dep_lengths[n]);
-        log->info("max metadata size is {}", max_size);
-        log->info("max vc length is {}", max_vc_length);
-        log->info("max dep length is {}", max_dep_length);
+          log->info("median metadata size is {}", total_sizes[n]);
+          log->info("median vc length is {}", vc_lengths[n]);
+          log->info("median dep length is {}", dep_lengths[n]);
+
+          n = (size_t)(total_sizes.size() * 0.99);
+
+          std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
+          std::nth_element(vc_lengths.begin(), vc_lengths.begin()+n, vc_lengths.end());
+          std::nth_element(dep_lengths.begin(), dep_lengths.begin()+n, dep_lengths.end());
+
+          log->info("P99 metadata size is {}", total_sizes[n]);
+          log->info("P99 vc length is {}", vc_lengths[n]);
+          log->info("P99 dep length is {}", dep_lengths[n]);
+
+          n = total_sizes.size() - 1;
+
+          std::nth_element(total_sizes.begin(), total_sizes.begin()+n, total_sizes.end());
+          std::nth_element(vc_lengths.begin(), vc_lengths.begin()+n, vc_lengths.end());
+          std::nth_element(dep_lengths.begin(), dep_lengths.begin()+n, dep_lengths.end());
+
+          log->info("max metadata size is {}", total_sizes[n]);
+          log->info("max vc length is {}", vc_lengths[n]);
+          log->info("max dep length is {}", dep_lengths[n]);
+
+          //log->info("max metadata size is {}", max_size);
+          //log->info("max vc length is {}", max_vc_length);
+          //log->info("max dep length is {}", max_dep_length);
+        }
       }
 
       // reset stats tracked in memory

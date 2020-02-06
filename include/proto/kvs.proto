@@ -116,3 +116,10 @@ message UserFeedback {
   optional bool warmup = 5;
   repeated KeyLatency key_latency = 6;
 }
+
+message StorageMetadata {
+  required uint32 tid = 1;
+  repeated uint32 total_sizes = 2;
+  repeated uint32 vc_lengths = 3;
+  repeated uint32 dep_lengths = 4;
+}
