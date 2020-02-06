@@ -140,6 +140,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
     begin = False
 
     txid = None
+    times = [0.0, 0.0]
 
     for trname in schedule.triggers:
         if trname == 'BEGIN':
@@ -149,6 +150,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         prior_read_map += list(trigger.prior_read_map)
         if trigger.HasField('txid'):
             txid = trigger.txid
+            times[0] = trigger.planner_time
+            times[1] = trigger.executor_time
 
     # issue transaction begin request
     if begin:
@@ -169,7 +172,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
 
 
     fargs = _process_args(fargs)
-    result, versions = _exec_func_normal(kvs, function, fargs, rds, metadata, txid)
+    result, versions = _exec_func_normal(kvs, function, fargs, rds, metadata, txid, times)
 
     prior_read_map += versions
 
@@ -182,6 +185,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
             new_trigger.target_function = conn.sink
             new_trigger.source = fname
             new_trigger.txid = txid
+            new_trigger.planner_time = times[0]
+            new_trigger.executor_time = times[1]
 
             new_trigger.prior_read_map.extend(prior_read_map)
 
@@ -200,7 +205,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
         #result = serialize_val(result)
         if schedule.HasField('response_address'):
             new_val = '0'.zfill(8)
-            query = "update benchmark set value = '" + new_val + "' WHERE key = '" + schedule.output_key + "'"
+            query = "EXPLAIN (ANALYZE, BUFFERS) update benchmark set value = '" + new_val + "' WHERE key = '" + schedule.output_key + "'"
             try:
                 response = rds.execute_statement(
                             resourceArn = metadata[0], 
@@ -208,13 +213,15 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
                             database = 'kvs', 
                             sql = query,
                             transactionId = txid)
+                times[0] += float(response['records'][5][0]['stringValue'].split(' ')[-2])
+                times[1] += float(response['records'][6][0]['stringValue'].split(' ')[-2])
                 cr = rds.commit_transaction(
                      resourceArn = metadata[0], 
                      secretArn = metadata[1], 
                      transactionId = txid)
                 # respond to client
                 sckt = pusher_cache.get(schedule.response_address)
-                sckt.send(serialize_val(cr['transactionStatus']))
+                sckt.send(serialize_val(str(times[0]) + ':' + str(times[1])))
             except Exception as e:
                 logging.info('exception in insert or commit')
                 logging.info(e)
@@ -224,16 +231,16 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, r
                      transactionId = txid)
                 logging.info('rolled back')
                 sckt = pusher_cache.get(schedule.response_address)
-                sckt.send(serialize_val('Abort'))
+                sckt.send(serialize_val('Abort:' + str(times[0]) + ':' + str(times[1])))
         else:
             logging.error('only direct response supported!')
 
 
-def _exec_func_normal(kvs, func, args, rds=None, metadata=None, txid=None):
+def _exec_func_normal(kvs, func, args, rds=None, metadata=None, txid=None, times=None):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
 
     if refs:
-        refs = _resolve_ref_normal(refs, kvs, rds, metadata, txid)
+        refs = _resolve_ref_normal(refs, kvs, rds, metadata, txid, times)
     end = time.time()
 
     func_args = ()
@@ -251,20 +258,22 @@ def _exec_func_normal(kvs, func, args, rds=None, metadata=None, txid=None):
     return (res, versions)
 
 
-def _resolve_ref_normal(refs, kvs, rds, metadata, txid):
+def _resolve_ref_normal(refs, kvs, rds, metadata, txid, times):
     keys = [ref.key for ref in refs]
     keys = list(set(keys))
 
     kv_pairs = {}
     for key in keys:
-        query = "select value from benchmark where key = '" + key + "'"
+        query = "EXPLAIN (ANALYZE, BUFFERS) select value from benchmark where key = '" + key + "'"
         response = rds.execute_statement(
              resourceArn = metadata[0], 
              secretArn = metadata[1], 
              database = 'kvs', 
              sql = query, 
              transactionId = txid)
-        kv_pairs[key] = response['records'][0][0]['stringValue']
+        times[0] += float(response['records'][3][0]['stringValue'].split(' ')[-2])
+        times[1] += float(response['records'][4][0]['stringValue'].split(' ')[-2])
+        kv_pairs[key] = '00000000'
 
     return kv_pairs
 

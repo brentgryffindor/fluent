@@ -47,7 +47,9 @@ elif 'zipf' in msg:
 elif 'run' in msg:
 	end_recv = 0
 
-	latency = []
+	all_times = []
+	all_planner_times = []
+	all_execution_times = []
 
 	total_abort = 0
 
@@ -67,20 +69,21 @@ elif 'run' in msg:
 			logging.info("received response")
 			end_recv += 1
 			result = cp.loads(payload)
-			latency += result[0]
-			total_abort += result[1]
+			all_times += result[0]
+			all_planner_times += result[1]
+			all_execution_times += result[2]
+			total_abort += result[3]
 
 		sent_msgs = 0
 		end_recv = 0
 	logging.info("benchmark done")
-	utils.print_latency_stats(latency, 'Causal', True)
-	utils.print_latency_stats(latency, 'Causal')
+	utils.print_latency_stats(all_times, 'all times')
+	utils.print_latency_stats(all_planner_times, 'all planner times')
+	utils.print_latency_stats(all_execution_times, 'all execution times')
 	print('total abort is %d' % total_abort)
 	sys.exit(0)
 
 end_recv = 0
-
-latency = []
 
 while end_recv < sent_msgs:
 	payload = recv_socket.recv()

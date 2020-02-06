@@ -137,7 +137,7 @@ def run(flconn, kvs, mode, segment, params):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.5
+        params[0] = 1.0
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
@@ -156,6 +156,8 @@ def run(flconn, kvs, mode, segment, params):
         total_time = []
 
         all_times = []
+        all_planner_times = []
+        all_execution_times = []
 
         abort = 0
 
@@ -169,12 +171,24 @@ def run(flconn, kvs, mode, segment, params):
             output = random.choice(read_set)
 
             start = time.time()
+
+            planner_time = 0.0
+            execution_time = 0.0
+
             res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
-            while not res == 'Transaction Committed':
+            tokens = res.split(':')
+            while len(tokens) == 3:
                 abort += 1
+                planner_time += float(tokens[1])
+                execution_time += float(tokens[2])
                 res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
+                tokens = res.split(':')
+            planner_time += float(tokens[0])
+            execution_time += float(tokens[1])
 
             end = time.time()
             all_times.append((end - start))
+            all_planner_times.append(planner_time)
+            all_execution_times.append(execution_time)
         logging.info('total abort is %d' % abort)
-        return [all_times, abort]
+        return [all_times, all_planner_times, all_execution_times, abort]

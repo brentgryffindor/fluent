@@ -145,6 +145,8 @@ message DagTrigger {
   repeated VersionedKey dependencies = 8;
   optional bool invalidate = 9; // used in conservative protocol to signal that the function cache need to be invalidated
   optional string txid = 10;
+  optional double planner_time = 11;
+  optional double executor_time = 12;
 }
 
 message ExecutorStatistics {
