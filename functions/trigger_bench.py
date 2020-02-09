@@ -52,8 +52,10 @@ elif 'run' in msg:
 	all_execution_times = []
 
 	total_abort = 0
+	retry = {}
 
 	for loop in range(10):
+		retry[loop] = {}
 		print('loop is %d' % loop)
 		index = 0
 		for ip in ips:
@@ -73,6 +75,7 @@ elif 'run' in msg:
 			all_planner_times += result[1]
 			all_execution_times += result[2]
 			total_abort += result[3]
+			retry[loop][result[4]] = result[5]
 
 		sent_msgs = 0
 		end_recv = 0
@@ -80,6 +83,7 @@ elif 'run' in msg:
 	utils.print_latency_stats(all_times, 'all times')
 	utils.print_latency_stats(all_planner_times, 'all planner times')
 	utils.print_latency_stats(all_execution_times, 'all execution times')
+	cp.dump(retry, open( "retry_data", "wb" ))
 	print('total abort is %d' % total_abort)
 	sys.exit(0)
 

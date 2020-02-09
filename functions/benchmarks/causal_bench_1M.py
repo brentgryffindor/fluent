@@ -76,7 +76,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         
     return arg_map, list(set(keys_read))
 
-def run(flconn, kvs, mode, segment, params):
+def run(flconn, kvs, mode, segment, params, tid):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
@@ -158,6 +158,7 @@ def run(flconn, kvs, mode, segment, params):
         all_times = []
         all_planner_times = []
         all_execution_times = []
+        retry_map = {}
 
         abort = 0
 
@@ -174,21 +175,24 @@ def run(flconn, kvs, mode, segment, params):
 
             planner_time = 0.0
             execution_time = 0.0
+            retry_count = 0
 
             res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             tokens = res.split(':')
             while len(tokens) == 3:
                 abort += 1
+                retry_count += 1
                 planner_time += float(tokens[1])
                 execution_time += float(tokens[2])
                 res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
                 tokens = res.split(':')
             planner_time += float(tokens[0])
             execution_time += float(tokens[1])
+            retry_map[i] = retry_count
 
             end = time.time()
             all_times.append((end - start))
             all_planner_times.append(planner_time)
             all_execution_times.append(execution_time)
         logging.info('total abort is %d' % abort)
-        return [all_times, all_planner_times, all_execution_times, abort]
+        return [all_times, all_planner_times, all_execution_times, abort, tid, retry_map]
