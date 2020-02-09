@@ -23,6 +23,7 @@ spec:
   containers:
   - name: kops-container
     image: cgwu/kops
+    imagePullPolicy: IfNotPresent
     env:
     - name: AWS_ACCESS_KEY_ID
       value: ACCESS_KEY_ID_DUMMY
@@ -35,6 +36,6 @@ spec:
     - name: REPO_ORG
       value: "cw75"
     - name: REPO_BRANCH
-      value: "lww_nolog"
+      value: "lww_mock_aurora"
   nodeSelector:
     role: general

@@ -33,7 +33,7 @@ spec:
       containers:
       - name: memory-container
         image: cgwu/annakvs
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SERVER_TYPE
           value: "memory"
@@ -48,4 +48,4 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"

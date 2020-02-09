@@ -39,7 +39,7 @@ spec:
       containers:
       - name: function-1
         image: cgwu/executor
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
@@ -54,13 +54,13 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: function-2
         image: cgwu/executor
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
@@ -75,13 +75,13 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: function-3
         image: cgwu/executor
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
@@ -96,13 +96,13 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: cache-container
         image: cgwu/cache
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
@@ -111,7 +111,7 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         volumeMounts:
         - mountPath: /requests
           name: ipc

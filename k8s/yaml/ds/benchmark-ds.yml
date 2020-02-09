@@ -32,6 +32,7 @@ spec:
       containers:
       - name: benchmark-1
         image: cgwu/executor
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -44,11 +45,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-2
         image: cgwu/executor
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -61,11 +63,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-3
         image: cgwu/executor
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -78,11 +81,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-4
         image: cgwu/executor
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -95,11 +99,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-5
         image: cgwu/executor
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -112,11 +117,12 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-6
         image: cgwu/executor
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
           value: benchmark
@@ -129,6 +135,6 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY

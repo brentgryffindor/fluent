@@ -34,7 +34,7 @@ spec:
       containers:
       - name: scheduler-container
         image: cgwu/executor
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
@@ -45,4 +45,4 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"

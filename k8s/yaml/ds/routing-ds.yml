@@ -33,6 +33,7 @@ spec:
       containers:
       - name: routing-container
         image: cgwu/annakvs
+        imagePullPolicy: IfNotPresent
         env: 
         - name: SERVER_TYPE
           value: r
@@ -41,4 +42,4 @@ spec:
         - name: REPO_ORG
           value: "cw75"
         - name: REPO_BRANCH
-          value: "lww_nolog"
+          value: "lww_mock_aurora"
