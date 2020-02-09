@@ -64,7 +64,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
         while not to_generate == 0:
             # sample key from zipf
             key = sample(num_keys, base, sum_probs)
-            key = str(key).zfill(7)
+            key = str(key).zfill(len(str(num_keys)))
 
             if key not in keys_chosen:
                 keys_chosen.append(key)
@@ -150,9 +150,11 @@ def run(flconn, kvs, mode, segment, params, loop):
         for k in range(1666*segment+1, 1666*segment + 1666 + 1):
             if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
-            k = str(k).zfill(4)
+            k = str(k).zfill(len(str(total_num_keys)))
             llw = LWWPairLattice(generate_timestamp(0), serialize_val('0'.zfill(8)))
-            kvs.put(k, llw)
+            result = kvs.put(k, llw)
+            if not result:
+                logging.info('PUT ERROR!')
         warm_end = time.time()
         logging.info('warmup took %s' % (warm_end - warm_begin))
 
