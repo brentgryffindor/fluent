@@ -17,6 +17,7 @@ import os
 import time
 import zmq
 
+from anna.client import AnnaClient
 from anna.ipc_client import IpcAnnaClient
 from anna.zmq_util import SocketCache
 from .call import *
@@ -28,7 +29,7 @@ from . import utils
 REPORT_THRESH = 5
 
 
-def executor(ip, mgmt_ip, schedulers, thread_id):
+def executor(ip, mgmt_ip, schedulers, thread_id, route_addr):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
@@ -85,6 +86,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(cache_socket, zmq.POLLIN)
 
     client = IpcAnnaClient(ctx, thread_id)
+    anna_kvs = AnnaClient(route_addr, ip, list(range(6450, 6454)), thread_id)
 
     status = ThreadStatus()
     status.ip = ip
@@ -134,12 +136,12 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # map<fname, map<cid, tp(map<key, vc>, result)>>
     function_result_cache = {}
 
-    logging.info('enter warmup')
+    '''logging.info('enter warmup')
     for k in range(1, 1000001):
         warmup_key = str(k).zfill(7)
         vc = {'base' : 1}
         cache[warmup_key] = (vc, str(0).zfill(8))
-    logging.info('finish warmup')
+    logging.info('finish warmup')'''
 
 
     while True:
@@ -205,7 +207,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
                                   pinned_functions[fname], schedule, ip,
-                                  thread_id, cache, function_result_cache)
+                                  thread_id, cache, function_result_cache, anna_kvs)
                 del received_triggers[trkey]
 
                 fend = time.time()
@@ -240,7 +242,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache)
+                                      thread_id, cache, function_result_cache, anna_kvs)
                     del received_triggers[key]
 
                     fend = time.time()
@@ -289,7 +291,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_conservative_triggers[key],
                                       pinned_functions[fname], schedule, ip,
-                                      thread_id, cache, function_result_cache, True)
+                                      thread_id, cache, function_result_cache, anna_kvs, True)
                     del received_conservative_triggers[key]
                     del queue[fname][trigger.id]
 

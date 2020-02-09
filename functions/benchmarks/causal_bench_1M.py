@@ -80,7 +80,7 @@ def run(flconn, kvs, mode, segment, params, loop):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 999996
+    total_num_keys = 9996
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -150,11 +150,9 @@ def run(flconn, kvs, mode, segment, params, loop):
         for k in range(1666*segment+1, 1666*segment + 1666 + 1):
             if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
-            k = str(k).zfill(6)
-            ccv = CrossCausalValue()
-            ccv.vector_clock['base'] = 1
-            ccv.values.extend([serialize_val('0'.zfill(524288))])
-            kvs.put(k, ccv)
+            k = str(k).zfill(4)
+            llw = LWWPairLattice(generate_timestamp(0), serialize_val('0'.zfill(8)))
+            kvs.put(k, llw)
         warm_end = time.time()
         logging.info('warmup took %s' % (warm_end - warm_begin))
 
@@ -163,19 +161,12 @@ def run(flconn, kvs, mode, segment, params, loop):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.25
+        params[0] = 1.0
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
 
         logging.info("Created Probability Table with zipf %f" % params[0])
-        ### CREATE ZIPF TABLE###
-        params[3] = 1.0
-        params[4] = get_base(total_num_keys, params[3])
-        for i in range(1, total_num_keys+1):
-            params[5][i] = params[5][i - 1] + (params[4] / np.power(float(i), params[3]))
-
-        logging.info("Created Probability Table with zipf %f" % params[3])
         return []
 
     elif mode == 'run':
@@ -185,10 +176,6 @@ def run(flconn, kvs, mode, segment, params, loop):
         zipf = params[0]
         base = params[1]
         sum_probs = params[2]
-
-        zipf_write = params[3]
-        base_write = params[4]
-        sum_probs_write = params[5]
 
         #request_num = 500
 
@@ -212,15 +199,6 @@ def run(flconn, kvs, mode, segment, params, loop):
                     if ref.key not in read_map:
                         read_map[ref.key] = 0
                     read_map[ref.key] += 1
-                    #print("key of reference is %s" % ref.key)
-
-            #for key in read_set:
-            #    print("read set contains %s" % key)
-
-            #output = sample(total_num_keys, base_write, sum_probs_write)
-            #output = int(np.random.uniform(1,total_num_keys,1)[0])
-
-            #output = str(output).zfill(6)
 
             output = random.choice(read_set)
             if output not in write_map:

@@ -147,11 +147,11 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   auto report_end = std::chrono::system_clock::now();
 
   // warmup
-  log->info("warmup begin");
+  //log->info("warmup begin");
   //std::cout << "warmup start\n";
-  warmup(local_lww_cache, key_type_map);
+  //warmup(local_lww_cache, key_type_map);
   //std::cout << "warmup done\n";
-  log->info("warmup end");
+  //log->info("warmup end");
 
   while (true) {
     kZmqUtil->poll(0, &pollitems);

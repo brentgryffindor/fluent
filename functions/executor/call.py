@@ -116,12 +116,12 @@ def _exec_single_func_causal(kvs, fname, func, args):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
-                      tid, cache, function_result_cache, conservative=False):
+                      tid, cache, function_result_cache, anna_kvs, conservative=False):
     #logging.info('conservative flag is %s' % conservative)
     #user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule)
+                                  triggers, function, schedule, anna_kvs)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
@@ -130,7 +130,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
     #user_lib.close()
 
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, anna_kvs):
     #logging.info('exec dag normal for cid %s' % schedule.client_id)
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
@@ -140,7 +140,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
         fargs += list(trigger.arguments.args)
 
     fargs = _process_args(fargs)
-    result = _exec_func_normal(kvs, function, fargs)
+    result = _exec_func_normal(kvs, function, fargs, anna_kvs)
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -164,22 +164,21 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
 
     if is_sink:
         result = serialize_val(result)
+        lattice = LWWPairLattice(generate_timestamp(0), result)
+        if schedule.HasField('output_key'):
+            anna_kvs.put(schedule.output_key, lattice)
+        else:
+            anna_kvs.put(schedule.id, lattice)
         if schedule.HasField('response_address'):
             sckt = pusher_cache.get(schedule.response_address)
             sckt.send(result)
-        else:
-            lattice = LWWPairLattice(generate_timestamp(0), result)
-            if schedule.HasField('output_key'):
-                kvs.put(schedule.output_key, lattice)
-            else:
-                kvs.put(schedule.id, lattice)
 
 
-def _exec_func_normal(kvs, func, args):
+def _exec_func_normal(kvs, func, args, anna_kvs=None):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
 
     if refs:
-        refs = _resolve_ref_normal(refs, kvs)
+        refs = _resolve_ref_normal(refs, kvs, anna_kvs)
     end = time.time()
 
     func_args = ()
@@ -194,21 +193,18 @@ def _exec_func_normal(kvs, func, args):
     return res
 
 
-def _resolve_ref_normal(refs, kvs):
+def _resolve_ref_normal(refs, kvs, anna_kvs):
     start = time.time()
     keys = [ref.key for ref in refs]
     keys = list(set(keys))
-    kv_pairs = kvs.get(keys)
 
-    # when chaining function executions, we must wait
-    num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
-    while num_nulls > 0:
-        kv_pairs = kvs.get(keys)
-
-    for ref in refs:
-        if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
-            kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
-
+    kv_pairs = {}
+    for key in keys:
+        payload = anna_kvs.get(key)
+        while payload is None:
+            logging.info('error! value dne')
+            payload = anna_kvs.get(key)
+        kv_pairs[key] = deserialize_val(payload.reveal()[1])
     end = time.time()
     return kv_pairs
 
