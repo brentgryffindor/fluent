@@ -16,6 +16,10 @@ def benchmark(flconn, tid):
     logging.info('tid is %d' % tid)
     logging.info('scheduler address is %s' % flconn.service_addr)
 
+    logging.info('reading trace')
+    trace = cp.load(open('/fluent/functions/benchmarks/retry_data_1.0', 'rb'))
+    logging.info('finish reading trace')
+
     ctx = zmq.Context(1)
 
     benchmark_start_socket = ctx.socket(zmq.PULL)
@@ -51,14 +55,14 @@ def benchmark(flconn, tid):
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
-        run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop)
+        run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop, trace, tid)
 
 
-def run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop):
+def run_bench(bname, mode, segment, flconn, kvs, sckt, params, loop, trace, tid):
     logging.info('Running benchmark %s with mode %s.' % (bname, mode))
 
     if bname == 'causal_bench_1M':
-        latency = causal_bench_1M.run(flconn, kvs, mode, segment, params, loop)
+        latency = causal_bench_1M.run(flconn, kvs, mode, segment, params, loop, trace, tid)
     elif bname == 'causal_bench_1M_parallel':
         latency = causal_bench_1M_parallel.run(flconn, kvs, mode, segment, params, loop)
     else:

@@ -76,7 +76,7 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
 
     return arg_map, list(set(keys_read))
 
-def run(flconn, kvs, mode, segment, params, loop):
+def run(flconn, kvs, mode, segment, params, loop, trace, tid):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
@@ -186,10 +186,9 @@ def run(flconn, kvs, mode, segment, params, loop):
         all_times = []
 
         read_map = {}
-        write_map = {}
 
-        for i in range(90*loop + 15*segment, 90*loop + 15*segment + 15):
-            cid = str(i).zfill(3)
+        for i in range(300*segment, 300*segment + 300):
+            cid = str(i).zfill(4)
 
             logging.info("running client %s" % cid)
 
@@ -203,25 +202,14 @@ def run(flconn, kvs, mode, segment, params, loop):
                     read_map[ref.key] += 1
 
             output = random.choice(read_set)
-            if output not in write_map:
-                write_map[output] = 0
-            write_map[output] += 1
-            #print("Output key is %s" % output)
 
             start = time.time()
-            scheduler_time = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
+            res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
+            for j in range(trace[loop][tid][i]):
+                res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             end = time.time()
             all_times.append((end - start))
-            #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
         logging.info('loop is %d' % loop)
         utils.print_latency_stats(all_times, 'latency', True)
         return all_times
-        #print('zipf %f' % zipf)
-        #utils.print_latency_stats(all_times, 'latency')
-        #print('read map size is %d' % len(read_map))
-        #print(sorted(read_map.items(), key=lambda x: x[1], reverse=True))
-        #print(sum(read_map.values()))
-        #print('write map size is %d' % len(write_map))
-        #print(sorted(write_map.items(), key=lambda x: x[1], reverse=True))
-        #print(sum(write_map.values()))
