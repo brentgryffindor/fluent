@@ -206,6 +206,7 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
             start = time.time()
             res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             for j in range(trace[loop][tid][i]):
+                logging.info('retry!')
                 res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             end = time.time()
             all_times.append((end - start))
