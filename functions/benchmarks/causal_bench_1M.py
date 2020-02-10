@@ -165,7 +165,7 @@ def run(flconn, kvs, mode, segment, params):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.5
+        params[0] = 1.0
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
@@ -183,12 +183,13 @@ def run(flconn, kvs, mode, segment, params):
 
         #request_num = 500
 
-        total_time = []
+        total_time = 0
 
         all_times = []
 
         read_map = {}
         write_map = {}
+
 
         for i in range(15*segment, 15*segment + 15):
             cid = str(i).zfill(3)
@@ -218,8 +219,10 @@ def run(flconn, kvs, mode, segment, params):
             scheduler_time = flconn.call_dag(dag_name, arg_map, True, CROSS, output, cid)
             end = time.time()
             all_times.append((end - start))
+            total_time += (end - start)
             #all_times.append(scheduler_time)
             #print('Result is: %s' % res)
+        logging.info('throughput is %s ops/s' % (15 / total_time))
         return all_times
         #print('zipf %f' % zipf)
         #utils.print_latency_stats(all_times, 'latency')
