@@ -188,7 +188,7 @@ def run(flconn, kvs, mode, segment, params, tid):
                 tokens = res.split(':')
             planner_time += float(tokens[0])
             execution_time += float(tokens[1])
-            retry_map[i] = retry_count
+            retry_map[i] = [arg_map, output, retry_count]
 
             end = time.time()
             all_times.append((end - start))

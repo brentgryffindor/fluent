@@ -83,7 +83,7 @@ elif 'run' in msg:
 	utils.print_latency_stats(all_times, 'all times')
 	utils.print_latency_stats(all_planner_times, 'all planner times')
 	utils.print_latency_stats(all_execution_times, 'all execution times')
-	cp.dump(retry, open( "retry_data", "wb" ))
+	cp.dump(retry, open( "workload_trace", "wb" ))
 	print('total abort is %d' % total_abort)
 	sys.exit(0)
 
