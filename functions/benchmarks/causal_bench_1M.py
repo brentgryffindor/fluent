@@ -80,7 +80,7 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 999996
+    total_num_keys = 1000000
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -155,6 +155,12 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
             result = kvs.put(k, llw)
             if not result:
                 logging.info('PUT ERROR!')
+        for k in range(999997, total_num_keys + 1):
+            k = str(k).zfill(len(str(total_num_keys)))
+            llw = LWWPairLattice(generate_timestamp(0), serialize_val('0'.zfill(8)))
+            result = kvs.put(k, llw)
+            if not result:
+                logging.info('PUT ERROR!')
         warm_end = time.time()
         logging.info('warmup took %s' % (warm_end - warm_begin))
 
@@ -163,7 +169,7 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
     elif mode == 'zipf':
         logging.info("Creating Probability Table")
         ### CREATE ZIPF TABLE###
-        params[0] = 1.25
+        params[0] = 1.0
         params[1] = get_base(total_num_keys, params[0])
         for i in range(1, total_num_keys+1):
             params[2][i] = params[2][i - 1] + (params[1] / np.power(float(i), params[0]))
@@ -204,8 +210,8 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
             output = random.choice(read_set)
 
             start = time.time()
-            res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
-            for j in range(trace[loop][tid][i]):
+            res = flconn.call_dag(dag_name, trace[loop][tid][i][0], True, NORMAL, trace[loop][tid][i][1], cid)
+            for j in range(trace[loop][tid][i][2]):
                 res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             end = time.time()
             all_times.append((end - start))
