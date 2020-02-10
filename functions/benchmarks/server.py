@@ -17,7 +17,7 @@ def benchmark(flconn, tid):
     logging.info('scheduler address is %s' % flconn.service_addr)
 
     logging.info('reading trace')
-    trace = cp.load(open('/fluent/functions/benchmarks/workload_trace_1.0', 'rb'))
+    trace = cp.load(open('/fluent/functions/benchmarks/workload_trace_1.25', 'rb'))
     logging.info('finish reading trace')
 
     ctx = zmq.Context(1)
