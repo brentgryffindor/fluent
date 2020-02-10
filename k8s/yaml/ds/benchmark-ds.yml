@@ -31,7 +31,7 @@ spec:
         role: benchmark
       containers:
       - name: benchmark-1
-        image: cgwu/trace
+        image: cgwu/trace:v1
         imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
@@ -49,7 +49,7 @@ spec:
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-2
-        image: cgwu/trace
+        image: cgwu/trace:v1
         imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
@@ -67,7 +67,7 @@ spec:
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-3
-        image: cgwu/trace
+        image: cgwu/trace:v1
         imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
@@ -85,7 +85,7 @@ spec:
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-4
-        image: cgwu/trace
+        image: cgwu/trace:v1
         imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
@@ -103,7 +103,7 @@ spec:
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-5
-        image: cgwu/trace
+        image: cgwu/trace:v1
         imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
@@ -121,7 +121,7 @@ spec:
         - name: SCHED_IPS
           value: SCHED_IPS_DUMMY
       - name: benchmark-6
-        image: cgwu/trace
+        image: cgwu/trace:v1
         imagePullPolicy: IfNotPresent
         env: 
         - name: SYSTEM_FUNC
