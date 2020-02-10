@@ -80,7 +80,7 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
     dag_name = 'causal_test'
     functions = ['strmnp1', 'strmnp2', 'strmnp3']
     connections = [('strmnp1', 'strmnp2'), ('strmnp2', 'strmnp3')]
-    total_num_keys = 9996
+    total_num_keys = 999996
 
     if mode == 'create':
         #print("Creating functions and DAG")
@@ -147,7 +147,7 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
         logging.info('Warming up keys')
         ### CREATE DATA###
         warm_begin = time.time()
-        for k in range(1666*segment+1, 1666*segment + 1666 + 1):
+        for k in range(166666*segment+1, 166666*segment + 166666 + 1):
             if k % 1000 == 0:
                 logging.info('warmup for key %s done' % k)
             k = str(k).zfill(len(str(total_num_keys)))
@@ -206,7 +206,6 @@ def run(flconn, kvs, mode, segment, params, loop, trace, tid):
             start = time.time()
             res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             for j in range(trace[loop][tid][i]):
-                logging.info('retry!')
                 res = flconn.call_dag(dag_name, arg_map, True, NORMAL, output, cid)
             end = time.time()
             all_times.append((end - start))
